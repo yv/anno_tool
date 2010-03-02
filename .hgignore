@@ -1,0 +1,9 @@
+syntax:regexp
+^mmax/
+^skript/
+.*\.html
+.*\.log
+.*\.aux
+.*\.zip
+.*\.pyc
+.*~
