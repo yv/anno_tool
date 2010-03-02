@@ -1,17 +1,31 @@
 import sys
 from collections import defaultdict
 from mmax_tools import *
+from getopt import getopt
 
-if 'null' in sys.argv[2:4]:
-    rel_mapping={
-        'other_rel':{'unmarked':'no_other'}
-        }
-else:
-    rel_mapping={}
 
 want_html=False
 
-ignore_attributes=set(['comment','span','other_rel','id','mmax_level'])
+opts,args=getopt(sys.argv[1:],'',['html'])
+
+for k,v in opts:
+    if k=='--html':
+        want_html=True
+    else:
+        print "Unknown option: %s"%(k,)
+
+if 'null' in args[1:3]:
+    rel_mapping={
+        'other_rel':{'unmarked':'no_other'}
+        }
+    want_agree=False
+else:
+    rel_mapping={}
+    want_agree=True
+
+
+completely_ignore_attributes=set(['span','id','mmax_level','word'])
+ignore_attributes=set(['comment','other_rel']).union(completely_ignore_attributes)
 
 class Distribution(defaultdict):
     def __init__(self):
@@ -71,7 +85,10 @@ def extract_attributes(attrs1,attrs2,key):
 def report_attributes(key,val1,val2):
     if want_html:
         print '<div class="difference">'
-    print (u"%s: %s - %s"%(key,val1,val2)).encode('ISO-8859-1')
+    if val2=='unmarked' and args[1]=='null':
+        print (u"%s: %s"%(key,val1)).encode('ISO-8859-1')
+    else:
+        print (u"%s: %s - %s"%(key,val1,val2)).encode('ISO-8859-1')
     if want_html:
         print '</div>'
 
@@ -109,12 +126,17 @@ def diff_markables(ms1,ms2,doc):
                     have_m=True
                     if want_html:
                         print '<div class="srctext">'
-                        print m2context(m1,doc),"<br>"
-                    print "[%d]%s: "%(idx1,m2s(m1,doc),)
+                        print "<b>[%d]</b> %s<br>"%(idx1,m2context(m1,doc))
+                    else:
+                        print "[%d]"%(idx1,),
+                    print "%s: "%(m2s(m1,doc),)
                     if want_html:
                         print '</div>'
+                report_attributes(key,val1,val2)
         if have_m:
             for key in sorted(all_keys.intersection(ignore_attributes)):
+                if key in completely_ignore_attributes:
+                    continue
                 val1,val2=extract_attributes(attrs1,attrs2,key)
                 if val1!=val2:
                     report_attributes(key,val1,val2)
@@ -163,11 +185,13 @@ annodirs={'anna':annodir+'annotation-Anna',
 anno_sets={'waehrend1':['0_waehrend','2_waehrend','3_waehrend','4_waehrend'],
            'nachdem1':['1_nachdem','5_nachdem','8_nachdem','11_nachdem'],
            'waehrend2':['6_waehrend','7_waehrend','9_waehrend','10_waehrend'],
-           'nachdem2':['14_nachdem','16_nachdem','18_nachdem','23_nachdem']}
+           'nachdem2':['14_nachdem','16_nachdem','18_nachdem','23_nachdem'],
+           'all2':['6_waehrend','7_waehrend','9_waehrend','10_waehrend',
+                   '14_nachdem','16_nachdem','18_nachdem','23_nachdem']}
 
 if __name__=='__main__':
-    dir1=annodirs[sys.argv[1]]
-    dir2=annodirs[sys.argv[2]]
+    dir1=annodirs[args[0]]
+    dir2=annodirs[args[1]]
     results=[]
     if want_html:
         print """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
@@ -186,7 +210,7 @@ if __name__=='__main__':
         </style>
         </head>
         <body>"""
-    for docid in anno_sets[sys.argv[3]]:
+    for docid in anno_sets[args[2]]:
         if want_html:
             print '<div class="file_id">%s</div>'%(docid)
         doc1=MMAXDiscourse(dir1,docid)
@@ -196,8 +220,10 @@ if __name__=='__main__':
         ms2=doc2.read_markables('konn')
         partial=diff_markables(ms1,ms2,doc1)
         results.append(partial)
-        display_result(docid,partial)
+        if want_agree:
+            display_result(docid,partial)
     summary=summarize_results(results)
-    display_result('TOTAL',summary)
+    if want_agree:
+        display_result('TOTAL',summary)
     if want_html:
         print """</body></html>"""
