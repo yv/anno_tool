@@ -16,16 +16,21 @@ for k,v in opts:
 
 if 'null' in args[1:3]:
     rel_mapping={
-        'other_rel':{'unmarked':'no_other'}
+        'other_rel':{'unmarked':'no_other'},
+        'causal':{'enable':'result'}
         }
     want_agree=False
 else:
-    rel_mapping={}
+    rel_mapping={
+         'other_rel':{'unmarked':'no_other'},
+         'causal':{'enable':'causal'},
+         'contrastive':{'kontradiktorisch':'kontraer','parallel':'kontraer'}
+         }
     want_agree=True
 
 
 completely_ignore_attributes=set(['span','id','mmax_level','word'])
-ignore_attributes=set(['comment','other_rel']).union(completely_ignore_attributes)
+ignore_attributes=set(['comment']).union(completely_ignore_attributes)
 
 class Distribution(defaultdict):
     def __init__(self):
@@ -92,6 +97,19 @@ def report_attributes(key,val1,val2):
     if want_html:
         print '</div>'
 
+def gen_all(attrs):
+    result=[]
+    for key in ['temporal','contrastive','causal']:
+        val=attrs.get(key,'unmarked')
+        try:
+            rmap=rel_mapping[key]
+        except KeyError:
+            pass
+        else:
+            val=rmap.get(val,val)
+        result.append(val)
+    return '-'.join(result)
+
 def diff_markables(ms1,ms2,doc):
     ms1.sort(key=lambda x:x[3:5])
     ms2.sort(key=lambda x:x[3:5])
@@ -133,6 +151,9 @@ def diff_markables(ms1,ms2,doc):
                     if want_html:
                         print '</div>'
                 report_attributes(key,val1,val2)
+        allatt1=gen_all(attrs1)
+        allatt2=gen_all(attrs2)
+        att_dist['all_att'][(allatt1,allatt2)]+=1
         if have_m:
             for key in sorted(all_keys.intersection(ignore_attributes)):
                 if key in completely_ignore_attributes:
@@ -166,6 +187,29 @@ def display_result(docid,result):
             print "Percent  agreement: %.3f"%(perc_agree,)
             print "Expected agreement: %.3f"%(expected_agree,)
             print "Cohen's kappa: %.3f"%(kappa,)
+        print "Marginals:"
+        marg1_raw=marginal(dist_raw,0)
+        marg2_raw=marginal(dist_raw,1)
+        all_keys=set(marg1.iterkeys()).union(marg2.iterkeys())
+        for k,v in sorted(marg1.iteritems(),key=lambda x:-x[1]):
+            if v>0:
+                f_val=2*dist[(k,k)]/(marg1[k]+marg2[k])
+            else:
+                f_val=0
+            if len(k)<16:
+                print "%16s: %4d (%5.1f%%) %4d (%5.1f%%) F=%4.3f"%(k,
+                                                                   marg1_raw[k],
+                                                                   marg1[k]*100,
+                                                                   marg2_raw[k],
+                                                                   marg2[k]*100,
+                                                                   f_val)
+            else:
+                print "%40s: %4d (%5.1f%%) %4d (%5.1f%%) F=%4.3f"%(k,
+                                                                   marg1_raw[k],
+                                                                   marg1[k]*100,
+                                                                   marg2_raw[k],
+                                                                   marg2[k]*100,
+                                                                   f_val)
 
 def summarize_results(results):
     a=defaultdict(Distribution)
@@ -186,8 +230,12 @@ anno_sets={'waehrend1':['0_waehrend','2_waehrend','3_waehrend','4_waehrend'],
            'nachdem1':['1_nachdem','5_nachdem','8_nachdem','11_nachdem'],
            'waehrend2':['6_waehrend','7_waehrend','9_waehrend','10_waehrend'],
            'nachdem2':['14_nachdem','16_nachdem','18_nachdem','23_nachdem'],
+           'all1':['0_waehrend','2_waehrend','3_waehrend','4_waehrend',
+                   '1_nachdem','5_nachdem','8_nachdem','11_nachdem'],
            'all2':['6_waehrend','7_waehrend','9_waehrend','10_waehrend',
-                   '14_nachdem','16_nachdem','18_nachdem','23_nachdem']}
+                   '14_nachdem','16_nachdem','18_nachdem','23_nachdem'],
+           'aberA':['aber_00','aber_01','aber_02','aber_03','aber_04',
+                    'aber_05','aber_06','aber_07','aber_08','aber_09']}
 
 if __name__=='__main__':
     dir1=annodirs[args[0]]
@@ -220,8 +268,8 @@ if __name__=='__main__':
         ms2=doc2.read_markables('konn')
         partial=diff_markables(ms1,ms2,doc1)
         results.append(partial)
-        if want_agree:
-            display_result(docid,partial)
+        #if want_agree:
+        #    display_result(docid,partial)
     summary=summarize_results(results)
     if want_agree:
         display_result('TOTAL',summary)

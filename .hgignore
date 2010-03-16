@@ -1,9 +1,11 @@
 syntax:regexp
 ^mmax/
 ^skript/
-.*\.html
-.*\.log
-.*\.aux
-.*\.zip
-.*\.pyc
+^annotation-.*/
+.*\.html$
+.*\.log$
+.*\.aux$
+.*\.zip$
+.*\.pyc$
+.*\.txt$
 .*~
