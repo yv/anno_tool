@@ -1,0 +1,19 @@
+annodir='/gluster/common/annotation/'
+empty_dir='/home/yannickv/proj/konnektor/mmax/'
+annodirs={'anna':annodir+'annotation-Anna',
+          'sabrina':annodir+'annotation-Sabrina',
+          'holger':annodir+'annotation-Holger',
+          'steffi':annodir+'annotation-steffi',
+          'null':empty_dir}
+
+anno_sets={'waehrend1':['0_waehrend','2_waehrend','3_waehrend','4_waehrend'],
+           'nachdem1':['1_nachdem','5_nachdem','8_nachdem','11_nachdem'],
+           'waehrend2':['6_waehrend','7_waehrend','9_waehrend','10_waehrend'],
+           'nachdem2':['14_nachdem','16_nachdem','18_nachdem','23_nachdem'],
+           'all1':['0_waehrend','2_waehrend','3_waehrend','4_waehrend',
+                   '1_nachdem','5_nachdem','8_nachdem','11_nachdem'],
+           'all2':['6_waehrend','7_waehrend','9_waehrend','10_waehrend',
+                   '14_nachdem','16_nachdem','18_nachdem','23_nachdem'],
+           'bevor':['6_bevor','20_bevor','34_bevor'],
+           'aberA':['aber_00','aber_01','aber_02','aber_03','aber_04',
+                    'aber_05','aber_06','aber_07','aber_08','aber_09']}
