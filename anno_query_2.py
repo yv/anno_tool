@@ -189,6 +189,8 @@ def display_annoquery(environ,start_response):
 def test_web():    
     run_simple('localhost',8091,display_annoquery)
 
+application=display_annoquery
+
 if __name__=='__main__':
     q=ForAll(contrastive=='kontraer') & (ForAny(temporal=='temporal') & ForAny(temporal!='temporal'))
     for s in run_query(q):
