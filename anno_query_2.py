@@ -1,5 +1,9 @@
 import re
 from pynlp.mmax_tools import *
+import os.path
+import sys
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from anno_tools import *
 from anno_config import *
 from annodb import *
