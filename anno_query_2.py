@@ -156,7 +156,7 @@ ForAll(contrastive=='kontraer') & Disagree(temporal=='temporal')
     start_response('200 OK',[('Content-type','text/html; charset=iso-8859-1')])
     return [result]
 
-myglobals={'__builtins__':None}
+myglobals={'__builtins__':None,'None':None}
 for k in 'ForAny ForAll Disagree contrastive temporal causal other_rel'.split():
     myglobals[k]=globals()[k]
 
