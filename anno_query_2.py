@@ -1,5 +1,5 @@
 import re
-from mmax_tools import *
+from pynlp.mmax_tools import *
 from anno_tools import *
 from anno_config import *
 from annodb import *
