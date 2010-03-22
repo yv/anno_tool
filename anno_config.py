@@ -16,4 +16,6 @@ anno_sets={'waehrend1':['0_waehrend','2_waehrend','3_waehrend','4_waehrend'],
                    '14_nachdem','16_nachdem','18_nachdem','23_nachdem'],
            'bevor':['6_bevor','20_bevor','34_bevor'],
            'aberA':['aber_00','aber_01','aber_02','aber_03','aber_04',
-                    'aber_05','aber_06','aber_07','aber_08','aber_09']}
+                    'aber_05','aber_06','aber_07','aber_08','aber_09'],
+           'alsA':['als_00','als_01','als_02','als_03','als_04',
+                    'als_05','als_06','als_07','als_08','als_09']}
