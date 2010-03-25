@@ -3,10 +3,10 @@ from pynlp.mmax_tools import *
 import os.path
 import sys
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from anno_tools import *
 from anno_config import *
-from annodb import *
+from couchDB.annodb import *
 from cStringIO import StringIO
 
 from werkzeug import run_simple, parse_form_data, escape
