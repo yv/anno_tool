@@ -1,5 +1,6 @@
 import re
 from pynlp.mmax_tools import *
+import simplejson as json
 import os.path
 import sys
 
@@ -7,9 +8,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from anno_tools import *
 from anno_config import *
 from mongoDB.annodb import *
+from web_stuff import *
 from cStringIO import StringIO
 
 from werkzeug import run_simple, parse_form_data, escape
+from werkzeug.exceptions import NotFound, Forbidden
 
 db=AnnoDB()
 
@@ -137,33 +140,14 @@ def run_query(q, which_set='all1'):
     yield out.getvalue()
     yield "</body></html>"
 
-def display_form(environ,start_response):
-    options='\n'.join(['<option value="%s">%s'%(k,k) for k in anno_sets.keys()])
-    result='''
-<html><head><title>Query Form</title></head>
-<body>
-<form action="/annoquery" method="post">
-<textarea cols="80" rows="4" name="q">
-ForAll(contrastive=='kontraer') & Disagree(temporal=='temporal')
-</textarea><br>
-<select name="wset">
-%s
-</select><br>
-<input type="submit">
-</form>
-</body>
-</html>'''%(options,)
-    start_response('200 OK',[('Content-type','text/html; charset=iso-8859-1')])
-    return [result]
-
 myglobals={'__builtins__':None,'None':None}
 for k in 'ForAny ForAll Disagree contrastive temporal causal other_rel'.split():
     myglobals[k]=globals()[k]
 
 query_ok_re=re.compile(r"^(\'[a-z]+\'|==|\!=|[\(\)\&\| ]|ForAll|ForAny|contrastive|temporal|causal)+$")
-def display_annoquery(environ,start_response):
-    if environ['REQUEST_METHOD']=='POST':
-        form=parse_form_data(environ)[1]
+def display_annoquery(request):
+    if request.method=='POST':
+        form=request.form
         qs=form['q'].strip().replace('\n','')
         qset=form.get('wset','all1')
         #m=query_ok_re.match(qs)
@@ -172,28 +156,168 @@ def display_annoquery(environ,start_response):
             try:
                 q=eval(qs,myglobals)
             except SyntaxError,e :
-                start_response('200 OK',[('Content-type','text/html; charset=iso-8859-1')])
-                return ['''<html><head><title>not valid</title></head>
-<body>
-<h1>Syntax Error</h1>
-%s<br>
-%s
-</body>'''%(e,e.text)]
+                return render_template('annoquery.html',
+                                       errmsg='Syntax error:%s<br>%s'%(e,e.text),
+                                       query=form['q'],
+                                       tasks=anno_sets)
+            except TypeError,e :
+                return render_template('annoquery.html',
+                                       errmsg='Type error:%s'%(e,),
+                                       query=form['q'],
+                                       tasks=anno_sets)
             else:
-                start_response('200 OK',[('Content-type','text/html; charset=iso-8859-1')])
-                return run_query(q,qset)
+                result=' '.join(run_query(q,qset)).decode('ISO-8859-15')
+                print type(result)
+                return Response(result, mimetype='text/html')
         else:
-            start_response('200 OK',[('Content-type','text/html; charset=iso-8859-1')])
-            return ['''<html><head><title>not valid</title></head>
-<body>
-<h1>Your query is not valid</h1>
-</body>''']
-    return display_form(environ,start_response)
+            return render_template('annoquery.html',
+                                   errmsg='Your query is not valid',
+                                   query=form['q'],
+                                   tasks=anno_sets)
+    return render_template('annoquery.html',
+                           errmsg='',
+                           query='',
+                           tasks=anno_sets)
 
-def test_web():    
-    run_simple('localhost',8091,display_annoquery)
+def display_chooser(prefix,alternatives,chosen,out):
+    for alt in alternatives:
+        cls='choose'
+        if alt==chosen:
+            cls='chosen'
+        out.write('''
+[<a class="%s" onclick="chosen('%s','%s');" id="%s_%s">%s</a>]\n'''%(
+                cls,prefix,alt,prefix,alt,alt))
 
-application=display_annoquery
+def display_textbox(prefix,value,out):
+    out.write('''
+<textarea cols="80" id="%s" onkeyup="after_blur('%s')">'''%(
+            prefix,prefix))
+    if value is not None:
+        out.write(value)
+    out.write('</textarea>')
+
+# konn2_scheme=[Choice('coarse1',['comparison','temporal',
+#                                 'result']),
+#               Dependent('fine1','coarse1',
+#                         {'comparison':
+#                              ['kontraer','parallel','kontradiktorisch'],
+#                          'temporal':
+#                              ['temporal'],
+#                          'result':['cause','enable']}),
+#               Choice('coarse2',['comparison','temporal',
+#                                 'result']),
+#               Dependent('fine2','coarse2',
+#                         {'comparison':
+#                              ['kontraer','parallel','kontradiktorisch'],
+#                          'temporal':
+#                              ['temporal'],
+#                          'result':['cause','enable']})]
+
+konn_scheme=[('temporal',['temporal','non_temporal']),
+             ('causal',['causal','enable','non_causal']),
+             ('contrastive',['kontraer','kontradiktorisch',
+                             'parallel','no_contrast'])]
+def widgets_konn(anno,out,out_js=None):
+    edited=False
+    out.write('<table>')
+    for key,values in konn_scheme:
+        out.write('<tr><td><b>')
+        out.write(key)
+        out.write(':</b></td><td>')
+        val=anno.get(key,None)
+        if val is not None:
+            edited=True
+        display_chooser(anno._id+':'+key,values,
+                        val,out)
+        out.write('</td></tr>')
+    out.write('<tr><td><b>comment:</b></td><td>')
+    val=anno.get('comment',None)
+    if val is not None:
+        edited=True
+    display_textbox(anno._id+':comment',
+                    anno.get('comment',None),out)
+    out.write('</td></tr></table>')
+    if out_js and edited:
+        out_js.write('set_edited(%s)'%(anno._id))
+
+def annotate(request,taskname):
+    task=db.get_task(taskname)
+    if task is None:
+        raise NotFound("no such task")
+    user=request.user
+    if user is None:
+        redirect('/pycwb/login')
+    annotations=task.retrieve_annotations(user)
+    out=StringIO()
+    for anno in annotations:
+        print >>out, '<div class="srctext" id="src:%s">'%(anno._id,)
+        db.display_span(anno['span'],1,0,out)
+        print >>out, '</div>'
+        widgets_konn(anno,out)
+    return render_template('annodummy.html',task=task,
+                           output=out.getvalue().decode('ISO-8859-15'))
+
+
+konn2_schema=[['Temporal',{},[]],
+              ['Result',{},
+               [['enable',{},[]],
+                ['cause',{},
+                 [['epistemic_cause',{},[]],
+                  ['speech_act',{},[]]]]]],
+              ['Comparison',{},
+               [['parallel',{},[]],
+                ['contrast',{},[]]]]];
+def annotate2(request,taskname):
+    task=db.get_task(taskname)
+    if task is None:
+        raise NotFound("no such task")
+    user=request.user
+    if user is None:
+        redirect('/pycwb/login')
+    annotations=task.retrieve_annotations(user)
+    examples=[]
+    for anno in annotations:
+        out=StringIO()
+        db.display_span(anno['span'],1,0,out)
+        munged_anno=dict(anno)
+        munged_anno['text']=out.getvalue().decode('ISO-8859-15')
+        examples.append(munged_anno)
+    jscode='examples=%s;\nschema=%s;'%(json.dumps(examples),
+                                       json.dumps(konn2_schema))
+    return render_template('annodummy2.html',
+                           jscode=jscode)
+
+immutable_attributes=set(['_id','annotator','span','corpus','level'])
+def save_attributes(request):
+    annotation=db.db.annotation
+    if request.user is None:
+        raise Forbidden
+    if request.method=='POST':
+        stuff=json.load(request.stream)
+        print stuff
+        try:
+            for k,v in stuff.iteritems():
+                anno_key,attr=k.split(':')
+                if attr in immutable_attributes:
+                    print >>sys.stderr,"%s ignored (immutable)"%(attr,)
+                    continue
+                print anno_key,attr
+                anno=annotation.find_one({'_id':anno_key})
+                if anno is None:
+                    print "(not found):%s"%(anno_key,)
+                if request.user!=anno['annotator']:
+                    raise Forbidden("not yours")
+                anno[attr]=v
+                annotation.save(anno)
+        except ValueError:
+            raise NotFound("no such attribute")
+        except HTTPException,e:
+            print e
+            raise
+        else:
+            return Response('Ok')
+    else:
+        raise NotFound("only POST allowed")
 
 if __name__=='__main__':
     q=ForAll(contrastive=='kontraer') & (ForAny(temporal=='temporal') & ForAny(temporal!='temporal'))

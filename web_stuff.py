@@ -21,15 +21,18 @@ from werkzeug import Request, Response, cached_property, redirect, escape
 from werkzeug.exceptions import HTTPException, MethodNotAllowed, \
     NotImplemented, NotFound
 from werkzeug.contrib.securecookie import SecureCookie
-from mako.template import Template
-from mako.lookup import TemplateLookup
+#from mako.template import Template
+#from mako.lookup import TemplateLookup
+from jinja2 import Environment, FileSystemLoader
 from mongoDB.annodb import login_user
+from anno_config import anno_sets
 
 TEMPLATE_PATH=os.path.join(os.path.dirname(__file__),'templates')
-mylookup=TemplateLookup(directories=[TEMPLATE_PATH])
+#mylookup=TemplateLookup(directories=[TEMPLATE_PATH])
+mylookup=Environment(loader=FileSystemLoader(TEMPLATE_PATH,encoding='ISO-8859-15'))
 
 def render_template(template, **context):
-    return Response(mylookup.get_template(template).render_unicode(**context),
+    return Response(mylookup.get_template(template).render(**context),
                     mimetype='text/html')
 
 # don't use this key but a different one; you could just use
@@ -93,7 +96,8 @@ def login_form(request):
 
 def index(request):
     print request.user, request.session
-    return render_template('index.html',user=request.user)
+    return render_template('index.html',user=request.user,
+                           tasks=anno_sets)
 
 
 @AppRequest.application

@@ -1,11 +1,13 @@
-from web_stuff import render_template
 import sys
 import os.path
+from cStringIO import StringIO
+from web_stuff import render_template, redirect
+from mongoDB.annodb import AnnoDB
+import pytree.export as export
+import pytree.csstree as csstree
 
-import CWB.CL as cwb
-
-
-tueba_corpus=cwb.Corpus("TUEBA4")
+db=AnnoDB()
+tueba_corpus=db.corpus
 
 def compute_url(text_id):
   year=text_id[1:3]
@@ -26,9 +28,19 @@ def render_sentence(request,sent_no):
       tokens.append(words[i].decode('ISO-8859-1'))
   t_start,t_end,t_attrs=texts.find_pos(end-1)
   text_url=compute_url(t_attrs)
+  trees_out=StringIO()
+  parses=db.get_parses(sno)
+  for k,v in parses.iteritems():
+    if k=='_id':
+      continue
+    trees_out.write('<b>%s</b> <a href="javascript:$(\'tree:%s\').toggle()">[show]</a><br/>\n'%(k,k))
+    t=export.from_json(v)
+    print t.terminals
+    csstree.write_html(t,trees_out,_id='tree:'+k,_style_display='none')
   return render_template('sentence.tmpl',
                          sent_id=sno+1,
                          sent_text=' '.join(tokens),
+                         parses_html=trees_out.getvalue().decode('ISO-8859-15'),
                          text_id=t_attrs, text_url=text_url,
                          prev_sent='/pycwb/sentence/%d'%(sno,),
                          next_sent='/pycwb/sentence/%d'%(sno+2,))
@@ -40,4 +52,4 @@ def find_sent(request):
   if sno:
     return render_sentence(request,sno)
   else:
-    return render_template('index.html',user=request.user)
+    return redirect('/pycwb')

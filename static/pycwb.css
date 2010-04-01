@@ -1,0 +1,93 @@
+.ctxpre { font-size:10pt; background-color: #eeeeee; }
+.ctxpost { font-size:10pt; background-color: #eeeeee; }
+.choose {color:#000066; font-style: italic}
+.chosen {color:#000066; font-style: italic; font-weight: bold;}
+.qitem {border-style: solid; border-width:2px; border-color: #888888; 
+	width:80%; padding:2px; margin-top:3px;}
+.qitem_new {border-style: solid; border-width:2px; border-color: #880088; 
+	    width:80%; padding:2px; margin-top:3px;}
+
+#status { background-color: #ffcc22; position: fixed; top: 30px;
+	  right: 30px; padding: 10px;}
+
+.srctext { font-size: 12pt; line-height: 150%;
+	   font-family:Helvetica,Arial,sans-serif;
+	   font-style: italic;
+	   border-top: solid thin black;
+	   margin-top: 20pt;
+	   margin-bottom: 12pt;  }
+.difference { font-size: 11pt; }
+.file_id { font-weight: bold; font-size: 14pt;
+	   margin-top: 20pt; }
+.konn2 {
+    width: 320px;
+    font-size: 12pt;
+    font-family: sans-serif;
+    border: solid thin grey;
+    background: #eeeeee;
+}
+.treebox {
+   background: #eeeeee;
+   position: relative;
+   width: 640px;
+   height: 480px;
+}
+.node {
+   background: white;
+   position: absolute;
+   font-size: 13px;
+   font-family: sans-serif;
+   text-align: center;
+   border-width: 2px;
+   border-color: black;
+   border-style: solid;
+   padding: 3px;
+   z-index: 2;
+}
+.vroot {
+   background: white;
+   position: absolute;
+   font-size: 13px;
+   font-family: sans-serif;
+   text-align: center;
+   border-width: 2px;
+   border-color: #666666;
+   border-style: solid;
+   color: #666666;
+   padding: 3px;
+   z-index: 2;
+}
+.edgelabel {
+   background: #eeeeee;
+   position: absolute;
+   border-width: 1px;
+   border-color: black;
+   border-style: solid;
+   padding: 3px;
+   z-index: 2;
+   font-size: 9px;
+   font-family: sans-serif;
+   text-align: center;
+}
+.hline {
+   position: absolute;
+   background: #aaaaaa;
+   height: 2px;
+   z-index:1;
+}
+.vline {
+   position: absolute;
+   background: #aaaaaa;
+   width: 2px;
+   z-index:1;
+}
+.hlineR {
+   position: absolute;
+   background: #cccccc;
+   height: 2px;
+}
+.vlineR {
+   position: absolute;
+   background: #cccccc;
+   width: 2px;
+}

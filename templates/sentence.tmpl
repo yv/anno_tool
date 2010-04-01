@@ -1,15 +1,14 @@
-<html>
-<head>
-<title>Sentence</title>
-</head>
-<body>
-<h1>Sentence ${sent_id}</h1>
+{%extends 'base.html'%}
+{%block title%}Sentence {{sent_id}}{%endblock%}
+{%block body%}
 <div class="sent">
-${sent_text}
+{{sent_text|escape}}
 </div>
 <div class="link_box">
-[<a href="${prev_sent}">&lt;prev</a>]
-<a href="${text_url}">${text_id}</a>
-[<a href="${next_sent}">next&gt;</a>]
+[<a href="{{prev_sent}}">&lt;prev</a>]
+<a href="{{text_url}}">{{text_id}}</a>
+[<a href="{{next_sent}}">next&gt;</a>]
 </div>
+{{parses_html}}
+{%endblock%}
 </body>

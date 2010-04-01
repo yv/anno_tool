@@ -9,8 +9,9 @@ couch_ignore_attributes=set(['_id','_rev','type',
                              'span','corpus','annotator','level',
                              'word'])
 
-srv=pymongo.Connection.paired(('192.168.1.1',27017),
-                              ('192.168.1.2',27017))
+#srv=pymongo.Connection.paired(('192.168.1.1',27017),
+#                              ('192.168.1.2',27017))
+srv=pymongo.Connection('192.168.1.2')
 
 def get_database():
     return srv['annoDB']
@@ -68,18 +69,17 @@ class Task(object):
             self.__dict__[key]=val
         else:
             self._doc[key]=val
-    def retrieve_annotations(annotator):
+    def retrieve_annotations(self,annotator):
         result=[]
-        for span in self.get_spans():
-            a=get_annotation(db,
-                             annotator,
-                             self.level,
-                             self.corpus,
-                             span)
+        for span in self._doc['spans']:
+            a=self._db.get_annotation(annotator,
+                                self.level,
+                                span)
             result.append(a)
+        return result
     def save(self):
         print self._doc
-        self._db.tasks.save(self._doc)
+        self._db.db.tasks.save(self._doc)
 
 def anno_key(ann,lvl,corpus,span):
     s='%s|%s|%s|%d|%d'%(ann,lvl,corpus,span[0],span[1])
@@ -124,8 +124,22 @@ class AnnoDB(object):
     def get_tasks(self):
         result=[]
         for doc in self.db.tasks.find():
-            result.append(Task(doc,self.db))
+            result.append(Task(doc,self))
         return result
+    def get_task(self,taskname):
+        doc=self.db.tasks.find_one({'_id':'task_'+taskname})
+        if doc is not None:
+            return Task(doc,self)
+        else:
+            return None
+    def get_parses(self, sent_no):
+        doc=self.db.parses.find_one({'_id':sent_no})
+        if doc is None:
+            print >>sys.stderr,"Not found: %s"%(repr(sent_no),)
+            doc={'_id':sent_no}
+        return doc
+    def save_parses(self, doc):
+        self.db.parses.save(doc)
     def create_task(self,name,level):
         _id='task_'+name
         a=self.db.tasks.find_one({'_id':_id})
@@ -173,7 +187,7 @@ class AnnoDB(object):
             if not first:
                 out.write('<br>\n')
             if k==sent0_orig:
-                out.write('<a href="http://tintoretto.sfb.uni-tuebingen.de/pycwb/sentence/%s">s%s</a> '%(sent0_orig+1,sent0_orig+1))
+                out.write('<a href="/pycwb/sentence/%s">s%s</a> '%(sent0_orig+1,sent0_orig+1))
             first=False
             for off in xrange(sent_span[0],sent_span[1]+1):
                 if off==span[0]:
@@ -221,6 +235,20 @@ class AnnoDB(object):
                      sent_span[0]+ctx[1]-ctx_sent[3])
         assert self.words[corpus_span[0]]==doc.tokens[ctx[0]],(doc.tokens[ctx_sent[3]:ctx_sent[4]],self.words[sent_span[0]:sent_span[1]])
         return corpus_span
+
+def create_task_anno(username,task,populate=None):
+    db=AnnoDB()
+    task=db.get_task(task)
+    if task is None:
+        raise KeyError
+    annos=[]
+    for span in task.spans:
+        m=db.get_annotation(username,task.level,span)
+        if populate:
+            populate(m)
+        annos.append(m)
+    db.save_annotations(annos)
+        
 
 def annotation_join(db,task):
     result=[]
