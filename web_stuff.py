@@ -100,9 +100,9 @@ def do_logout(request):
 
 def index(request):
     if not request.user:
-        tasks=[t._id for t in db.get_tasks()]
+        tasks=sorted([t._id for t in db.get_tasks()])
     else:
-        tasks=[t._id for t in db.get_tasks(request.user)]
+        tasks=sorted([t._id for t in db.get_tasks(request.user)])
     return render_template('index.html',user=request.user,
                            tasks=tasks, tasks0=anno_sets)
 
