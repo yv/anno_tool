@@ -104,7 +104,7 @@ def index(request):
     else:
         tasks=sorted([t._id for t in db.get_tasks(request.user)])
     return render_template('index.html',user=request.user,
-                           tasks=tasks, tasks0=anno_sets)
+                           tasks=tasks, tasks0=tasks)
 
 
 class MyMap(object):
