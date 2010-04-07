@@ -1,26 +1,10 @@
 import os
 from werkzeug import script, DispatcherMiddleware, redirect, \
     DebuggedApplication
-
 from mongoDB.annodb import create_user, create_task_anno, add_annotator
-import mongoDB.anno_query as anno_query
-import web_stuff
-import test_web
 from web_stuff import AppRequest, render_template
+from wsgi_app import application
 
-urls=[('/login',web_stuff.login_form),
-      ('/logout',web_stuff.do_logout),
-      ('/',web_stuff.index),
-      ('/sentence/([0-9]+)',test_web.render_sentence),
-      ('/annotate/([a-z0-9_]+)',anno_query.annotate),
-      ('/annotate2/([a-z0-9_]+)',anno_query.annotate2),
-      ('/saveAttributes',anno_query.save_attributes),
-      ('/find_sent',test_web.find_sent),
-      ('/annoquery',anno_query.display_annoquery)]
-
-mymap=web_stuff.MyMap(urls)
-
-application=mymap
 
 @AppRequest.application
 def redirect_to_pycwb(request):
@@ -28,7 +12,7 @@ def redirect_to_pycwb(request):
 
 def make_app():
     return DispatcherMiddleware(redirect_to_pycwb, {
-            '/pycwb': mymap})
+            '/pycwb': application})
 
 def make_debugged():
     return DebuggedApplication(make_app())
