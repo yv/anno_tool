@@ -89,8 +89,8 @@ def run_query(q, which_set='all1'):
     yield "</body></html>"
 
 myglobals={'__builtins__':None,'None':None}
-for k in 'ForAny ForAll Disagree contrastive temporal causal other_rel'.split():
-    myglobals[k]=globals()[k]
+#for k in 'ForAny ForAll Disagree contrastive temporal causal other_rel'.split():
+#    myglobals[k]=globals()[k]
 
 query_ok_re=re.compile(r"^(\'[a-z]+\'|==|\!=|[\(\)\&\| ]|ForAll|ForAny|contrastive|temporal|causal)+$")
 def display_annoquery(request):
