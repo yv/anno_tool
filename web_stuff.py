@@ -17,15 +17,14 @@ based on:
 import os.path
 import re
 from werkzeug import Request, Response, cached_property, redirect, escape
-#from werkzeug.routing import Map, Rule
 from werkzeug.exceptions import HTTPException, MethodNotAllowed, \
     NotImplemented, NotFound
 from werkzeug.contrib.securecookie import SecureCookie
-#from mako.template import Template
-#from mako.lookup import TemplateLookup
 from jinja2 import Environment, FileSystemLoader
-from mongoDB.annodb import login_user
+from mongoDB.annodb import login_user, AnnoDB
 from anno_config import anno_sets
+
+db=AnnoDB()
 
 TEMPLATE_PATH=os.path.join(os.path.dirname(__file__),'templates')
 #mylookup=TemplateLookup(directories=[TEMPLATE_PATH])
@@ -93,11 +92,19 @@ def login_form(request):
             <input type="submit" value="Login">
         </form>''' % error, mimetype='text/html')
 
+def do_logout(request):
+    request.logout()
+    response=redirect('/pycwb/')
+    request.session.save_cookie(response)
+    return response
 
 def index(request):
-    print request.user, request.session
+    if not request.user:
+        tasks=[t._id for t in db.get_tasks()]
+    else:
+        tasks=[t._id for t in db.get_tasks(request.user)]
     return render_template('index.html',user=request.user,
-                           tasks=anno_sets)
+                           tasks=tasks, tasks0=anno_sets)
 
 
 @AppRequest.application

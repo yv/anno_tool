@@ -4,60 +4,22 @@ import simplejson as json
 import os.path
 import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASEDIR=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASEDIR)
 from anno_tools import *
 from anno_config import *
 from mongoDB.annodb import *
 from web_stuff import *
 from cStringIO import StringIO
+from taxonomy_schema import load_schema
+from querygrammar import FunctorOp, Accessor, interpret_query
 
 from werkzeug import run_simple, parse_form_data, escape
 from werkzeug.exceptions import NotFound, Forbidden
 
 db=AnnoDB()
 
-class QueryBase(object):
-    isQuery=True
-    def __eq__(self,other):
-        return QueryBinOp(self,to_query(other),lambda x,y: x==y)
-    def __ne__(self,other):
-        return QueryBinOp(self,to_query(other),lambda x,y: x!=y)
-    def __and__(self,other):
-        return QueryBinOp(self,to_query(other),lambda x,y: x and y)
-    def __or__(self,other):
-        return QueryBinOp(self,to_query(other),lambda x,y: x or y)
-    def __rand__(self,other):
-        return QueryBinOp(self,to_query(other),lambda x,y: x and y)
-    def __ror__(self,other):
-        return QueryBinOp(self,to_query(other),lambda x,y: x or y)
-    def __invert__(self):
-        return lambda x: not self(x)
-
-class QueryBinOp(QueryBase):
-    __slots__=['a','b','f']
-    def __init__(self,a,b,f):
-        self.a=a
-        self.b=b
-        self.f=f
-    def __call__(self,x):
-        return self.f(self.a(x),self.b(x))
-
-class QueryMonOp(QueryBase):
-    __slots__=['a','f']
-    def __init__(self,a,f):
-        self.a=a
-        self.f=f
-    def __call__(self,x):
-        return self.f(self.a(x))
-
-class QueryConstant(QueryBase):
-    __slots__=['a']
-    def __init__(self,a):
-        self.a=a
-    def __call__(self,x):
-        return self.a
-
-class ForAll(QueryBase):
+class ForAll(object):
     """checks a condition on all markables in a query"""
     def __init__(self,a):
         self.a=a
@@ -67,7 +29,7 @@ class ForAll(QueryBase):
                 return False
         return True
 
-class ForAny(QueryBase):
+class ForAny(object):
     """checks a condition on some markables in a query"""
     def __init__(self,a):
         self.a=to_query(a)
@@ -79,7 +41,7 @@ class ForAny(QueryBase):
                 return True
         return False
 
-class Disagree(QueryBase):
+class Disagree(object):
     """checks a condition on some markables in a query"""
     def __init__(self,a):
         self.a=to_query(a)
@@ -108,10 +70,11 @@ def to_query(x):
     else:
         return QueryConstant(x)
 
-temporal=MarkableAttribute('temporal')
-causal=MarkableAttribute('causal')
-contrastive=MarkableAttribute('contrastive')
-other_rel=MarkableAttribute('other_rel')
+
+symbol_dict={}
+for k in ['temporal','causal','contrastive','other_rel']:
+    symbol_dict[k]=Accessor(k)
+symbol_dict['==']=FunctorOp(lambda a,b: a==b)
 
 def run_query(q, which_set='all1'):
     yield """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
@@ -196,23 +159,6 @@ def display_textbox(prefix,value,out):
         out.write(value)
     out.write('</textarea>')
 
-# konn2_scheme=[Choice('coarse1',['comparison','temporal',
-#                                 'result']),
-#               Dependent('fine1','coarse1',
-#                         {'comparison':
-#                              ['kontraer','parallel','kontradiktorisch'],
-#                          'temporal':
-#                              ['temporal'],
-#                          'result':['cause','enable']}),
-#               Choice('coarse2',['comparison','temporal',
-#                                 'result']),
-#               Dependent('fine2','coarse2',
-#                         {'comparison':
-#                              ['kontraer','parallel','kontradiktorisch'],
-#                          'temporal':
-#                              ['temporal'],
-#                          'result':['cause','enable']})]
-
 konn_scheme=[('temporal',['temporal','non_temporal']),
              ('causal',['causal','enable','non_causal']),
              ('contrastive',['kontraer','kontradiktorisch',
@@ -258,15 +204,7 @@ def annotate(request,taskname):
                            output=out.getvalue().decode('ISO-8859-15'))
 
 
-konn2_schema=[['Temporal',{},[]],
-              ['Result',{},
-               [['enable',{},[]],
-                ['cause',{},
-                 [['epistemic_cause',{},[]],
-                  ['speech_act',{},[]]]]]],
-              ['Comparison',{},
-               [['parallel',{},[]],
-                ['contrast',{},[]]]]];
+konn2_schema=load_schema(file(os.path.join(BASEDIR,'konn2_schema.txt')))
 def annotate2(request,taskname):
     task=db.get_task(taskname)
     if task is None:

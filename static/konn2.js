@@ -44,25 +44,41 @@ function get_text_addr(text) {
 	compute_text_addr_map(schema,[]);
     }
     var result=text_addr_map[text];
+    if (!result) alert('not found:'+text);
     return result
 }
 
 function mark_primary(prefix0, addr) {
    var myref='cell:'+prefix0+':'+addr.join('.');
-   $(myref).style.background=color_primary;
-   $(myref).innerHTML=get_addr_text(addr)+'&nbsp;<img src="/static/asterisk_yellow.png">';
+   var my_element=$(myref);
+   if (!my_element) {
+       alert("Element not found: "+myref);
+       return;
+   }
+   my_element.style.background=color_primary;
+   my_element.innerHTML=get_addr_text(addr)+'&nbsp;<img src="/static/asterisk_yellow.png">';
 }
 
 function mark_secondary(prefix0, addr) {
    var myref='cell:'+prefix0+':'+addr.join('.');
-   $(myref).style.background=color_secondary;
-   $(myref).innerHTML=get_addr_text(addr);
+   var my_element=$(myref);
+   if (!my_element) {
+       alert("Element not found: "+myref);
+       return;
+   }
+   my_element.style.background=color_secondary;
+   my_element.innerHTML=get_addr_text(addr);
 }
 
 function mark_none(prefix0, addr) {
    var myref='cell:'+prefix0+':'+addr.join('.');
-   $(myref).style.background='#eeeeee';
-   $(myref).innerHTML=get_addr_text(addr);
+   var my_element=$(myref);
+   if (!my_element) {
+       alert("Element not found: "+myref);
+       return;
+   }
+   my_element.style.background='#eeeeee';
+   my_element.innerHTML=get_addr_text(addr);
 }
 
 function array_equals(a,b) {
@@ -136,17 +152,24 @@ function chosen(prefix0,addr) {
     old_chosen[prefix0]=a;
 }
 
-function create_konn2_table(prefix0,prefix1,addr,indent,entry) {
+function create_konn2_table(prefix0,prefix1,addr,indent,
+			    schema_entry, example) {
     var prefix=prefix0+prefix1;
+    var flags=schema_entry[1];
+    if (example.word && flags['!'+example.word]) {
+	return '';
+    }
     result='<tr height="25px"><td id="cell:'+prefix+
-	'" onclick="chosen(\''+prefix0+'\','+eval(JSON.stringify(addr))+')" style="padding-left:'+(indent*25+10)+'px;">'+entry[0]+'</td></tr>';
-    if (entry[2]) {
-	var children=entry[2];
+	'" onclick="chosen(\''+prefix0+'\','+eval(JSON.stringify(addr))+')" style="padding-left:'+(indent*25+10)+'px;">'+schema_entry[0]+'</td></tr>';
+    if (schema_entry[2]) {
+	var children=schema_entry[2];
 	for (var i=0; i<children.length; i++) {
-	    if (get_addr_text(addr.concat([i]))!=entry[2][i][0]) {
-		//alert(JSON.stringify([addr,entry,get_addr_text(addr.concat([i]))]));
+	    if (get_addr_text(addr.concat([i]))!=schema_entry[2][i][0]) {
+		alert(JSON.stringify([addr,schema_entry,get_addr_text(addr.concat([i]))]));
 	    }
-	    result+=create_konn2_table(prefix0,prefix1+'.'+i,addr.concat([i]),indent+1,children[i]);
+	    result+=create_konn2_table(prefix0,prefix1+'.'+i,
+				       addr.concat([i]),indent+1,
+				       children[i],example);
 	}
     }
     return result;
@@ -155,7 +178,7 @@ function create_konn2_table(prefix0,prefix1,addr,indent,entry) {
 function create_konn2(prefix,example) {
     result='<table class="konn2">';
     for (var i=0; i<schema.length; i++) {
-	result+=create_konn2_table('tab:'+prefix,':'+i,[i],0,schema[i]);
+	result+=create_konn2_table('tab:'+prefix,':'+i,[i],0,schema[i],example);
     }
     //TBD: add comment textarea
     result+='</table>';

@@ -9,9 +9,9 @@ couch_ignore_attributes=set(['_id','_rev','type',
                              'span','corpus','annotator','level',
                              'word'])
 
-#srv=pymongo.Connection.paired(('192.168.1.1',27017),
-#                              ('192.168.1.2',27017))
-srv=pymongo.Connection('192.168.1.2')
+srv=pymongo.Connection.paired(('192.168.1.1',27017),
+                              ('192.168.1.2',27017))
+#srv=pymongo.Connection('192.168.1.2')
 
 def get_database():
     return srv['annoDB']
@@ -48,7 +48,7 @@ class Annotation(object):
         return iter(self._doc)
     def __getitem__(self,key):
         return self._doc[key]
-    def __setitem__(self,key):
+    def __setitem__(self,key,val):
         self._doc[key]=val
     def __getattr__(self,key):
         return self._doc[key]
@@ -123,11 +123,11 @@ class AnnoDB(object):
         self.db=get_database()[corpus_name]
     def get_tasks(self):
         result=[]
-        for doc in self.db.tasks.find():
+        for doc in self.db.tasks.find().toArray():
             result.append(Task(doc,self))
         return result
     def get_task(self,taskname):
-        doc=self.db.tasks.find_one({'_id':'task_'+taskname})
+        doc=self.db.tasks.find_one({'_id':taskname})
         if doc is not None:
             return Task(doc,self)
         else:
@@ -155,6 +155,15 @@ class AnnoDB(object):
                    spans=[],
                    level=level)
         return Task(a,self.db)
+    def get_tasks(self, name=None):
+        all=self.db.tasks.find({})
+        if name is not None:
+            all = [Task(t,self.db) for t in all 
+                   if t.get('annotators',None) is None
+                   or name in t['annotators']]
+        else:
+            all = [Task(t,self.db) for t in all]
+        return all
     def get_annotation(self,annotator, level, span):
         k=anno_key(annotator,level,self.corpus_name,span)
         result=self.db.annotation.find_one({'_id':k})
@@ -163,7 +172,6 @@ class AnnoDB(object):
                      type='anno',
                      level=level,
                      annotator=annotator,
-                     corpus=self.corpus_name,
                      span=span)
             return Annotation(doc)
         else:
@@ -248,7 +256,27 @@ def create_task_anno(username,task,populate=None):
             populate(m)
         annos.append(m)
     db.save_annotations(annos)
-        
+
+def add_annotator(taskname, username):
+    db=AnnoDB()
+    task=db.get_task(taskname)
+    if task is None:
+        raise KeyError(taskname)
+    user0=task.annotators[0]
+    if task is None:
+        raise KeyError
+    annos=[]
+    for span in task.spans:
+        m=db.get_annotation(username,task.level,span)
+        if 'word' not in m:
+            m2=db.get_annotation(user0,task.level,span)
+            for k in ['word']:
+                m[k]=m2[k]
+        annos.append(m)
+    if username not in task.annotators:
+        task.annotators.append(username)
+        task.save()
+    db.save_annotations(annos)
 
 def annotation_join(db,task):
     result=[]
