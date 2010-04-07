@@ -1,3 +1,6 @@
+BASEDIR=os.path.dirname(os.path.abspath(__file__))
+sys.path.append(BASEDIR)
+
 import mongoDB.anno_query as anno_query
 import test_web
 import web_stuff
