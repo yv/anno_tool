@@ -56,21 +56,6 @@ class Disagree(object):
         return someTrue and someFalse
     
         
-class MarkableAttribute(QueryBase):
-    def __init__(self,name):
-        self.name=name
-        self.isQuery=True
-    def __call__(self,markable):
-        val=markable.get(self.name,None)
-        return val
-
-def to_query(x):
-    if hasattr(x,'isQuery'):
-        return x
-    else:
-        return QueryConstant(x)
-
-
 symbol_dict={}
 for k in ['temporal','causal','contrastive','other_rel']:
     symbol_dict[k]=Accessor(k)
