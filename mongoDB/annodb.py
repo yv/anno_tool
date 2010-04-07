@@ -154,15 +154,15 @@ class AnnoDB(object):
                    corpus=self.corpus_name,
                    spans=[],
                    level=level)
-        return Task(a,self.db)
+        return Task(a,self)
     def get_tasks(self, name=None):
         all=self.db.tasks.find({})
         if name is not None:
-            all = [Task(t,self.db) for t in all 
+            all = [Task(t,self) for t in all 
                    if t.get('annotators',None) is None
                    or name in t['annotators']]
         else:
-            all = [Task(t,self.db) for t in all]
+            all = [Task(t,self) for t in all]
         return all
     def get_annotation(self,annotator, level, span):
         k=anno_key(annotator,level,self.corpus_name,span)

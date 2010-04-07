@@ -115,7 +115,7 @@ def display_annoquery(request):
                                        tasks=anno_sets)
             else:
                 result=' '.join(run_query(q,qset)).decode('ISO-8859-15')
-                print type(result)
+                print >>sys.stderr, type(result)
                 return Response(result, mimetype='text/html')
         else:
             return render_template('annoquery.html',
@@ -217,7 +217,7 @@ def save_attributes(request):
         raise Forbidden
     if request.method=='POST':
         stuff=json.load(request.stream)
-        print stuff
+        print >>sys.stderr, stuff
         try:
             for k,v in stuff.iteritems():
                 anno_key,attr=k.split(':')
