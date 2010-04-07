@@ -1,0 +1,12 @@
+%% Annotations-Schema
+%% Erste Spalte: Relationsname (mit "+"-Zeichen entsprechend Taxonomie-Tiefe)
+%% weitere Spalten: Flags zum Ausschluﬂ
+Temporal
+Result !waehrend
++enable
++cause
+++epistemic_cause *temporal
+++speech_act *temporal
+Comparison
++parallel
++contrast
