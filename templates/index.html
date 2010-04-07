@@ -17,7 +17,7 @@ Satznummer finden:
 <p>
 <form method="POST" action="/pycwb/annoquery">
 <textarea cols="80" rows="4" name="q">
-ForAll(contrastive=='kontraer') & Disagree(temporal=='temporal')
+ForAny(rel1 in Comparison)
 </textarea><br>
 <select name="wset">
 {% for task in tasks0 %}

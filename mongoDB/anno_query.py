@@ -98,7 +98,7 @@ def display_annoquery(request):
         m=True
         if m:
             try:
-                q=eval(qs,myglobals)
+                q=make_query("ForAny(rel1 in Comparison)",symbols)    
             except SyntaxError,e :
                 return render_template('annoquery.html',
                                        errmsg='Syntax error:%s<br>%s'%(e,e.text),
