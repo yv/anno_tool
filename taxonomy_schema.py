@@ -1,6 +1,8 @@
 import sys
 import re
 
+__all__=['load_schema','Taxon','taxon_map']
+
 def load_schema(f):
     stack=[]
     toplevel=[]

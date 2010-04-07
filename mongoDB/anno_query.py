@@ -11,8 +11,9 @@ from anno_config import *
 from mongoDB.annodb import *
 from web_stuff import *
 from cStringIO import StringIO
-from taxonomy_schema import load_schema
-from querygrammar import FunctorOp, Accessor, interpret_query
+from taxonomy_schema import load_schema, taxon_map
+from querygrammar import FunctorOp, Accessor, TaxonAccessor, \
+    Constant, parser, make_query
 
 from werkzeug import run_simple, parse_form_data, escape
 from werkzeug.exceptions import NotFound, Forbidden
@@ -56,12 +57,7 @@ class Disagree(object):
         return someTrue and someFalse
     
         
-symbol_dict={}
-for k in ['temporal','causal','contrastive','other_rel']:
-    symbol_dict[k]=Accessor(k)
-symbol_dict['==']=FunctorOp(lambda a,b: a==b)
-
-def run_query(q, which_set='all1'):
+def run_query(q, which_set='task_all1_new'):
     yield """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
 "http://www.w3.org/TR/html4/strict.dtd">
 <html><head><title>Annotation diff</title>
@@ -78,7 +74,7 @@ def run_query(q, which_set='all1'):
   </style>
 </head>
 <body>"""
-    task=Task(db.db.tasks.find_one({'_id':'task_'+which_set}),db)
+    task=db.get_task(which_set)
     ms=annotation_join(db,task)
     names=task.annotators
     out=StringIO()
@@ -190,6 +186,7 @@ def annotate(request,taskname):
 
 
 konn2_schema=load_schema(file(os.path.join(BASEDIR,'konn2_schema.txt')))
+konn2_mapping=taxon_map(konn2_schema)
 def annotate2(request,taskname):
     task=db.get_task(taskname)
     if task is None:
@@ -209,6 +206,57 @@ def annotate2(request,taskname):
                                        json.dumps(konn2_schema))
     return render_template('annodummy2.html',
                            jscode=jscode)
+
+class ForAll(object):
+    __slots__=['f']
+    def __init__(self,f):
+        self.f=f
+    def __call__(self,x):
+        f=self.f
+        for val in x:
+            if not f(val):
+                return False
+        return True
+class ForAny(object):
+    __slots__=['f']
+    def __init__(self,f):
+        self.f=f
+    def __call__(self,x):
+        f=self.f
+        for val in x:
+            result=f(val)
+            if result:
+                return result
+        return False
+class Disagree(object):
+    __slots__=['f']
+    def __init__(self,f):
+        self.f=f
+    def __call__(self,x):
+        f=self.f
+        vals=set()
+        for val in x:
+            result=f(val)
+            vals.add(result)
+        return (len(vals)>1)
+
+
+symbols={}
+symbols['==']=FunctorOp(lambda x,y: x==y)
+symbols['in']=FunctorOp(lambda x,y: x in y)
+symbols['not in']=FunctorOp(lambda x,y: x not in y)
+symbols['|']=FunctorOp(lambda x,y: x or y)
+symbols['&']=FunctorOp(lambda x,y: x and y)
+symbols['rel1']=TaxonAccessor('rel1',konn2_mapping)
+symbols['rel2']=TaxonAccessor('rel2',konn2_mapping)
+symbols['ForAll']=ForAll
+symbols['ForAny']=ForAny
+symbols['Disagree']=Disagree
+
+#for k in ['temporal','causal','contrastive','other_rel']:
+#    symbols[k]=Accessor(k)
+for k,v in konn2_mapping.iteritems():
+    symbols[k]=Constant(v)
 
 immutable_attributes=set(['_id','annotator','span','corpus','level'])
 def save_attributes(request):
@@ -242,6 +290,6 @@ def save_attributes(request):
         raise NotFound("only POST allowed")
 
 if __name__=='__main__':
-    q=ForAll(contrastive=='kontraer') & (ForAny(temporal=='temporal') & ForAny(temporal!='temporal'))
+    q=make_query("ForAny(rel1 in Comparison)",symbols)    
     for s in run_query(q):
         sys.stdout.write(s)

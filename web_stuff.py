@@ -107,18 +107,6 @@ def index(request):
                            tasks=tasks, tasks0=anno_sets)
 
 
-@AppRequest.application
-def application(request):
-    if request.args.get('do') == 'logout':
-        request.logout()
-        response = redirect('.')
-    elif request.logged_in:
-        response = index(request)
-    else:
-        response = login_form(request)
-    request.session.save_cookie(response)
-    return response
-
 class MyMap(object):
     def __init__(self,urls):
         mapping=[]

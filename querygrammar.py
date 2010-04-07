@@ -52,7 +52,7 @@ class Functor(object):
         self.f=f
         self.args=args
     def __call__(self,x):
-        argvals=[a(x) for a in args]
+        argvals=[a(x) for a in self.args]
         return self.f(*argvals)
 
 class Accessor(object):
@@ -60,11 +60,28 @@ class Accessor(object):
     def __init__(self,key):
         self.key=key
     def __call__(self,x):
-        return x.get(key,None)
+        result=x.get(self.key,None)
+        return result
+
+class TaxonAccessor(object):
+    __slots__=['key','mapping']
+    def __init__(self,key,mapping):
+        self.key=key
+        self.mapping=mapping
+    def __call__(self,x):
+        result=x.get(self.key,None)
+        return self.mapping.get(result,None)
 
 class FunctorOp(object):
     __slots__=['f']
     def __init__(self,f):
         self.f=f
     def __call__(self,*args):
-        return Functor(f,*args)
+        return Functor(self.f,*args)
+
+class Constant(object):
+    __slots__=['a']
+    def __init__(self,a):
+        self.a=a
+    def __call__(self,x):
+        return self.a
