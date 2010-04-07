@@ -35,7 +35,6 @@ def render_sentence(request,sent_no):
       continue
     trees_out.write('<b>%s</b> <a href="javascript:$(\'tree:%s\').toggle()">[show]</a><br/>\n'%(k,k))
     t=export.from_json(v)
-    print t.terminals
     csstree.write_html(t,trees_out,_id='tree:'+k,_style_display='none')
   return render_template('sentence.tmpl',
                          sent_id=sno+1,
