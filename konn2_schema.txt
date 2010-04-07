@@ -10,3 +10,4 @@ Result !waehrend
 Comparison
 +parallel
 +contrast
+Concession !nachdem !waehrend
