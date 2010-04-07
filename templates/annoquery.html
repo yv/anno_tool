@@ -1,0 +1,19 @@
+<html>
+<head>
+<title>Annotation database</title>
+</head>
+<body>
+<h1>Annotation Query</h1>
+<form method="POST" action="/pycwb/annoquery">
+<span style="color:red">${errmsg}</span>
+<textarea cols="80" rows="4" name="q">
+{{query}}
+</textarea><br>
+<select name="wset">
+{% for task in tasks %}
+<option value="{{task}}">{{task}}
+{% endfor %}
+</select>
+<input type="submit" value="Query">
+</div>
+</body>

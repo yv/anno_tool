@@ -1,0 +1,38 @@
+<html>
+<head>
+<title>Annotation database</title>
+</head>
+<body>
+<h1>Index</h1>
+{% if user %}
+Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>)
+{% else %}
+<a href="/pycwb/login">Login</a>
+{% endif %}
+<p>
+<form method="POST" action="/pycwb/find_sent">
+Satznummer finden:
+<input name="sent_no"><input type="submit">
+</form>
+<p>
+<form method="POST" action="/pycwb/annoquery">
+<textarea cols="80" rows="4" name="q">
+ForAll(contrastive=='kontraer') & Disagree(temporal=='temporal')
+</textarea><br>
+<select name="wset">
+{% for task in tasks0 %}
+<option value="{{task}}">{{task}}
+{% endfor %}
+</select>
+<input type="submit" value="Query">
+</div>
+
+{% if user %}
+<div>
+<b>Annotate:</b>
+{% for task in tasks %}
+<a href="/pycwb/annotate2/{{task}}">{{task}}</a>
+{% endfor %}
+</div>
+{% endif %}
+</body>
