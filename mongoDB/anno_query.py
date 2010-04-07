@@ -224,10 +224,9 @@ def save_attributes(request):
                 if attr in immutable_attributes:
                     print >>sys.stderr,"%s ignored (immutable)"%(attr,)
                     continue
-                print anno_key,attr
                 anno=annotation.find_one({'_id':anno_key})
                 if anno is None:
-                    print "(not found):%s"%(anno_key,)
+                    print >>sys.stderr, "(not found):%s"%(anno_key,)
                 if request.user!=anno['annotator']:
                     raise Forbidden("not yours")
                 anno[attr]=v
@@ -235,7 +234,7 @@ def save_attributes(request):
         except ValueError:
             raise NotFound("no such attribute")
         except HTTPException,e:
-            print e
+            print >>sys.stderr, e
             raise
         else:
             return Response('Ok')
