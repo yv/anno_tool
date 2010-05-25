@@ -1,0 +1,12 @@
+{%extends 'base.html'%}
+{%block title%}Occurrences of {{word}}{%endblock%}
+{%block body%}
+<h1>{{message}}</h1>
+{% for match in matches %}
+<div class="sent">
+<a href="/pycwb/sentence/{{match[0]}}">s{{match[0]}}</a>
+{{match[1]}}
+</div>
+{% endfor %}
+{%endblock%}
+</body>

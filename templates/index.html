@@ -10,10 +10,21 @@ Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>)
 <a href="/pycwb/login">Login</a>
 {% endif %}
 <p>
+<table>
+<tr valign="top">
+<td>Satznummer finden:</td>
+<td>
 <form method="POST" action="/pycwb/find_sent">
-Satznummer finden:
 <input name="sent_no"><input type="submit">
 </form>
+</td></tr><tr valign="top">
+<td>Wort finden:</td>
+<td>
+<form method="POST" action="/pycwb/find_word">
+<input name="w"><input type="submit">
+</form>
+</td>
+</tr></table>
 <p>
 <form method="POST" action="/pycwb/annoquery">
 <textarea cols="80" rows="4" name="q">

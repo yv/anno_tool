@@ -14,10 +14,13 @@ db=AnnoDB()
 def map_attributes(old_attrs,doc):
     word=old_attrs['word']
     doc['word']=word
+    if 'comment' in old_attrs:
+        doc['comment']=old_attrs['comment']
     rels=[]
     temporal=old_attrs.get('temporal',None)
     contrastive=old_attrs.get('contrastive',None)
     causal=old_attrs.get('causal')
+    other_rel=old_attrs.get('other_rel')
     if word=='nachdem':
         if temporal=='temporal':
             rels.append('Temporal')
@@ -40,6 +43,8 @@ def map_attributes(old_attrs,doc):
             rels.append('cause')
         if temporal=='temporal':
             rels.append('Temporal')
+    if other_rel=='concession':
+        rels.append('Concession')
     if len(rels)>=1:
         doc['rel1']=rels[0]
         if len(rels)>=2:
