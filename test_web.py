@@ -63,6 +63,8 @@ def render_discourse(request,disc_no):
 
 def save_discourse(request,disc_no):
   t_id=int(disc_no)
+  if not request.user:
+    raise Forbidden('must be logged in')
   doc=db.get_discourse(t_id,request.user)
   if request.method=='POST':
     stuff=json.load(request.stream)
