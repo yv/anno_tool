@@ -1,14 +1,15 @@
 #text {
     background-color: #dddddd;
+    padding: 2px;
 }
 
 .edu {
     -moz-border-radius: 5px;
     -webkit-border-radius: 5px;
-    border: 1px solid #000;
+    border: 1px solid #999;
     padding: 4px;
     margin-bottom: 2px;
-    background-color: #f8f8f8;
+    background-color: #fafafa;
 }
 
 .topic {
@@ -28,4 +29,11 @@
 
 .active {
     text-decoration: underline;
+    background-color: #ffffaa;
+}
+
+#topic_ct {
+    border: 1px solid #ffddee;
+    background-color: #ffddee;
+    width: 80%;
 }

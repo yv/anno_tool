@@ -2,13 +2,19 @@
 <head>
 <title>Discourse Annotator</title>
 <script src="/static/jquery.js"></script>
+<script src="/static/json2.js"></script>
+<script src="/static/qct_jquery.js"></script>
 <script src="/static/discourse.js"></script>
 <script type="text/javascript">
+  disc_id={{disc_id}};
   tokens={{tokens}};
   sentences={{sentences}};
   edus={{edus}};
   indent={{indent}};
-  topics=[];
+  topics={{topics}};
+
+save_endpoint='/pycwb/saveDiscourse/'+disc_id;
+
 
 $(function() {
 $('#text').css({'height':(($(window).height())-200)+'px'});
@@ -18,7 +24,7 @@ $(window).resize(function(){
 </script>
 <link rel="stylesheet" href="/static/discourseEdit.css">
 </head>
-<body onload="fill_segments();">
+<body onload="fill_segments();" bgcolor="#eeeeee">
 <div id="text" style="position:relative; height: 400px; margin:1px; border: 2px solid #aaaaaa; overflow:auto">
 </div>
 

@@ -1,11 +1,12 @@
 import sys
 import os.path
 from cStringIO import StringIO
-from web_stuff import render_template, redirect
+from web_stuff import render_template, redirect, Response
 from mongoDB.annodb import AnnoDB
 import pytree.export as export
 import pytree.csstree as csstree
 from werkzeug import escape
+from werkzeug.exceptions import NotFound, Forbidden
 import json
 
 db=AnnoDB()
@@ -50,25 +51,34 @@ def render_sentence(request,sent_no):
 
 
 def render_discourse(request,disc_no):
-  words=tueba_corpus.attribute("word",'p')
-  sents=tueba_corpus.attribute("s",'s')
-  texts=tueba_corpus.attribute("text_id",'s')
   t_id=int(disc_no)
-  t_start,t_end,t_attrs=texts[t_id]
-  tokens=[w.decode('ISO-8859-15') for w in words[t_start:t_end+1]]
-  sent=sents.cpos2struc(t_start)
-  sent_end=sents.cpos2struc(t_end)
-  sentences=[]
-  for k in xrange(sent,sent_end+1):
-    s_start,s_end,s_attr=sents[k]
-    sentences.append(s_start-t_start)
-  edus=sentences[:]
-  indent=[0]*len(edus)
+  doc=db.get_discourse(t_id,request.user)
   return render_template('discourse.html',
-                         sentences=json.dumps(sentences),
-                         edus=json.dumps(edus),
-                         tokens=json.dumps(tokens),
-                         indent=json.dumps(indent))
+                         disc_id=doc['_id'],
+                         sentences=json.dumps(doc['sentences']),
+                         edus=json.dumps(doc['edus']),
+                         tokens=json.dumps(doc['tokens']),
+                         indent=json.dumps(doc['indent']),
+                         topics=json.dumps(doc.get('topics',[])))
+
+def save_discourse(request,disc_no):
+  t_id=int(disc_no)
+  doc=db.get_discourse(t_id,request.user)
+  if request.method=='POST':
+    stuff=json.load(request.stream)
+    try:
+      for k,v in stuff.iteritems():
+        if k[0]=='_': continue
+        doc[k]=v
+    except HTTPException,e:
+      print >>sys.stderr, e
+      raise
+    else:
+      db.save_discourse(doc)
+      return Response('Ok')
+  else:
+    raise NotFound("Only POST allowed")
+
 
 def render_search(request,word):
   words=tueba_corpus.attribute("word","p")

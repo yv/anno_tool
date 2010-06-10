@@ -218,6 +218,32 @@ class AnnoDB(object):
         docs=[anno._doc for anno in annos]
         for doc in docs:
             self.db.annotation.save(doc)
+    def get_discourse(self,disc_id,user=None):
+        result=self.db.discourse.find_one({'_id':disc_id,
+                                           '_user':user})
+        if result is None:
+            words=self.words
+            sents=self.sentences
+            texts=self.corpus.attribute("text_id",'s')
+            t_start,t_end,t_attrs=texts[disc_id]
+            tokens=[w.decode('ISO-8859-15') for w in words[t_start:t_end+1]]
+            sent=sents.cpos2struc(t_start)
+            sent_end=sents.cpos2struc(t_end)
+            sentences=[]
+            for k in xrange(sent,sent_end+1):
+                s_start,s_end,s_attr=sents[k]
+                sentences.append(s_start-t_start)
+            edus=sentences[:]
+            indent=[0]*len(edus)
+            result={'_id':disc_id,
+                    '_user':user,
+                    'tokens':tokens,
+                    'sentences':sentences,
+                    'edus':edus,
+                    'indent':indent}
+        return result
+    def save_discourse(self,doc):
+        self.db.discourse.save(doc)
     def docspan2span(self,markable,doc):
         sents=doc.read_markables('sentence')
         ctx=markable[3:5]
