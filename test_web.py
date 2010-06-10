@@ -54,7 +54,7 @@ def render_discourse(request,disc_no):
   t_id=int(disc_no)
   doc=db.get_discourse(t_id,request.user)
   return render_template('discourse.html',
-                         disc_id=doc['_id'],
+                         disc_id=doc['_docid'],
                          sentences=json.dumps(doc['sentences']),
                          edus=json.dumps(doc['edus']),
                          tokens=json.dumps(doc['tokens']),
