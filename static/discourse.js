@@ -124,31 +124,33 @@ function delSplit(pos) {
 }
 
 function redisplay_all() {
-    var top=document.body.scrollTop;
+    var top=$('#text').attr('scrollTop');
     html_content=make_segments();
     $('#text').html(html_content+'<input id="fake-input">');
     $('#w'+cur_word).addClass('active');
     $('#fake-input').focus().css('visibility','hidden');
     $('.word').click(focus_text);
-    document.body.scrollTop=top;
+    $('#text').attr('scrollTop',top);
 }
 
 function set_curword(n) {
     cur_word=n;
     $('.active').removeClass('active');
-    w=$('#w'+cur_word);
+    var w=$('#w'+cur_word);
+    var t=$('#text');
     w.addClass('active');
-    var top=document.body.scrollTop;
-    var offset=w.offset();
-    var height=document.body.clientHeight;
+    var top=t.attr('scrollTop');
+    var offset=w.position();
+    var height=t.innerHeight();
     var w_height=w.outerHeight();
-    //alert("top:"+top+";offset.top="+offset.top+";height="+height
-    //  +";clientHeight="+w_height);
-    if (offset.top<top) {
-	document.body.scrollTop=offset.top;
+    $('#status').text("offset.top="+offset.top+
+		      ";top="+top+";top+height="+(top+height));
+    if (offset.top<0) {
+	t.attr('scrollTop',top+offset.top);
     } else {
-	if (offset.top+w_height>top+height) {
-	    document.body.scrollTop=offset.top+w_height-height;
+	var pos2=offset.top+w_height;
+	if (pos2>height) {
+	    t.attr('scrollTop',top+pos2-height);
 	}
     }
 }
@@ -237,9 +239,10 @@ function topic_changed(event) {
 }
 
 function focus_text(event) {
-    var top=document.body.scrollTop;
+    var top=$('#text').attr('scrollTop');
     $('#fake-input').css('visibility','visible').focus();
     $('#fake-input').css('visibility','hidden');
+    $('#text').attr('scrollTop',top);
     var where=$(this);
     if (where.attr('id')[0]=='w') {
 	var newpos=parseInt(where.attr('id').substr(1));
@@ -247,7 +250,6 @@ function focus_text(event) {
     } else {
 	alert(where.attr('id'));
     }
-    document.body.scrollTop=top;
 }
 
 function fill_segments() {
@@ -255,3 +257,4 @@ function fill_segments() {
     $('#text').keydown(text_keydown);
     $('#fake-input').focus();
 }
+

@@ -91,7 +91,7 @@ def render_search(request,word):
   except KeyError:
     message='Nichts gefunden.'
   return render_template('matches.tmpl',
-                         word=word,
+                         word=escape(word.decode('ISO-8859-15')),
                          matches=matches,
                          message=message)
 
