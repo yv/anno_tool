@@ -1,16 +1,13 @@
 import sys
 import os.path
 from cStringIO import StringIO
-from web_stuff import render_template, redirect, Response
+from web_stuff import render_template, redirect, Response, allowed_corpora
 from mongoDB.annodb import AnnoDB
 import pytree.export as export
 import pytree.csstree as csstree
 from werkzeug import escape
 from werkzeug.exceptions import NotFound, Forbidden
 import json
-
-db=AnnoDB()
-tueba_corpus=db.corpus
 
 def compute_url(text_id):
   year=text_id[1:3]
@@ -20,6 +17,8 @@ def compute_url(text_id):
   return 'http://tintoretto/taz/19%s/%s/%s/art%03d.htm'%(year,month,day,artno)
 
 def render_sentence(request,sent_no):
+  db=request.corpus
+  tueba_corpus=db.corpus
   sno=int(sent_no)-1
   words=tueba_corpus.attribute("word",'p')
   sents=tueba_corpus.attribute("s",'s')
@@ -51,6 +50,7 @@ def render_sentence(request,sent_no):
 
 
 def render_discourse(request,disc_no):
+  db=request.corpus
   t_id=int(disc_no)
   doc=db.get_discourse(t_id,request.user)
   return render_template('discourse.html',
@@ -62,6 +62,7 @@ def render_discourse(request,disc_no):
                          topics=json.dumps(doc.get('topics',[])))
 
 def save_discourse(request,disc_no):
+  db=request.corpus
   t_id=int(disc_no)
   if not request.user:
     raise Forbidden('must be logged in')
@@ -83,6 +84,9 @@ def save_discourse(request,disc_no):
 
 
 def render_search(request,word):
+  db=request.corpus
+  tueba_corpus=db.corpus
+  print >>sys.stderr, repr(tueba_corpus)
   words=tueba_corpus.attribute("word","p")
   sents=tueba_corpus.attribute("s",'s')
   matches=[]

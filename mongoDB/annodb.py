@@ -204,8 +204,6 @@ class AnnoDB(object):
                 if off==span[1]-1:
                     out.write('</b>')
                 out.write(' ')
-
-        
     def display_annotation(self,parts,names,out):
         span=parts[0].span
         print >>out, '<div class="srctext">'
@@ -272,8 +270,15 @@ class AnnoDB(object):
         assert self.words[corpus_span[0]]==doc.tokens[ctx[0]],(doc.tokens[ctx_sent[3]:ctx_sent[4]],self.words[sent_span[0]:sent_span[1]])
         return corpus_span
 
+default_database='TUEBA4'
+databases={}
+def get_corpus(name=default_database):
+    if name not in databases:
+        databases[name]=AnnoDB(name)
+    return databases[name]
+
 def create_task_anno(username,task,populate=None):
-    db=AnnoDB()
+    db=get_database()
     task=db.get_task(task)
     if task is None:
         raise KeyError
@@ -286,7 +291,7 @@ def create_task_anno(username,task,populate=None):
     db.save_annotations(annos)
 
 def add_annotator(taskname, username):
-    db=AnnoDB()
+    db=get_database()
     task=db.get_task(taskname)
     if task is None:
         raise KeyError(taskname)

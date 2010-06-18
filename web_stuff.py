@@ -21,10 +21,10 @@ from werkzeug.exceptions import HTTPException, MethodNotAllowed, \
     NotImplemented, NotFound
 from werkzeug.contrib.securecookie import SecureCookie
 from jinja2 import Environment, FileSystemLoader
-from mongoDB.annodb import login_user, AnnoDB
+from mongoDB.annodb import login_user, AnnoDB, get_corpus, default_database
 from anno_config import anno_sets
 
-db=AnnoDB()
+allowed_corpora=['TUEBA4','R6PRE1']
 
 TEMPLATE_PATH=os.path.join(os.path.dirname(__file__),'templates')
 #mylookup=TemplateLookup(directories=[TEMPLATE_PATH])
@@ -64,6 +64,13 @@ class AppRequest(Request):
         return self.session.get('username')
 
     @cached_property
+    def corpus(self):
+        data=self.cookies.get('corpus')
+        if not data or data not in allowed_corpora:
+            data=default_database
+        return get_corpus(data)
+
+    @cached_property
     def session(self):
         data = self.cookies.get(COOKIE_NAME)
         if not data:
@@ -99,12 +106,14 @@ def do_logout(request):
     return response
 
 def index(request):
+    db=request.corpus
     if not request.user:
         tasks=sorted([t._id for t in db.get_tasks()])
     else:
         tasks=sorted([t._id for t in db.get_tasks(request.user)])
     return render_template('index.html',user=request.user,
-                           tasks=tasks, tasks0=tasks)
+                           tasks=tasks, tasks0=tasks,
+                           corpora=allowed_corpora)
 
 
 class MyMap(object):

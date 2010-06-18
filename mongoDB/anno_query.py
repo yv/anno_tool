@@ -18,8 +18,6 @@ from querygrammar import FunctorOp, Accessor, TaxonAccessor, \
 from werkzeug import run_simple, parse_form_data, escape
 from werkzeug.exceptions import NotFound, Forbidden
 
-db=AnnoDB()
-
 class ForAll(object):
     """checks a condition on all markables in a query"""
     def __init__(self,a):
@@ -57,7 +55,7 @@ class Disagree(object):
         return someTrue and someFalse
     
         
-def run_query(q, which_set='task_all1_new'):
+def run_query(q, which_set,db):
     yield """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
 "http://www.w3.org/TR/html4/strict.dtd">
 <html><head><title>Annotation diff</title>
@@ -90,6 +88,7 @@ myglobals={'__builtins__':None,'None':None}
 
 query_ok_re=re.compile(r"^(\'[a-z]+\'|==|\!=|[\(\)\&\| ]|ForAll|ForAny|contrastive|temporal|causal)+$")
 def display_annoquery(request):
+    db=request.corpus
     if request.method=='POST':
         form=request.form
         qs=form['q'].strip().replace('\n','')
@@ -110,7 +109,7 @@ def display_annoquery(request):
                                        query=form['q'],
                                        tasks=anno_sets)
             else:
-                result=' '.join(run_query(q,qset)).decode('ISO-8859-15')
+                result=' '.join(run_query(q,qset,db)).decode('ISO-8859-15')
                 print >>sys.stderr, type(result)
                 return Response(result, mimetype='text/html')
         else:
@@ -188,6 +187,7 @@ def annotate(request,taskname):
 konn2_schema=load_schema(file(os.path.join(BASEDIR,'konn2_schema.txt')))
 konn2_mapping=taxon_map(konn2_schema)
 def annotate2(request,taskname):
+    db=request.corpus
     task=db.get_task(taskname)
     if task is None:
         raise NotFound("no such task")
@@ -291,5 +291,5 @@ def save_attributes(request):
 
 if __name__=='__main__':
     q=make_query("ForAny(rel1 in Comparison)",symbols)    
-    for s in run_query(q):
+    for s in run_query(q,'task_aber1_new'):
         sys.stdout.write(s)

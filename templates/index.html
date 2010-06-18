@@ -1,8 +1,20 @@
 <html>
 <head>
 <title>Annotation database</title>
+<script src="/static/jquery.js"></script>
+<script src="/static/jquery.cookie.js"></script>
+<script>
+function set_corpus(c) {
+  if (arguments.length==0) {
+    c=$.cookie('corpus') || 'TUEBA4';
+  } else {
+    $.cookie('corpus',c);
+  }
+  $('#corpus').text(c);
+}
+</script>
 </head>
-<body>
+<body onload="set_corpus();">
 <h1>Index</h1>
 {% if user %}
 Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>)
@@ -46,4 +58,12 @@ ForAny(rel1 in Comparison)
 {% endfor %}
 </div>
 {% endif %}
+
+<div style="margin-top:5px">
+<b>Current corpus: <span id="corpus"></span></b>
+Choose corpus:
+{% for corpus in corpora %}
+<a href="javascript:set_corpus('{{corpus}}')">{{corpus}}</a>
+{% endfor %}
+</div>
 </body>

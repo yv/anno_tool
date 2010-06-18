@@ -1,10 +1,20 @@
 import sys
 import pytree.export as export
 import mongoDB.annodb as annodb
+import getopt
 
-db=annodb.AnnoDB()
-f=file(sys.argv[1])
+corpus_name='TUEBA4'
 parse_name='release'
+
+opts,args=getopt.getopt(sys.argv[1:],'c:p:')
+for k,v in opts:
+    if k=='-c':
+        corpus_name=v
+    elif k=='-p':
+        parse_name=v
+
+db=annodb.AnnoDB(corpus_name)
+f=file(args[0])
 
 parses=db.db.parses
 for t in export.read_trees(f):

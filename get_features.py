@@ -7,7 +7,7 @@ import pynlp.de.smor_pos as smor_pos
 
 db=annodb.AnnoDB()
 lemmas=db.corpus.attribute('lemma','p')
-task=db.get_task('waehrend2')
+task=db.get_task('task_waehrend2_new')
 
 def find_args(n):
     if n.parent.cat=='C':
@@ -164,5 +164,6 @@ for span in task.spans:
     print get_verbs(main_cl)
     for k,v in find_nomargs(main_cl):
         print "  %s: %s"%(k,v.to_penn())    
-    print "anno: temporal=%s contrastive=%s"%(anno.temporal,anno.contrastive)
-
+    #print "anno: temporal=%s contrastive=%s"%(anno.temporal,anno.contrastive)
+    #print "anno: rel1=%s rel2=%s"%(anno.rel1,anno.rel2)
+    print anno._doc
