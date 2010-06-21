@@ -14,7 +14,7 @@ def compute_url(text_id):
   month=text_id[3:5]
   day=text_id[5:7]
   artno=int(text_id[8:])
-  return 'http://tintoretto/taz/19%s/%s/%s/art%03d.htm'%(year,month,day,artno)
+  return 'http://tintoretto.sfb.uni-tuebingen.de/taz/19%s/%s/%s/art%03d.htm'%(year,month,day,artno)
 
 def render_sentence(request,sent_no):
   db=request.corpus
