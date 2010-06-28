@@ -68,10 +68,14 @@ def list_discourse(request):
   results=db.db.discourse.find({'_user':request.user})
   doc_lst=[]
   for r in results:
-    docid=int(r['_docno'])
-    txt0=text_ids[docid]
-    txt="%s: %s"%(txt0[2],' '.join(words[txt0[0]:txt0[0]+5]))
-    doc_lst.append((request.user,r['_docno'],txt))
+    try:
+      docid=int(r['_docno'])
+    except KeyError:
+      pass
+    else:
+      txt0=text_ids[docid]
+      txt="%s: %s"%(txt0[2],' '.join(words[txt0[0]:txt0[0]+5]))
+      doc_lst.append((request.user,r['_docno'],txt.decode('ISO-8859-15')))
   return render_template('discourse_list.html',
                          results=doc_lst)
 

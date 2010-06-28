@@ -103,7 +103,7 @@ def login_form(request):
     if request.args.get('become'):
         become_text='<input type="hidden" name="become" value="%s">'%(request.args.get('become'),)
     else:
-        become_text=request.args
+        become_text=''
     return Response('''
     <html><head>
         <title>Login</title></head><body><h1>Login</h1>
