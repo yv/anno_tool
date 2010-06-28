@@ -61,6 +61,20 @@ def render_discourse(request,disc_no):
                          indent=json.dumps(doc['indent']),
                          topics=json.dumps(doc.get('topics',[])))
 
+def list_discourse(request):
+  db=request.corpus
+  words=db.words
+  text_ids=db.corpus.attribute('text_id','s')
+  results=db.db.discourse.find({'_user':request.user})
+  doc_lst=[]
+  for r in results:
+    docid=int(r['_docno'])
+    txt0=text_ids[docid]
+    txt="%s: %s"%(txt0[2],' '.join(words[txt0[0]:txt0[0]+5]))
+    doc_lst.append((request.user,r['_docno'],txt))
+  return render_template('discourse_list.html',
+                         results=doc_lst)
+
 def save_discourse(request,disc_no):
   db=request.corpus
   t_id=int(disc_no)

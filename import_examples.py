@@ -13,12 +13,12 @@ examples={}
 for c in conns:
     examples[c]=[]
 
-print >>sys.stderr,"reading coref sets...",
-for l in file('/home/yannick/corpora/tueba-convert/tueba-sets.txt'):
-    line=l.strip().split()
-    sid,node_id=line[0].split(':')
-    coref_sets[(sid,node_id)]=line[1]
-print >>sys.stderr,"done."
+# print >>sys.stderr,"reading coref sets...",
+# for l in file('/home/yannick/corpora/tueba-convert/tueba-sets.txt'):
+#     line=l.strip().split()
+#     sid,node_id=line[0].split(':')
+#     coref_sets[(sid,node_id)]=line[1]
+# print >>sys.stderr,"done."
 
 def add_phrases(node,pos0,markables,sent_id):
     if node.cat=='NX' and not (node.edge_label=='APP' or
@@ -78,8 +78,11 @@ def write_mmax(entries,docid):
                     new_start=old_end
                 elif new_end==old_end:
                     new_end=old_start
-                markables.append(('unit',None,{'tag':'main'},
-                              pos+new_start,pos+new_end))
+                if new_start<new_end:
+                    markables.append(('unit',None,{'tag':'main'},
+                                      pos+new_start,pos+new_end))
+                else:
+                    print >>sys.stderr, "Cannot tag main: %s"%(pp.to_penn(),)
         pos+=len(t.terminals)
         write_basedata(words_fname('mmax',docid),tokens)
         write_markables('mmax',docid,markables)
@@ -113,7 +116,7 @@ def write_html(entries,docid):
 
 packet_num=0
 t_last=None
-for t in export.read_trees(file('/home/yannick/yannick/tueba4.export')):
+for t in export.read_trees(file('/home/yannickv/tmp/r6pre1/r6-komplett-morph.export')):
     sent_wanted=False
     for n in t.terminals:
         if (n.word.lower() in conns and

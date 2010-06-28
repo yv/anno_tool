@@ -21,7 +21,8 @@ from werkzeug.exceptions import HTTPException, MethodNotAllowed, \
     NotImplemented, NotFound
 from werkzeug.contrib.securecookie import SecureCookie
 from jinja2 import Environment, FileSystemLoader
-from mongoDB.annodb import login_user, AnnoDB, get_corpus, default_database
+import json
+from mongoDB.annodb import login_user, AnnoDB, get_corpus, default_database, get_database
 from anno_config import anno_sets
 
 allowed_corpora=['TUEBA4','R6PRE1']
@@ -41,6 +42,7 @@ SECRET_KEY = 'H\xda}\xa3k0\x0c\xdc\x0bY\na\x08}\n\x1f\x13\xc5\x9f\xf1'
 
 # the cookie name for the session
 COOKIE_NAME = 'session'
+ADMINS=['yannick','anna']
 
 class AppRequest(Request):
     """A request with a secure cookie session."""
@@ -52,6 +54,14 @@ class AppRequest(Request):
     def login(self, username):
         """Log the user in."""
         self.session['username'] = username
+        self.session['real_user'] = username
+
+    def become(self, username):
+        if (self.session['real_user']==username or
+            self.session['real_user'] in ADMINS):
+            self.session['username']=username
+        else:
+            raise ValueError
 
     @property
     def logged_in(self):
@@ -84,20 +94,28 @@ def login_form(request):
         password = request.form.get('password')
         if password and login_user(username,password):
             request.login(username)
+            if request.form.get('become'):
+                request.become(request.form.get('become'))
             response=redirect('/pycwb/')
             request.session.save_cookie(response)
             return response
         error = '<p>Invalid credentials'
+    if request.args.get('become'):
+        become_text='<input type="hidden" name="become" value="%s">'%(request.args.get('become'),)
+    else:
+        become_text=request.args
     return Response('''
-        <title>Login</title><h1>Login</h1>
+    <html><head>
+        <title>Login</title></head><body><h1>Login</h1>
         <p>Not logged in.
         %s
         <form action="/pycwb/login" method="post">
           <p>
             <input type="text" name="username" size=20>
             <input type="password" name="password", size=20>
+            %s
             <input type="submit" value="Login">
-        </form>''' % error, mimetype='text/html')
+        </form>''' % (error, become_text), mimetype='text/html')
 
 def do_logout(request):
     request.logout()
@@ -115,6 +133,23 @@ def index(request):
                            tasks=tasks, tasks0=tasks,
                            corpora=allowed_corpora)
 
+def tasks(request):
+    db=request.corpus
+    tasks=db.get_tasks()
+    return render_template('tasks.html',
+                           tasks=tasks,
+                           corpus=db.corpus_name)
+
+def get_users(request):
+    result=[]
+    for user in get_database().users.find({}):
+        u={'id':user['_id']}
+        if 'name' in user:
+            u['name']=user['name']
+        else:
+            u['name']=user['_id']
+        result.append(u)
+    return Response(json.dumps(result),mimetype="text/javascript")
 
 class MyMap(object):
     def __init__(self,urls):

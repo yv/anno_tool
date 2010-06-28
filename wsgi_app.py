@@ -13,6 +13,7 @@ urls=[('/login',web_stuff.login_form),
       ('/logout',web_stuff.do_logout),
       ('/',web_stuff.index),
       ('/sentence/([0-9]+)',test_web.render_sentence),
+      ('/discourse_list',test_web.list_discourse),
       ('/discourse/([0-9]+)',test_web.render_discourse),
       ('/saveDiscourse/([0-9]+)',test_web.save_discourse),
       ('/annotate/([a-zA-Z0-9_]+)',anno_query.annotate),
@@ -20,7 +21,9 @@ urls=[('/login',web_stuff.login_form),
       ('/saveAttributes',anno_query.save_attributes),
       ('/find_sent',test_web.find_sent),
       ('/find_word',test_web.find_word),
-      ('/annoquery',anno_query.display_annoquery)]
+      ('/annoquery',anno_query.display_annoquery),
+      ('/tasks',web_stuff.tasks),
+      ('/get_users',web_stuff.get_users)]
 
 mymap=web_stuff.MyMap(urls)
 

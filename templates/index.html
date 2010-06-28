@@ -54,7 +54,11 @@ ForAny(rel1 in Comparison)
 <div>
 <b>Annotate:</b>
 {% for task in tasks %}
+{% if task.scheme == 'konn2' %}
 <a href="/pycwb/annotate2/{{task}}">{{task}}</a>
+{% else %}
+<a href="/pycwb/annotate/{{task}}">{{task}}</a>
+{% endif %}
 {% endfor %}
 </div>
 {% endif %}

@@ -143,10 +143,20 @@ konn_scheme=[('temporal',['temporal','non_temporal']),
              ('causal',['causal','enable','non_causal']),
              ('contrastive',['kontraer','kontradiktorisch',
                              'parallel','no_contrast'])]
+
+mod_scheme=[('class',['tmp','loc','sit','freq','dur',
+                      'final','causal','concessive','cond','dir',
+                      'instr','focus','source','manner',
+                      'commentary','modalprt','intensifier'])]
+                     
 def widgets_konn(anno,out,out_js=None):
     edited=False
     out.write('<table>')
-    for key,values in konn_scheme:
+    if anno.get('level','konn')=='mod':
+        scheme=mod_scheme
+    else:
+        scheme=konn_scheme
+    for key,values in scheme:
         out.write('<tr><td><b>')
         out.write(key)
         out.write(':</b></td><td>')
@@ -166,20 +176,37 @@ def widgets_konn(anno,out,out_js=None):
     if out_js and edited:
         out_js.write('set_edited(%s)'%(anno._id))
 
+def is_ready(anno):
+    if anno.get('level','konn')=='mod':
+        scheme=mod_scheme
+    else:
+        scheme=konn_scheme
+    if anno.get('comment',None) is not None:
+        return False
+    for key,values in scheme:
+        if anno.get(key,None) is None:
+            return False
+    return True
+
 def annotate(request,taskname):
+    db=request.corpus
     task=db.get_task(taskname)
     if task is None:
         raise NotFound("no such task")
     user=request.user
     if user is None:
         redirect('/pycwb/login')
+    mode=request.args.get('mode','wanted')
     annotations=task.retrieve_annotations(user)
     out=StringIO()
+    if mode=='wanted':
+        print >>out, '<div><a href="?mode=all">show all</a></div>'
     for anno in annotations:
-        print >>out, '<div class="srctext" id="src:%s">'%(anno._id,)
-        db.display_span(anno['span'],1,0,out)
-        print >>out, '</div>'
-        widgets_konn(anno,out)
+        if mode!='wanted' or not is_ready(anno):
+            print >>out, '<div class="srctext" id="src:%s">'%(anno._id,)
+            db.display_span(anno['span'],1,0,out)
+            print >>out, '</div>'
+            widgets_konn(anno,out)
     return render_template('annodummy.html',task=task,
                            output=out.getvalue().decode('ISO-8859-15'))
 
@@ -260,6 +287,7 @@ for k,v in konn2_mapping.iteritems():
 
 immutable_attributes=set(['_id','annotator','span','corpus','level'])
 def save_attributes(request):
+    db=request.corpus
     annotation=db.db.annotation
     if request.user is None:
         raise Forbidden

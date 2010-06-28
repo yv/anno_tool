@@ -91,3 +91,25 @@
    background: #cccccc;
    width: 2px;
 }
+
+.data_table {
+  border: 2px solid #888888;
+  border-collapse:collapse;
+}
+
+.data_table .header_row {
+   background: #eeeeee;
+}
+.data_table .even_row {
+   background: #ddeeff;
+}
+.data_table .odd_row {
+   background: #ffffff;
+}
+.data_table td {
+   padding: 2px;
+   margin: 0px;
+   padding-right: 15px;
+    font-size: 10pt;
+    font-family: sans-serif;
+}

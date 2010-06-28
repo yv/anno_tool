@@ -121,11 +121,6 @@ class AnnoDB(object):
         self.words=self.corpus.attribute('word','p')
         self.corpus_name=corpus_name
         self.db=get_database()[corpus_name]
-    def get_tasks(self):
-        result=[]
-        for doc in self.db.tasks.find().toArray():
-            result.append(Task(doc,self))
-        return result
     def get_task(self,taskname):
         doc=self.db.tasks.find_one({'_id':taskname})
         if doc is not None:
