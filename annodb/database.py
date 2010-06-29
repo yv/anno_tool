@@ -98,7 +98,6 @@ class Task(object):
             result.append(a)
         return result
     def save(self):
-        print self._doc
         self._db.db.tasks.save(self._doc)
 
 def anno_key(ann,lvl,corpus,span):
