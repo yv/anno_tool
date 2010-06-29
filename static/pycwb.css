@@ -113,3 +113,29 @@
     font-size: 10pt;
     font-family: sans-serif;
 }
+.save_disabled {
+  border: 2px solid #dddddd;
+  padding: 2px;
+  font-size:10pt;
+  font-family: sans-serif;
+  color: #dddddd;
+  background: #eeeeee;
+}
+.save_enabled {
+  border: 2px solid #aaaaaa;
+  padding: 2px;
+  font-size:10pt;
+  font-family: sans-serif;
+  font-weight: bold;
+  color: #3388dd;
+  background: #eeeeee;
+}
+.save_inprogress {
+  border: 2px solid #aaaaaa;
+  padding: 2px;
+  font-size:10pt;
+  font-family: sans-serif;
+  font-weight: bold;
+  color: #ff6600;
+  background: #eeeeee;
+}

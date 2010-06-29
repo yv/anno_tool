@@ -6,12 +6,12 @@ import sys
 
 BASEDIR=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASEDIR)
+from schema import schemas
 from anno_tools import *
 from anno_config import *
-from mongoDB.annodb import *
+from annodb.database import *
 from web_stuff import *
 from cStringIO import StringIO
-from taxonomy_schema import load_schema, taxon_map
 from querygrammar import FunctorOp, Accessor, TaxonAccessor, \
     Constant, parser, make_query
 
@@ -122,22 +122,6 @@ def display_annoquery(request):
                            query='',
                            tasks=anno_sets)
 
-def display_chooser(prefix,alternatives,chosen,out):
-    for alt in alternatives:
-        cls='choose'
-        if alt==chosen:
-            cls='chosen'
-        out.write('''
-[<a class="%s" onclick="chosen('%s','%s');" id="%s_%s">%s</a>]\n'''%(
-                cls,prefix,alt,prefix,alt,alt))
-
-def display_textbox(prefix,value,out):
-    out.write('''
-<textarea cols="80" id="%s" onkeyup="after_blur('%s')">'''%(
-            prefix,prefix))
-    if value is not None:
-        out.write(value)
-    out.write('</textarea>')
 
 konn_scheme=[('temporal',['temporal','non_temporal']),
              ('causal',['causal','enable','non_causal']),
@@ -191,28 +175,26 @@ def is_ready(anno):
 def annotate(request,taskname):
     db=request.corpus
     task=db.get_task(taskname)
+    schema=schemas[task.level]
     if task is None:
         raise NotFound("no such task")
     user=request.user
     if user is None:
-        redirect('/pycwb/login')
+        return redirect('/pycwb/login')
     mode=request.args.get('mode','wanted')
     annotations=task.retrieve_annotations(user)
     out=StringIO()
+    out_js=StringIO()
     if mode=='wanted':
         print >>out, '<div><a href="?mode=all">show all</a></div>'
     for anno in annotations:
         if mode!='wanted' or not is_ready(anno):
-            print >>out, '<div class="srctext" id="src:%s">'%(anno._id,)
-            db.display_span(anno['span'],1,0,out)
-            print >>out, '</div>'
-            widgets_konn(anno,out)
+            schema.make_widgets(anno,db,out,out_js)
     return render_template('annodummy.html',task=task,
+                           js_code=out_js.getvalue().decode('ISO-8859-15'),
                            output=out.getvalue().decode('ISO-8859-15'))
 
 
-konn2_schema=load_schema(file(os.path.join(BASEDIR,'konn2_schema.txt')))
-konn2_mapping=taxon_map(konn2_schema)
 def annotate2(request,taskname):
     db=request.corpus
     task=db.get_task(taskname)
@@ -220,19 +202,64 @@ def annotate2(request,taskname):
         raise NotFound("no such task")
     user=request.user
     if user is None:
-        redirect('/pycwb/login')
+        return redirect('/pycwb/login')
     annotations=task.retrieve_annotations(user)
-    examples=[]
+    scheme=schemas[task.level]
+    jscode=StringIO()
+    out=None
+    jscode.write('examples=[]\n;')
+    jscode.write('schema=%s\n;'%(json.dumps(scheme.schema)))
     for anno in annotations:
-        out=StringIO()
-        db.display_span(anno['span'],1,0,out)
-        munged_anno=dict(anno)
-        munged_anno['text']=out.getvalue().decode('ISO-8859-15')
-        examples.append(munged_anno)
-    jscode='examples=%s;\nschema=%s;'%(json.dumps(examples),
-                                       json.dumps(konn2_schema))
+        scheme.make_widgets(anno,db,out,jscode)
     return render_template('annodummy2.html',
-                           jscode=jscode)
+                           jscode=jscode.getvalue())
+
+
+def adjudicate(request,taskname):
+    db=request.corpus
+    task=db.get_task(taskname)
+    schema=schemas[task.level]
+    if task is None:
+        raise NotFound("no such task")
+    user=request.user
+    if user is None:
+        return redirect('/pycwb/login')
+    mode=request.args.get('mode','wanted')
+    annotations=task.retrieve_annotations(user)
+    out=StringIO()
+    out_js=StringIO()
+    ms=annotation_join(db,task)
+    names=task.annotators
+    level=task.level
+    for part in ms:
+        span=part[0].span
+        anno_a=db.get_annotation(user,level,span)
+        print >>out, '<div class="srctext">'
+        db.display_span(span,1,0,out)
+        print >>out, "</div>"
+        print >>out, "<table>"
+        for k in schema.get_slots():
+            print >>out, "<tr><td><b>%s</b></td><td width=\"400\">"%(k,)
+            seen_vals=set()
+            for anno in part:
+                try:
+                    seen_vals.add(anno[k])
+                except KeyError:
+                    pass
+            prefix=anno_a._id+':'+k
+            for v in seen_vals:
+                if v==anno_a.get(k,None):
+                    cls="chosen"
+                else:
+                    cls="choose"
+                names_ch=','.join([name for (anno,name) in zip(part,names)
+                                   if anno.get(k,None)==v])
+                out.write('<a class="%s" onclick="chosen_txt(\'%s\',\'%s\');" id="%s_%s">%s</a> (%s)\n'%(cls,prefix,v,prefix,v,v,names_ch))
+            out.write('</td><td><input id="txt:%s" onkeyup="after_blur_2(\'%s\')" value="%s"></td></tr>'%(prefix,prefix,anno_a.get(k,'')))
+        print >>out,"</table>"
+    return render_template('annodummy.html',task=task,
+                           js_code=out_js.getvalue().decode('ISO-8859-15'),
+                           output=out.getvalue().decode('ISO-8859-15'))
 
 class ForAll(object):
     __slots__=['f']
@@ -269,13 +296,14 @@ class Disagree(object):
 
 
 symbols={}
+konn2_mapping=schemas['konn2'].taxon_mapping
 symbols['==']=FunctorOp(lambda x,y: x==y)
 symbols['in']=FunctorOp(lambda x,y: x in y)
 symbols['not in']=FunctorOp(lambda x,y: x not in y)
 symbols['|']=FunctorOp(lambda x,y: x or y)
 symbols['&']=FunctorOp(lambda x,y: x and y)
-symbols['rel1']=TaxonAccessor('rel1',konn2_mapping)
-symbols['rel2']=TaxonAccessor('rel2',konn2_mapping)
+symbols['rel1']=TaxonAccessor('rel1',schemas['konn2'].taxon_mapping)
+symbols['rel2']=TaxonAccessor('rel2',schemas['konn2'].taxon_mapping)
 symbols['ForAll']=ForAll
 symbols['ForAny']=ForAny
 symbols['Disagree']=Disagree

@@ -2,7 +2,7 @@ import sys
 import os.path
 from cStringIO import StringIO
 from web_stuff import render_template, redirect, Response, allowed_corpora
-from mongoDB.annodb import AnnoDB
+from annodb.database import AnnoDB
 import pytree.export as export
 import pytree.csstree as csstree
 from werkzeug import escape

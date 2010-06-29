@@ -16,13 +16,15 @@ based on:
 """
 import os.path
 import re
+import sys
 from werkzeug import Request, Response, cached_property, redirect, escape
 from werkzeug.exceptions import HTTPException, MethodNotAllowed, \
-    NotImplemented, NotFound
+    NotImplemented, NotFound, Forbidden
 from werkzeug.contrib.securecookie import SecureCookie
 from jinja2 import Environment, FileSystemLoader
 import json
-from mongoDB.annodb import login_user, AnnoDB, get_corpus, default_database, get_database
+from annodb.database import login_user, AnnoDB, get_corpus, \
+     default_database, get_database
 from anno_config import anno_sets
 
 allowed_corpora=['TUEBA4','R6PRE1']
@@ -124,11 +126,13 @@ def do_logout(request):
     return response
 
 def index(request):
+    def by_id(x):
+        return x._id
     db=request.corpus
     if not request.user:
-        tasks=sorted([t._id for t in db.get_tasks()])
+        tasks=sorted(db.get_tasks(), key=by_id)
     else:
-        tasks=sorted([t._id for t in db.get_tasks(request.user)])
+        tasks=sorted(db.get_tasks(request.user), key=by_id)
     return render_template('index.html',user=request.user,
                            tasks=tasks, tasks0=tasks,
                            corpora=allowed_corpora)
@@ -140,9 +144,24 @@ def tasks(request):
                            tasks=tasks,
                            corpus=db.corpus_name)
 
+def save_task(request,task_id):
+    user=request.user
+    if not user or user not in ADMINS or request.method!='POST':
+        raise Forbidden('not an admin')
+    db=request.corpus
+    task=db.get_task(task_id)
+    data=filter(None,request.stream.read().split(','))
+    task.set_annotators(data)
+    task.save()
+    return Response('Ok')
+
 def get_users(request):
+    q=request.args['q']
     result=[]
     for user in get_database().users.find({}):
+        if q and (q not in user.get('name','') and
+                  q not in user['_id']):
+            continue
         u={'id':user['_id']}
         if 'name' in user:
             u['name']=user['name']

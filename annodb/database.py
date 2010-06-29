@@ -1,4 +1,5 @@
 import sys
+import re
 import CWB.CL as cwb
 import pymongo
 from anno_config import *
@@ -69,6 +70,25 @@ class Task(object):
             self.__dict__[key]=val
         else:
             self._doc[key]=val
+    def get(self,key,def_val):
+        if key in self._doc:
+            return self._doc[key]
+        else:
+            return def_val
+    def check_annotator(self,annotator):
+        annos=[]
+        level=self._doc['level']
+        spans=self._doc['spans']
+        for span in spans:
+            annos.append(self._db.get_annotation(annotator,level,span))
+        self._db.save_annotations(annos)
+    def set_annotators(self,annotators):
+        """check for missing documents and create them if necessary"""
+        old_annotators=set(self._doc['annotators'])
+        for k in annotators:
+            if not k in old_annotators:
+                self.check_annotator(k)
+        self._doc['annotators']=annotators
     def retrieve_annotations(self,annotator):
         result=[]
         for span in self._doc['spans']:
@@ -140,7 +160,8 @@ class AnnoDB(object):
         a=self.db.tasks.find_one({'_id':_id})
         if a:
             assert a['level']==level,a
-            assert a['corpus']==self.corpus_name
+            #assert a['corpus']==self.corpus_name, (a['corpus'],self.corpus_name)
+            a['corpus']=self.corpus_name
             if not hasattr(a,'type'):
                 a['type']='task'
         else:
@@ -158,17 +179,31 @@ class AnnoDB(object):
                    or name in t['annotators']]
         else:
             all = [Task(t,self) for t in all]
+        def task_sort_key(task):
+            result=[]
+            for match in re.finditer(r'([\d]+)|([^\d]+)', task._id):
+                number, no_number = match.groups()
+                result.append(int(number) if number else no_number)
+            return result
+        all.sort(key=task_sort_key)
         return all
     def get_annotation(self,annotator, level, span):
         k=anno_key(annotator,level,self.corpus_name,span)
         result=self.db.annotation.find_one({'_id':k})
         if result is None:
-            doc=dict(_id=k,
-                     type='anno',
-                     level=level,
-                     annotator=annotator,
-                     span=span)
-            return Annotation(doc)
+            k2=anno_key('*default*',level,self.corpus_name,span)
+            result2=self.db.annotation.find_one({'_id':k2})
+            if result2:
+                result2['_id']=k
+                result2['annotator']=annotator
+                return Annotation(result2)
+            else:
+                doc=dict(_id=k,
+                         type='anno',
+                         level=level,
+                         annotator=annotator,
+                         span=span)
+                return Annotation(doc)
         else:
             result['level']=level
             result['annotator']=annotator

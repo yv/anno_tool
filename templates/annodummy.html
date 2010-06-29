@@ -1,7 +1,15 @@
 {%extends 'base.html'%}
 
+{%block head%}
+<script type="text/javascript">
+<!--
+{{js_code}}
+//-->
+</script>
+{%endblock%}
+
 {%block body%}
-<h1>{{task}}</h1>
+<h1>{{task._id}}</h1>
 <div id="status">loaded.</div>
 {{output}}
 {%endblock%}

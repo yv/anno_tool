@@ -8,16 +8,17 @@ from mmax_tools import write_basedata, write_markables, \
      words_fname, write_dotmmax
 
 MAX_LEN=10
+FNAME='/home/yannickv/tmp/r6pre1/r6-komplett-morph.export'
 conns=['aber']
 coref_sets={}
 examples=[]
 
-print >>sys.stderr,"reading coref sets...",
-for l in file('/home/yannickv/corpora/tueba-convert/tueba-sets.txt'):
-    line=l.strip().split()
-    sid,node_id=line[0].split(':')
-    coref_sets[(sid,node_id)]=line[1]
-print >>sys.stderr,"done."
+# print >>sys.stderr,"reading coref sets...",
+# for l in file('/home/yannickv/corpora/tueba-convert/tueba-sets.txt'):
+#     line=l.strip().split()
+#     sid,node_id=line[0].split(':')
+#     coref_sets[(sid,node_id)]=line[1]
+# print >>sys.stderr,"done."
 
 def add_phrases(node,pos0,markables,sent_id):
     if node.cat=='NX' and not (node.edge_label=='APP' or
@@ -113,7 +114,8 @@ def write_html(entries,docid):
 
 packet_num=0
 t_last=None
-for t in export.read_trees(file('/home/yannickv/corpora/tueba4.export')):
+#FNAME='/home/yannickv/corpora/tueba4.export'
+for t in export.read_trees(file(FNAME)):
     sent_wanted=False
     for n in t.terminals:
         if (n.word.lower()=='aber' and

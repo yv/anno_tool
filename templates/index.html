@@ -44,7 +44,7 @@ ForAny(rel1 in Comparison)
 </textarea><br>
 <select name="wset">
 {% for task in tasks0 %}
-<option value="{{task}}">{{task}}
+<option value="{{task._id}}">{{task._id}}
 {% endfor %}
 </select>
 <input type="submit" value="Query">
@@ -54,10 +54,10 @@ ForAny(rel1 in Comparison)
 <div>
 <b>Annotate:</b>
 {% for task in tasks %}
-{% if task.scheme == 'konn2' %}
-<a href="/pycwb/annotate2/{{task}}">{{task}}</a>
+{% if task.level == 'konn2' %}
+<a href="/pycwb/annotate2/{{task._id}}">{{task._id}}</a>
 {% else %}
-<a href="/pycwb/annotate/{{task}}">{{task}}</a>
+<a href="/pycwb/annotate/{{task._id}}">{{task._id}}</a>
 {% endif %}
 {% endfor %}
 </div>

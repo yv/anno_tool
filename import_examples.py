@@ -57,7 +57,7 @@ def write_mmax(entries,docid):
             tokens.append(n1.word)
         for n1 in t.roots:
             add_phrases(n1,pos,markables,t.sent_no)
-        markables.append(('konn',None,{'word':n.word},
+        markables.append(('konn',None,{'word':n.word.lower()},
                           pos+n.start,pos+n.end))
         if n.parent.cat=='C':
             pp=n.parent.parent

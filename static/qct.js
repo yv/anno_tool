@@ -38,7 +38,35 @@ function after_blur(field_id) {
   set_status("(changed)");
   resetTimeout();
 }
- 
+
+function after_blur_2(field_id) {
+    if (what_chosen[field_id]) {
+	var item=document.getElementById(field_id+"_"+what_chosen[item]);
+	if (item) { item.className='choose'; }
+    }
+    val=$('txt:'+field_id).value;
+    var item2=document.getElementById(field_id+"_"+val);
+    if (item2) { item2.className='chosen'; }
+    chosen[field_id]=val;
+    dirty[field_id]=val;
+    set_status("(changed)");
+    resetTimeout();
+}
+
+function chosen_txt(field_id,val) {
+    if (what_chosen[field_id]) {
+	var item=document.getElementById(field_id+":"+what_chosen[item]);
+	if (item) { item.className='choose'; }
+    }
+    $('txt:'+field_id).value=val;
+    var item2=document.getElementById(field_id+"_"+val);
+    if (item2) { item2.className='chosen'; }
+    chosen[field_id]=val;
+    dirty[field_id]=val;
+    set_status("(changed)");
+    resetTimeout();
+}
+
 var what_chosen={};
 function chosen(item,what) {
 if (what_chosen[item]) {

@@ -1,7 +1,7 @@
 import os
 from werkzeug import script, DispatcherMiddleware, redirect, \
     DebuggedApplication
-from mongoDB.annodb import create_user, create_task_anno, add_annotator
+from annodb.database import create_user, create_task_anno, add_annotator
 from web_stuff import AppRequest, render_template
 from wsgi_app import application
 
