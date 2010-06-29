@@ -1,0 +1,71 @@
+<html>
+<head>
+<title>Annotation tasks</title>
+<script src="/static/jquery.js"></script>
+<script src="/static/jquery.tokeninput.js"></script>
+<script src="/static/jquery.ui.widget.min.js"></script>
+<script src="/static/jquery.ui.button.min.js"></script>
+<script src="/static/json2.js"></script>
+<link rel="stylesheet" href="/static/pycwb.css" type="text/css" /> 
+<link rel="stylesheet" href="/static/token-input.css" type="text/css" /> 
+<link rel="stylesheet" href="/static/token-input-facebook.css" type="text/css" /> 
+<link rel="stylesheet" href="/static/themes/ui-lightness/jquery-ui-1.8.2.custom.css" type="text/css" /
+<script type="text/javascript">
+$(document).ready(function() {
+  var cls={
+         tokenList: "token-input-list-facebook",
+         token: "token-input-token-facebook",
+         tokenDelete: "token-input-delete-token-facebook",
+         selectedToken: "token-input-selected-token-facebook",
+         highlightedToken: "token-input-highlighted-token-facebook",
+         dropdown: "token-input-dropdown-facebook",
+         dropdownItem: "token-input-dropdown-item-facebook",
+         dropdownItem2: "token-input-dropdown-item2-facebook",
+         selectedDropdownItem: "token-input-selected-dropdown-item-facebook",
+         inputToken: "token-input-input-token-facebook"};
+  var li_data, inp;
+  {% for task in tasks %}
+  li_data=[];
+  {% for a in task.annotators %}li_data.push({id:'{{a}}',name:'{{a}}'});{% endfor %}
+  inp=$("#input-{{task._id}}");
+  inp.change(function() {$('#save-{{task._id}}').button({disabled:false})});
+  $('#save-{{task._id}}').button({disabled:true});
+  inp.tokenInput("/pycwb/get_users",
+     {hintText: "Annotatoren?!", prePopulate:li_data, classes:cls});
+  {% endfor %}
+});
+
+function do_save(item_id) {
+  var p=$.ajax({async:false,
+                data:$('#input-'+item_id).val(),
+                processData:false,
+                type:'POST',
+                contentType:'text/plain',
+                url:'/pycwb/saveTask/'+item_id});
+  if (p.status!=200) { alert(p.responseText); }
+  $('#save-'+item_id).button({disabled:true});
+}
+</script>
+</head>
+<body>
+<h1>Annotations-Tasks für {{corpus}}</h1>
+<table class="data_table">
+<tr class="header_row">
+<th>Name</th>
+<th>Level</th>
+<th>Annotatoren</th>
+<th>Aktionen</th>
+</tr>
+{% for task in tasks %}
+<tr class="{{loop.cycle('odd_row','even_row')}}" id="{{task._id}}">
+<td>{{task._id}}</td>
+<td>{{task.level}}</td>
+<td><input type="text" id="input-{{task._id}}"
+value=""
+name="nm:{{task._id}}"></td>
+<td><a id="save-{{task._id}}"
+onclick="do_save('{{task._id}}')">Save</a> <a href="/pycwb/adjudicate/{{task._id}}">Adjudicate</a> Delete ?!?</td>
+</tr>
+{% endfor %}
+</table>
+</body>
