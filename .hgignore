@@ -1,8 +1,10 @@
 syntax:regexp
 ^mmax/
 ^skript/
+^html_out/
+^html_anno/
 ^annotation-.*/
-.*\.html$
+^[/]*\.html$
 .*\.log$
 .*\.aux$
 .*\.zip$

@@ -144,3 +144,17 @@ def find_word(request):
     return render_search(request,word.encode('ISO-8859-15'))
   else:
     return redirect('/pycwb')
+
+def get_words(request):
+  word=request.args.get('term')
+  if not word or len(word)<2:
+    return Response('')
+  else:
+    word=word.encode('ISO-8859-15').replace('.','\\.')
+  db=request.corpus
+  ws=db.words
+  wdict=db.words.getDictionary()
+  result=[[w.decode('ISO-8859-15'), ws.frequency(w)] for w in wdict.expand_pattern(word+'.*')]
+  result.sort(key=lambda x:-x[1])
+  return Response(json.dumps(result[:10]),mimetype='text/javascript')
+  

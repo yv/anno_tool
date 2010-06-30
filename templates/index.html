@@ -3,6 +3,14 @@
 <title>Annotation database</title>
 <script src="/static/jquery.js"></script>
 <script src="/static/jquery.cookie.js"></script>
+<script src="/static/jquery.ui.core.min.js"></script>
+<script src="/static/jquery.ui.widget.min.js"></script>
+<script src="/static/jquery.ui.button.min.js"></script>
+<script src="/static/jquery.ui.position.min.js"></script>
+<script src="/static/jquery.ui.autocomplete.min.js"></script>
+<link rel="stylesheet" href="/static/pycwb.css" type="text/css">
+<link rel="stylesheet" href="/static/themes/base/jquery.ui.all.css" type="text/css">
+<link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css">
 <script>
 function set_corpus(c) {
   if (arguments.length==0) {
@@ -12,6 +20,18 @@ function set_corpus(c) {
   }
   $('#corpus').text(c);
 }
+
+$(function() {
+$('#input-word').autocomplete({
+  source: "/pycwb/get_words",
+  minLength: 2,
+  focus: function(event,ui) {
+   $('#input-word').val(ui.item[0])}})
+.data("autocomplete")._renderItem=function(ul,item) {
+ return $("<li></li>").data("item.autocomplete",item)
+   .append("<a>"+item[0]+" ("+item[1]+")</a>")
+   .appendTo(ul);}
+});
 </script>
 </head>
 <body onload="set_corpus();">
@@ -33,11 +53,12 @@ Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>)
 <td>Wort finden:</td>
 <td>
 <form method="POST" action="/pycwb/find_word">
-<input name="w"><input type="submit">
+<input id="input-word" name="w"><input type="submit">
 </form>
 </td>
 </tr></table>
 <p>
+<div>
 <form method="POST" action="/pycwb/annoquery">
 <textarea cols="80" rows="4" name="q">
 ForAny(rel1 in Comparison)
