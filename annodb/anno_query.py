@@ -132,33 +132,6 @@ mod_scheme=[('class',['tmp','loc','sit','freq','dur',
                       'final','causal','concessive','cond','dir',
                       'instr','focus','source','manner',
                       'commentary','modalprt','intensifier'])]
-                     
-def widgets_konn(anno,out,out_js=None):
-    edited=False
-    out.write('<table>')
-    if anno.get('level','konn')=='mod':
-        scheme=mod_scheme
-    else:
-        scheme=konn_scheme
-    for key,values in scheme:
-        out.write('<tr><td><b>')
-        out.write(key)
-        out.write(':</b></td><td>')
-        val=anno.get(key,None)
-        if val is not None:
-            edited=True
-        display_chooser(anno._id+':'+key,values,
-                        val,out)
-        out.write('</td></tr>')
-    out.write('<tr><td><b>comment:</b></td><td>')
-    val=anno.get('comment',None)
-    if val is not None:
-        edited=True
-    display_textbox(anno._id+':comment',
-                    anno.get('comment',None),out)
-    out.write('</td></tr></table>')
-    if out_js and edited:
-        out_js.write('set_edited(%s)'%(anno._id))
 
 def is_ready(anno):
     if anno.get('level','konn')=='mod':

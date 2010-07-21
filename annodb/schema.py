@@ -56,8 +56,8 @@ class SimpleSchema:
                 edited=True
                 out_js.write('what_chosen["%s"]="%s";'%(anno._id+':'+key,
                                                        val))
-                display_chooser(anno._id+':'+key,values,
-                                val,out)
+            display_chooser(anno._id+':'+key,values,
+                            val,out)
             out.write('</td></tr>')
         out.write('<tr><td><b>comment:</b></td><td>')
         val=anno.get('comment',None)
