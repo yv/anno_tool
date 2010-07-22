@@ -8,15 +8,25 @@
 <script src="/static/jquery.ui.button.min.js"></script>
 <script src="/static/jquery.ui.position.min.js"></script>
 <script src="/static/jquery.ui.autocomplete.min.js"></script>
+<script src="/static/ui.selectmenu.js"></script>
 <link rel="stylesheet" href="/static/pycwb.css" type="text/css">
 <link rel="stylesheet" href="/static/themes/base/jquery.ui.all.css" type="text/css">
 <link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css">
+<link rel="stylesheet" href="/static/ui.selectmenu.css" type="text/css">
 <script>
+all_corpora=[];
+{% for corpus in corpora %}all_corpora.push('{{corpus}}')
+{% endfor %}
+
+function get_corpus() {
+    c=$.cookie('corpus') || 'TUEBA4';
+    return c;
+}
 function set_corpus(c) {
   if (arguments.length==0) {
     c=$.cookie('corpus') || 'TUEBA4';
   } else {
-    $.cookie('corpus',c);
+    $.cookie('corpus',c,{path:'/pycwb'});
   }
   $('#corpus').text(c);
 }
@@ -32,17 +42,21 @@ $('#input-word').autocomplete({
    .append("<a>"+item[0]+" ("+item[1]+")</a>")
    .appendTo(ul);}
    $("input:submit").button();
+
+$("#corpus_chooser > option [val="+get_corpus()+"]").attr('selected','selected');
+ sm=$("#corpus_chooser").selectmenu({style:'dropdown',width:200});
+
+ sm.bind('selectmenuchange',function(x) {
+   var idx=sm.selectmenu('value');
+   set_corpus(all_corpora[idx]);
+   window.location.href="/pycwb/?corpus="+all_corpora[idx];
+});
 });
 </script>
 </head>
 <body onload="set_corpus();">
+<div id="main">
 <h1>Index</h1>
-{% if user %}
-Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>)
-{% else %}
-<a href="/pycwb/login">Login</a>
-{% endif %}
-<p>
 <table>
 <tr valign="top">
 <td>Satznummer finden:</td>
@@ -58,39 +72,42 @@ Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>)
 </form>
 </td>
 </tr></table>
+</div>
+<div id="left_nav">
+{% if user %}
+Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>)
+{% else %}
+<a href="/pycwb/login">Login</a>
+{% endif %}
 <p>
-<div>
-<form method="POST" action="/pycwb/annoquery">
-<textarea cols="80" rows="4" name="q">
-ForAny(rel1 in Comparison)
-</textarea><br>
-<select name="wset">
-{% for task in tasks0 %}
-<option value="{{task._id}}">{{task._id}}
+<form>
+<div id="corpus_radio">
+<select id="corpus_chooser">
+{% for corpus in corpora %}
+{% if corpus==corpus_name %}
+<option value="{{corpus}}" selected>{{corpus}}</option>
+{% else %}
+<option value="{{corpus}}">{{corpus}}</option>
+{% endif %}
 {% endfor %}
 </select>
-<input type="submit" value="Query">
 </div>
-
+</form>
 {% if user %}
 <div>
-<b>Annotate:</b>
+<b>Annotate:</b><br>
 {% for task in tasks %}
 {% if task.level == 'konn2' %}
-<a href="/pycwb/annotate2/{{task._id}}">{{task._id}}</a>
+<a href="/pycwb/annotate2/{{task._id}}">{{task._id}}</a><br>
 {% else %}
-<a href="/pycwb/annotate/{{task._id}}">{{task._id}}</a>
+<a href="/pycwb/annotate/{{task._id}}">{{task._id}}</a><br>
 {% endif %}
 {% endfor %}
 </div>
-<a href="/pycwb/discourse_list">Discourse Structure annotation</a>
+<div style="margin-top: 3px">
+<a href="/pycwb/discourse_list">Discourse Structure annotation</a><br>
+<a href="/pycwb/tasks">All Tasks</a>
+</div>
 {% endif %}
-
-<div style="margin-top:5px">
-<b>Current corpus: <span id="corpus"></span></b>
-Choose corpus:
-{% for corpus in corpora %}
-<a href="javascript:set_corpus('{{corpus}}')">{{corpus}}</a>
-{% endfor %}
 </div>
 </body>

@@ -64,8 +64,14 @@ function do_save(item_id) {
 value=""
 name="nm:{{task._id}}"></td>
 <td><a id="save-{{task._id}}"
-onclick="do_save('{{task._id}}')">Save</a> <a href="/pycwb/adjudicate/{{task._id}}">Adjudicate</a> Delete ?!?</td>
-</tr>
+onclick="do_save('{{task._id}}')">Save</a>
+[<a class="action" href="/pycwb/adjudicate/{{task._id}}">Adjudicate</a>]
+{% if task.level=='konn2' %}
+[<a class="action" href="/pycwb/annotate2/{{task._id}}">Annotate</a>]
+{% else %}
+[<a class="action" href="/pycwb/annotate/{{task._id}}">Annotate</a>]
+{% endif %}
+</td></tr>
 {% endfor %}
 </table>
 </body>

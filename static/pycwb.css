@@ -139,3 +139,17 @@
   color: #ff6600;
   background: #eeeeee;
 }
+#left_nav {
+ margin-left:0; margin-right:75%;
+ width:25%;
+ border: 1px solid #dddddd;
+ padding: 2px;
+ background: #eeeeee;
+}
+#main {
+ float:right;
+ width:70%;
+ border: 1px solid #dddddd;
+ background: #eeeeee;
+ padding: 3px;
+}

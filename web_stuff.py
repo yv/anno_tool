@@ -17,6 +17,7 @@ based on:
 import os.path
 import re
 import sys
+import datetime
 from werkzeug import Request, Response, cached_property, redirect, escape
 from werkzeug.exceptions import HTTPException, MethodNotAllowed, \
     NotImplemented, NotFound, Forbidden
@@ -75,7 +76,7 @@ class AppRequest(Request):
         """The user that is logged in."""
         return self.session.get('username')
 
-    @cached_property
+    @property
     def corpus(self):
         data=self.cookies.get('corpus')
         if not data or data not in allowed_corpora:
@@ -128,14 +129,27 @@ def do_logout(request):
 def index(request):
     def by_id(x):
         return x._id
-    db=request.corpus
+    corpus_name=request.cookies.get('corpus')
+    try:
+        corpus_name=request.args['corpus']
+    except KeyError:
+        pass
+    if not corpus_name or corpus_name not in allowed_corpora:
+        corpus_name=default_database
+    db=get_corpus(corpus_name)
     if not request.user:
         tasks=sorted(db.get_tasks(), key=by_id)
     else:
         tasks=sorted(db.get_tasks(request.user), key=by_id)
-    return render_template('index.html',user=request.user,
-                           tasks=tasks, tasks0=tasks,
-                           corpora=allowed_corpora)
+    response=render_template('index.html',user=request.user,
+                             tasks=tasks, tasks0=tasks,
+                             corpus_name=corpus_name,
+                             corpora=allowed_corpora)
+    expire_date=datetime.datetime.now()
+    expire_date=expire_date.replace(month=expire_date.month+1)
+    response.set_cookie('corpus',corpus_name,
+                        expires=expire_date)
+    return response
 
 def tasks(request):
     db=request.corpus
