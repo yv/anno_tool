@@ -98,7 +98,6 @@ def save_discourse(request,disc_no):
     stuff=json.load(request.stream)
     try:
       for k,v in stuff.iteritems():
-        print k,v
         if k[0]=='_': continue
         doc[k]=v
     except HTTPException,e:
