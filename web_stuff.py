@@ -28,7 +28,7 @@ from annodb.database import login_user, AnnoDB, get_corpus, \
      default_database, get_database
 from anno_config import anno_sets
 
-allowed_corpora=['TUEBA4','R6PRE1']
+allowed_corpora=['TUEBA4','R6PRE1','PTB']
 
 TEMPLATE_PATH=os.path.join(os.path.dirname(__file__),'templates')
 #mylookup=TemplateLookup(directories=[TEMPLATE_PATH])

@@ -267,6 +267,7 @@ class AnnoDB(object):
                     '_docno':disc_id,
                     '_user':user,
                     'tokens':tokens,
+                    'relations':'',
                     'sentences':sentences,
                     'edus':edus,
                     'indent':indent}

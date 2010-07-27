@@ -228,6 +228,13 @@ function text_keydown(event) {
     } else if (key == 84) {
 	edit_topic();
 	return false;
+    } else if (key == 119) {
+	// F8 - show text info
+	$info.text("sentence id:"+(sent_id+find_current_sentence()))
+	    .dialog('open');
+    } else if (key == 118) {
+	$rels.dialog('open');
+	//$('#status').text('open rels:'+$rels);
     } else {
 	alert("bla"+event.keyCode);
     }

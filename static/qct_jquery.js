@@ -12,7 +12,7 @@ function resetTimeout() {
   if (tm!=0) {
     window.clearTimeout(tm);
   }
-  set_status("modified");
+  set_status("modified"+JSON.stringify(dirty));
   tm=window.setTimeout("after_timeout()",600);
 }
 

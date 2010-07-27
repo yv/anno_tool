@@ -2,25 +2,51 @@
 <head>
 <title>Discourse Annotator</title>
 <script src="/static/jquery.js"></script>
+<script src="/static/jquery.ui.core.min.js"></script>
+<script src="/static/jquery.ui.widget.min.js"></script>
+<script src="/static/jquery.ui.mouse.min.js"></script>
+<script src="/static/jquery.ui.button.min.js"></script>
+<script src="/static/jquery.ui.draggable.min.js"></script>
+<script src="/static/jquery.ui.position.min.js"></script>
+<script src="/static/jquery.ui.resizable.min.js"></script>
+<script src="/static/jquery.ui.dialog.min.js"></script>
+<script src="/static/jquery.ui.position.min.js"></script>
 <script src="/static/json2.js"></script>
 <script src="/static/qct_jquery.js"></script>
+<link rel="stylesheet" href="/static/themes/base/jquery.ui.all.css" type="text/css">
+<link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css">
 <script src="/static/discourse.js"></script>
 <script type="text/javascript">
   disc_id={{disc_id}};
+  sent_id={{sent_id}};
   tokens={{tokens}};
   sentences={{sentences}};
   edus={{edus}};
   indent={{indent}};
   topics={{topics}};
+  relations={{relations}};
 
 save_endpoint='/pycwb/saveDiscourse/'+disc_id;
-
 
 $(function() {
 $('#text').css({'height':(($(window).height())-200)+'px'});
 $(window).resize(function(){
   $('#text').css({'height':(($(window).height())-200)+'px'});
-})});  
+})
+$info=$('#dialog').dialog({title:'Info',autoOpen:false,
+  modal:true,close:refocus_text});
+$('#relations-text').text(relations)
+  .blur(function() {
+  relations=$('#relations-text').val();
+  dirty['relations']=relations;
+  resetTimeout();
+});
+$rels=$('#relations-div').dialog({title:'Relations',autoOpen:false,
+  close:refocus_text,resize:function(event,ui){
+  $('#relations-text').width($('#relations-div').width()-15)
+  .height($('#relations-div').height()-10);
+}});
+});  
 </script>
 <link rel="stylesheet" href="/static/discourseEdit.css">
 </head>
@@ -31,5 +57,11 @@ $(window).resize(function(){
 <div id="auxinput">
 </div>
 <div id="status">
+</div>
+<div id="dialog" style="display:none">
+</div>
+<div id="relations-div" style="width:280px;height:100px;display:none">
+<textarea style="width:270px;height:90px" id="relations-text">
+</textarea>
 </div>
 </body>

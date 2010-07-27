@@ -10,6 +10,8 @@ from werkzeug.exceptions import NotFound, Forbidden
 import json
 
 def compute_url(text_id):
+  if text_id.startswith('wsj'):
+    return '#'
   year=text_id[1:3]
   month=text_id[3:5]
   day=text_id[5:7]
@@ -51,14 +53,21 @@ def render_sentence(request,sent_no):
 
 def render_discourse(request,disc_no):
   db=request.corpus
+  corpus=db.corpus
   t_id=int(disc_no)
   doc=db.get_discourse(t_id,request.user)
+  texts=corpus.attribute("text_id",'s')
+  sents=corpus.attribute("s",'s')
+  start,end,text_attrs=texts[t_id]
+  sent_id=sents.cpos2struc(start)
   return render_template('discourse.html',
                          disc_id=disc_no,
+                         sent_id=sent_id,
                          sentences=json.dumps(doc['sentences']),
                          edus=json.dumps(doc['edus']),
                          tokens=json.dumps(doc['tokens']),
                          indent=json.dumps(doc['indent']),
+                         relations=json.dumps(doc.get('relations','')),
                          topics=json.dumps(doc.get('topics',[])))
 
 def list_discourse(request):
@@ -89,6 +98,7 @@ def save_discourse(request,disc_no):
     stuff=json.load(request.stream)
     try:
       for k,v in stuff.iteritems():
+        print k,v
         if k[0]=='_': continue
         doc[k]=v
     except HTTPException,e:
