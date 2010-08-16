@@ -7,6 +7,8 @@
 //indent=[0,0,0];
 //topics=[];
 
+topic_rels={};
+
 cur_word=0;
 
 INDENT_STEP=20;
@@ -22,18 +24,20 @@ function make_segments() {
 	if (next_topic<topics.length &&
 	    topics[next_topic][0]==i) {
 	    if (in_div) {
-		s+='</div>';
+		s+='<span class="edu-rel">'+rel+'</span></div>';
 		in_div=false;
 	    }
+	    var rel=topic_rels['T'+next_topic];
+	    if (rel==undefined) { rel='(no rel)'; }
 	    s+='<div class="topic" id="t'+next_topic+
 		'" onclick="set_curword('+i+');edit_topic();"><span class="edu-label">T'+
 		next_topic+'</span>'+
-		topics[next_topic][1]+'</div>';
+		topics[next_topic][1]+'<span class="edu-rel">'+rel+'</span></div>';
 	    next_topic++;
 	}
 	if (edus[next_edu]==i) {
 	    if (in_div) {
-		s+='</div>';
+		s+='<span class="edu-rel">'+rel+'</span></div>';
 	    }
 	    next_edu++;
 	    sub_edu++;
@@ -41,6 +45,8 @@ function make_segments() {
 		sub_edu=0;
 		next_sent++;
 	    }
+	    rel=topic_rels[''+next_sent+'.'+sub_edu];
+	    if (rel==undefined) { rel='(no rel)'; }
 	    s+='<div class="edu" id="edu'+next_edu+
 		'" style="margin-left:'+(indent[next_edu-1]*INDENT_STEP)+'px"><span class="edu-label">'+
 		next_sent+'.'+sub_edu+'</span>';
@@ -49,7 +55,7 @@ function make_segments() {
 	s+='<span class="word" id="w'+i+'">'+tokens[i]+'</span> ';
     }
     if (in_div) {
-	s +='</div>';
+	s +='<span class="edu-rel">'+rel+'</span></div>';
     } else {
 	s+='(empty)';
     }
@@ -223,8 +229,8 @@ function text_keydown(event) {
 	} else {
 	    redisplay_all();
 	}
-    } else if (key == 16 || key == 17) {
-	// ignore shift, ctrl
+    } else if (key == 16 || key == 17 || key == 0) {
+	// ignore shift, ctrl, mod4
     } else if (key == 84) {
 	edit_topic();
 	return false;
@@ -279,9 +285,11 @@ function topic_keydown(event) {
 	redisplay_all();
     } else if (key==13 || key==27 ||
 	       key==40 || key==38) {
+	var rel=topic_rels['T'+next_topic];
+	if (rel==undefined) { rel='(no rel)'; }
 	$('#t'+cur_topic).html('<span class="edu-label">T'+
 			       cur_topic+'</span>'+
-			       topics[cur_topic][1]);
+			       topics[cur_topic][1]+'<span class="edu-rel">'+rel+'</span>');
 	refocus_text();
 	if (key==38) {
 	    var sent=find_current_edu();
@@ -323,8 +331,51 @@ function focus_text(event) {
     }
 }
 
+var edu_re="[0-9]+(?:\\.[0-9]+)?";
+var topic_re="T[0-9]+";
+var span_re="(?:"+edu_re+"(?:-"+edu_re+")?|"+topic_re+")";
+//var span_re=edu_re;
+var relation_re=new RegExp("(\\w+(?:[- ]\\w+)*|\\?)\\s*\\(\\s*("+span_re+")\\s*,\\s*("+span_re+")\\s*\\)\\s*");
+//var relation_re=new RegExp("(\\w+)\\((\\w+),(\\w+)\\)");
+var comment_re=new RegExp("//.*$");
+function parse_relations(rels) {
+    var errors='';
+    topic_rels={};
+    lines=rels.split(/[\r\n]+/);
+    for (var i=0; i<lines.length; i++) {
+	var line=lines[i];
+	line.replace(comment_re,'');
+	if (line.match(/^$/)) {
+	    continue;
+	}
+	var result=line.match(relation_re);
+	if (result==null) {
+	    errors=errors+'cannot parse: '+line+'\n';
+	} else {
+	    var rel1=result[2];
+	    if (rel1.match('T[0-9]+')) {
+		topic_rels[rel1]=line;
+	    } else {
+		rel1=rel1.split('-')[0];
+		if (rel1.match('^[0-9]+$')) {
+		    rel1=rel1+'.0';
+		}
+		topic_rels[rel1]=line;
+	    }
+	    //errors=errors+'Relation:'+result[1]+' arg1:'+result[2]+' arg2:'+result[3]+'\n';
+	}
+    }
+    return errors;
+}
+
 function fill_segments() {
+    var errors=parse_relations(relations);
     redisplay_all();
     $('#fake-input').focus();
+    if (errors=='') {
+	$('#status').text("loaded.");
+    } else {
+	$('#status').text("relation errors:"+errors.replace('\n','<br>'));
+    }	
 }
 

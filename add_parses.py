@@ -1,6 +1,6 @@
 import sys
 import pytree.export as export
-import mongoDB.annodb as annodb
+import annodb.database as annodb
 import getopt
 
 corpus_name='TUEBA4'

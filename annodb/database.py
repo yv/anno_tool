@@ -2,7 +2,6 @@ import sys
 import re
 import CWB.CL as cwb
 import pymongo
-from anno_config import *
 import hashlib
 import fshp
 
@@ -40,7 +39,7 @@ class Annotation(object):
     def __init__(self,doc):
         self._doc=doc
     def get_id(self):
-        return self._doc.find_one({'_id':_id})
+        return self._doc.find_one({'_id':self._id})
     def get(self,key,default=None):
         return self._doc.get(key,default)
     def keys(self):
@@ -110,13 +109,13 @@ def report_attributes_simple(part,names,out=sys.stdout,
                              ignore=couch_ignore_attributes):
     attrs=set()
     pairs=zip(names,part)
-    for n,m in pairs:
+    for unused_n,m in pairs:
         attrs.update(m.keys())
     attrs.difference_update(ignore)
     for k in sorted(attrs):
         print >>out, "<tr><td><b>%s</b></td><td>"%(k,)
         seen_vals=set()
-        for n1,m1 in pairs:
+        for unused_n1,m1 in pairs:
             if k not in m1:
                 continue
             val=m1[k]
@@ -208,6 +207,18 @@ class AnnoDB(object):
             result['annotator']=annotator
             result['corpus']=self.corpus_name
             return Annotation(result)
+    def find_annotations(self,span,annotator=None):
+        if annotator is None:
+            docs=self.db.annotation.find({'span':{'$gte':span[0],'$lte':span[1]}})
+        else:
+            docs=self.db.annotation.find({'annotator':annotator,
+                                            'span':{'$gte':span[0],'$lte':span[1]}})
+        result=[]
+        for doc in docs:
+            span_d=doc['span']
+            if (span_d[0]>=span[0] and span_d[0]<=span[1]):
+                result.append(Annotation(doc))
+        return result
     def display_span(self,span,sent_before,sent_after,
                      out=sys.stdout):
         sent0=self.sentences.cpos2struc(span[0])
@@ -233,6 +244,38 @@ class AnnoDB(object):
                 if off==span[1]-1:
                     out.write('</b>')
                 out.write(' ')
+    def display_spans(self, spans, out=sys.stdout):
+        ''' given a set of spans as tuples (start,end, start-tag, end-tag),
+            displays the corresponding text with these spans.
+            TODO: * add line breaks for sentences
+                  * skip unused sentences
+        '''
+        words=self.words
+        expand_to=self.sentences
+        left_border=min([span[0] for span in spans])
+        right_border=max([span[1] for span in spans])
+        if right_border-left_border>10000:
+            raise ValueError(str(spans))
+        spans=sorted(spans)
+        rspans=reversed(spans)
+        if expand_to is not None:
+            left_s=expand_to.cpos2struc(left_border)
+            left_border=expand_to[left_s][0]
+            right_s=expand_to.cpos2struc(right_border-1)
+            right_border=expand_to[right_s][1]+1
+        starting_tags=[[] for unused_ in xrange(left_border,right_border)]
+        ending_tags=[[] for unused_ in xrange(left_border,right_border)]
+        for s in rspans:
+            starting_tags[s[0]-left_border].append(s[2])
+        for s in spans:
+            ending_tags[s[1]-left_border-1].append(s[3])
+        for i,offset in enumerate(xrange(left_border,right_border)):
+            for s in starting_tags[i]:
+                out.write(s)
+            out.write(words[offset])
+            for s in ending_tags[i]:
+                out.write(s)
+            out.write(' ')
     def display_annotation(self,parts,names,out):
         span=parts[0].span
         print >>out, '<div class="srctext">'
@@ -253,13 +296,13 @@ class AnnoDB(object):
             words=self.words
             sents=self.sentences
             texts=self.corpus.attribute("text_id",'s')
-            t_start,t_end,t_attrs=texts[disc_id]
+            t_start,t_end,unused_attrs=texts[disc_id]
             tokens=[w.decode('ISO-8859-15') for w in words[t_start:t_end+1]]
             sent=sents.cpos2struc(t_start)
             sent_end=sents.cpos2struc(t_end)
             sentences=[]
             for k in xrange(sent,sent_end+1):
-                s_start,s_end,s_attr=sents[k]
+                s_start,unused_end,unused_attr=sents[k]
                 sentences.append(s_start-t_start)
             edus=sentences[:]
             indent=[0]*len(edus)
@@ -299,13 +342,17 @@ class AnnoDB(object):
                      sent_span[0]+ctx[1]-ctx_sent[3])
         assert self.words[corpus_span[0]]==doc.tokens[ctx[0]],(doc.tokens[ctx_sent[3]:ctx_sent[4]],self.words[sent_span[0]:sent_span[1]])
         return corpus_span
+    def ensure_index(self):
+        self.db.annotation.ensure_index('span')
+        self.db.annotation.ensure_index([('annotator',1),('span',1)])
 
 default_database='TUEBA4'
 databases={}
 def get_corpus(name=default_database):
     if name not in databases:
         databases[name]=AnnoDB(name)
-    return databases[name]
+    result=databases[name]
+    return result
 
 def create_task_anno(username,task,populate=None):
     db=get_database()

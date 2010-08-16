@@ -49,7 +49,7 @@ function get_text_addr(text) {
 }
 
 function mark_primary(prefix0, addr) {
-   var myref='cell:'+prefix0+':'+addr.join('.');
+   var myref='cell-'+prefix0+'-'+addr.join('.');
    var my_element=$(myref);
    if (!my_element) {
        alert("Element not found: "+myref);
@@ -60,7 +60,7 @@ function mark_primary(prefix0, addr) {
 }
 
 function mark_secondary(prefix0, addr) {
-   var myref='cell:'+prefix0+':'+addr.join('.');
+   var myref='cell-'+prefix0+'-'+addr.join('.');
    var my_element=$(myref);
    if (!my_element) {
        alert("Element not found: "+myref);
@@ -71,7 +71,7 @@ function mark_secondary(prefix0, addr) {
 }
 
 function mark_none(prefix0, addr) {
-   var myref='cell:'+prefix0+':'+addr.join('.');
+   var myref='cell-'+prefix0+'-'+addr.join('.');
    var my_element=$(myref);
    if (!my_element) {
        alert("Element not found: "+myref);
@@ -138,15 +138,15 @@ function chosen(prefix0,addr) {
     data_prefix=prefix0.substring(4);
     if (a.length>=1) {
 	mark_primary(prefix0,a[0]);
-	dirty[data_prefix+':rel1']=get_addr_text(a[0]);
+	dirty[data_prefix+'-rel1']=get_addr_text(a[0]);
 	if (a.length>=2) {
 	    mark_secondary(prefix0,a[1]);
-	    dirty[data_prefix+':rel2']=get_addr_text(a[1]);
+	    dirty[data_prefix+'-rel2']=get_addr_text(a[1]);
 	} else {
-	    dirty[data_prefix+':rel2']='NULL';
+	    dirty[data_prefix+'-rel2']='NULL';
 	}
     } else {
-	dirty[data_prefix+':rel1']='NULL';
+	dirty[data_prefix+'-rel1']='NULL';
     }
     resetTimeout();
     old_chosen[prefix0]=a;
@@ -159,7 +159,7 @@ function create_konn2_table(prefix0,prefix1,addr,indent,
     if (example.word && flags['!'+example.word]) {
 	return '';
     }
-    result='<tr height="25px"><td id="cell:'+prefix+
+    result='<tr height="25px"><td id="cell-'+prefix+
 	'" onclick="chosen(\''+prefix0+'\','+eval(JSON.stringify(addr))+')" style="padding-left:'+(indent*25+10)+'px;">'+schema_entry[0]+'</td></tr>';
     if (schema_entry[2]) {
 	var children=schema_entry[2];
@@ -178,7 +178,7 @@ function create_konn2_table(prefix0,prefix1,addr,indent,
 function create_konn2(prefix,example) {
     result='<table class="konn2">';
     for (var i=0; i<schema.length; i++) {
-	result+=create_konn2_table('tab:'+prefix,':'+i,[i],0,schema[i],example);
+	result+=create_konn2_table('tab-'+prefix,'-'+i,[i],0,schema[i],example);
     }
     //TBD: add comment textarea
     result+='</table>';
@@ -191,9 +191,9 @@ function create_widgets() {
     var secondary_mark=[];
     for (var i=0; i<examples.length; i++) {
 	var example=examples[i];
-	s_widgets+='<div class="srctext" id="src:'+example._id+'">\n'+
+	s_widgets+='<div class="srctext" id="src-'+example._id+'">\n'+
 	    example.text+"</div>";
-	s_widgets+='<div align="right" style="margin-right:35px"><table><tr><td valign="top"><textarea cols="60" rows="5" id="'+example._id+':comment" onkeyup="after_blur(\''+example._id+':comment\')">';
+	s_widgets+='<div align="right" style="margin-right:35px"><table><tr><td valign="top"><textarea cols="60" rows="5" id="'+example._id+'-comment" onkeyup="after_blur(\''+example._id+'-comment\')">';
 	//TBD: escape comment
 	if (example.comment) {
 	    s_widgets+=example.comment.escapeHTML();
@@ -203,7 +203,7 @@ function create_widgets() {
 	var a=[];
 	if (example.rel1 && example.rel1!='NULL') {
 	    var addr1=get_text_addr(example.rel1);
-	    var prefix0='tab:'+example._id;
+	    var prefix0='tab-'+example._id;
 	    a.push(addr1);
 	    primary_mark.push([prefix0,addr1]);
 	    if (example.rel2 && example.rel2!='NULL') {

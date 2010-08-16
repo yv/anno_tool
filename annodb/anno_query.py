@@ -7,54 +7,14 @@ import sys
 BASEDIR=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASEDIR)
 from schema import schemas
-from anno_tools import *
-from anno_config import *
 from annodb.database import *
 from web_stuff import *
 from cStringIO import StringIO
 from querygrammar import FunctorOp, Accessor, TaxonAccessor, \
     Constant, parser, make_query
 
-from werkzeug import run_simple, parse_form_data, escape
 from werkzeug.exceptions import NotFound, Forbidden
-
-class ForAll(object):
-    """checks a condition on all markables in a query"""
-    def __init__(self,a):
-        self.a=a
-    def __call__(self,mss):
-        for ms in mss:
-            if not self.a(ms):
-                return False
-        return True
-
-class ForAny(object):
-    """checks a condition on some markables in a query"""
-    def __init__(self,a):
-        self.a=to_query(a)
-    def __call__(self,mss):
-        for ms in mss:
-            if ms==[]:
-                continue
-            if self.a(ms):
-                return True
-        return False
-
-class Disagree(object):
-    """checks a condition on some markables in a query"""
-    def __init__(self,a):
-        self.a=to_query(a)
-    def __call__(self,mss):
-        someTrue=False
-        someFalse=False
-        for ms in mss:
-            if self.a(ms):
-                someTrue=True
-            else:
-                someFalse=True
-        return someTrue and someFalse
-    
-        
+            
 def run_query(q, which_set,db):
     yield """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
 "http://www.w3.org/TR/html4/strict.dtd">
@@ -297,7 +257,7 @@ def save_attributes(request):
         print >>sys.stderr, stuff
         try:
             for k,v in stuff.iteritems():
-                anno_key,attr=k.split(':')
+                anno_key,attr=k.split('-',1)
                 if attr in immutable_attributes:
                     print >>sys.stderr,"%s ignored (immutable)"%(attr,)
                     continue

@@ -31,6 +31,13 @@
     margin-right: 10px;
 }
 
+.edu-rel {
+    margin-left: 3px;
+    color: #666666;
+    font-size: 10px;
+    text-align: right;
+}
+
 .active {
     text-decoration: underline;
     background-color: #ffffaa;
@@ -40,4 +47,21 @@
     border: 1px solid #ffddee;
     background-color: #ffddee;
     width: 80%;
+}
+
+.drel-edu {
+ color: #333366;
+ background-color: #ffffee;
+}
+
+.drel-rel {
+ text-decoration: underline;
+}
+
+.drel-punct {
+ font-weight: bold;
+}
+
+.drel-unknown {
+ background-color: #ffdddd;
 }

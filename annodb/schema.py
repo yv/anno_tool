@@ -35,6 +35,27 @@ def display_textbox(prefix,value,out):
         out.write(value)
     out.write('</textarea>')
 
+def make_display_simple(slots,anno,db,out,spans=None):
+    if spans is None:
+        print >>out, '<div class="srctext" id="src:%s">'%(anno._id,)
+        db.display_span(anno['span'],1,0,out)
+        print >>out, '</div>'
+    else:
+        print >>out, '<div class="srctext" id="src:%s">'%(anno._id,)
+        db.display_spans(spans,out)
+        print >>out, '</div>'        
+    out.write('<table>')
+    for key in slots:
+        out.write('<tr><td><b>')
+        out.write(key)
+        out.write(':</b></td><td>')
+        out.write(anno.get(key,''))
+        out.write('</td></tr>')
+    val=anno.get('comment',None)
+    if val is not None:
+        out.write('<tr><td><b>comment:</b></td><td>%s</td></tr>')
+    out.write('</table>')
+
 class SimpleSchema:
     def __init__(self, schema_descr):
         self.descr=schema_descr
@@ -54,24 +75,26 @@ class SimpleSchema:
             val=anno.get(key,None)
             if val is not None:
                 edited=True
-                out_js.write('what_chosen["%s"]="%s";'%(anno._id+':'+key,
+                out_js.write('what_chosen["%s"]="%s";'%(anno._id+'-'+key,
                                                        val))
-            display_chooser(anno._id+':'+key,values,
+            display_chooser(anno._id+'-'+key,values,
                             val,out)
             out.write('</td></tr>')
         out.write('<tr><td><b>comment:</b></td><td>')
         val=anno.get('comment',None)
         if val is not None:
             edited=True
-        display_textbox(anno._id+':comment',
+        display_textbox(anno._id+'-comment',
                         anno.get('comment',None),out)
         out.write('</td></tr></table>')
+    def make_display(self,anno,db,out,out_js):
+        make_display_simple(self.get_slots(),anno,db,out)
     def get_state(self,anno):
         scheme=self.descr
         has_comment=(anno.get('comment',None) is not None)
         empty=True
         full=True
-        for key,values in scheme:
+        for key,unused_val in scheme:
             if anno.get(key,None) is None:
                 full=False
             else:
@@ -86,7 +109,7 @@ class SimpleSchema:
         else:
             return 1
     def get_slots(self):
-        return [k for (k,vs) in self.descr]
+        return [k for (k,unused_) in self.descr]
             
 
 konn_scheme=[('temporal',['temporal','non_temporal']),
@@ -166,6 +189,8 @@ class TaxonomySchema:
         munged_anno=dict(anno)
         munged_anno['text']=s_out.getvalue().decode('ISO-8859-15')
         print >>out_js,'examples.push(%s);'%(json.dumps(munged_anno),)
+    def make_display(self,anno,db,out,out_js):
+        make_display_simple(self.get_slots(),anno,db,out)
     def get_state(self,anno):
         scheme=self.descr
         has_comment=(anno.get('comment',None) is not None)
@@ -184,3 +209,43 @@ class TaxonomySchema:
 
 konn2_schema=load_schema(file(os.path.join(BASEDIR,'konn2_schema.txt')))
 schemas['konn2']=TaxonomySchema(konn2_schema)
+
+class PropbankSchema:
+    def __init__(self):
+        pass
+    def make_widgets(self,anno,db,out,out_js):
+        self.make_display(anno,db,out,out_js)
+    def make_display(self,anno,db,out,out_js):
+        spans=[]
+        span=anno['span']
+        spans.append((span[0],span[1],'<b>','</b>'))
+        for k,v in anno['args'].iteritems():
+            if v is None: continue
+            for span0,span1 in v:
+                spans.append((span0,span1,'[<sub>%s</sub>'%(k,),']'))
+        make_display_simple(['sense','morph'],anno,db,out,spans)
+
+schemas['propbank']=PropbankSchema()
+
+class PDTBSchema:
+    def __init__(self):
+        pass
+    def make_widgets(self,anno,db,out,out_js):
+        self.make_display(anno,db,out,out_js)
+    def make_display(self,anno,db,out,out_js):
+        spans=[]
+        reltype=anno['reltype']
+        span=anno['span']
+        if reltype in ['Explicit']:
+            for span in anno['conn_parts']:
+                spans.append((span[0],span[1],'<b>','</b>'))
+        if reltype in ['Implicit','Explicit','AltLex']:
+            attrs=['semtag','semtag2']
+        else:
+            attrs=['reltype']
+        for k in ['arg1','arg2']:
+            span0,span1=anno[k]
+            spans.append((span0,span1,'[<sub>%s</sub>'%(k,),']'))
+        make_display_simple(attrs,anno,db,out,spans)
+        
+schemas['pdtb']=PDTBSchema()

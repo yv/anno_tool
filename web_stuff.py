@@ -16,7 +16,6 @@ based on:
 """
 import os.path
 import re
-import sys
 import datetime
 from werkzeug import Request, Response, cached_property, redirect, escape
 from werkzeug.exceptions import HTTPException, MethodNotAllowed, \
@@ -24,11 +23,11 @@ from werkzeug.exceptions import HTTPException, MethodNotAllowed, \
 from werkzeug.contrib.securecookie import SecureCookie
 from jinja2 import Environment, FileSystemLoader
 import json
-from annodb.database import login_user, AnnoDB, get_corpus, \
+from annodb.database import login_user, get_corpus, \
      default_database, get_database
-from anno_config import anno_sets
 
-allowed_corpora=['TUEBA4','R6PRE1','PTB']
+allowed_corpora_nologin=['TUEBA4','R6PRE1']
+allowed_corpora=allowed_corpora_nologin+['PTB']
 
 TEMPLATE_PATH=os.path.join(os.path.dirname(__file__),'templates')
 #mylookup=TemplateLookup(directories=[TEMPLATE_PATH])
@@ -139,12 +138,14 @@ def index(request):
     db=get_corpus(corpus_name)
     if not request.user:
         tasks=sorted(db.get_tasks(), key=by_id)
+        corpora=allowed_corpora_nologin
     else:
         tasks=sorted(db.get_tasks(request.user), key=by_id)
+        corpora=allowed_corpora
     response=render_template('index.html',user=request.user,
                              tasks=tasks, tasks0=tasks,
                              corpus_name=corpus_name,
-                             corpora=allowed_corpora)
+                             corpora=corpora)
     expire_date=datetime.datetime.now()
     expire_date=expire_date.replace(month=expire_date.month+1)
     response.set_cookie('corpus',corpus_name,
@@ -203,7 +204,3 @@ class MyMap(object):
         except HTTPException, e:
             resp=e
         return resp(environ,start_response)
-                    
-
-if __name__ == '__main__':
-    run_simple('localhost', 4000, application)
