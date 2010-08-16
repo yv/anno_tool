@@ -10,8 +10,6 @@
 <script src="/static/jq/jquery.ui.position.min.js"></script>
 <script src="/static/jq/jquery.ui.resizable.min.js"></script>
 <script src="/static/jq/jquery.ui.dialog.min.js"></script>
-<script src="/static/jq/jquery.layout.min-1.2.0.js"></script>
-<script src="/static/cm/codemirror.js"></script>
 <script src="/static/json2.js"></script>
 <script src="/static/qct_jquery.js"></script>
 <link rel="stylesheet" href="/static/themes/base/jquery.ui.all.css" type="text/css">
@@ -35,6 +33,9 @@ function on_layout_resize(elm,pane) {
 }
 
 $(function() {
+ $('#status').click(function() {
+ $('#status').text('');
+});
  $info=$('#dialog').dialog({title:'Info',autoOpen:false,
    modal:true,close:refocus_text});
 $('#relations-text').text(relations)
@@ -49,21 +50,21 @@ $('#relations-text').text(relations)
   resetTimeout();
   return 1;
 });
-
 $rels=$('#relations-div').dialog({title:'Relations',autoOpen:false,
    close:refocus_text,resize:function(event,ui){
-   editor.width($('#relations-div').width()-15) 
+   $('#relations-text').width($('#relations-div').width()-15) 
    .height($('#relations-div').height()-10);
  }});
-$('body').layout({applyDefaultStyles: true,
- onresize:on_layout_resize,onopen:on_layout_resize,onclose:on_layout_resize});
-on_layout_resize();
-$('#status').text("loaded.");
+$('#text').css({'height':(($(window).height())-100)+'px'});
+$(window).resize(function(){
+  $('#text').css({'height':(($(window).height())-100)+'px'});
+});
+fill_segments();
 });
 </script>
 <link rel="stylesheet" href="/static/discourseEdit.css">
 </head>
-<body onload="fill_segments();" bgcolor="#eeeeee">
+<body bgcolor="#eeeeee">
 <div class="ui-layout-center">
 <div id="text" style="position:relative; height: 400px; margin:1px; border: 2px solid #aaaaaa; overflow:auto">
 </div>

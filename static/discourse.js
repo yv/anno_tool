@@ -371,11 +371,11 @@ function parse_relations(rels) {
 function fill_segments() {
     var errors=parse_relations(relations);
     redisplay_all();
-    $('#fake-input').focus();
     if (errors=='') {
 	$('#status').text("loaded.");
     } else {
 	$('#status').html("relation errors:"+errors.replace('\n','<br>'));
     }	
+    $('#fake-input').focus();
 }
 
