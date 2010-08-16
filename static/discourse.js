@@ -375,7 +375,7 @@ function fill_segments() {
     if (errors=='') {
 	$('#status').text("loaded.");
     } else {
-	$('#status').text("relation errors:"+errors.replace('\n','<br>'));
+	$('#status').html("relation errors:"+errors.replace('\n','<br>'));
     }	
 }
 
