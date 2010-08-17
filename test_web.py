@@ -1,12 +1,13 @@
 from annodb import schema
 from cStringIO import StringIO
-from web_stuff import render_template, redirect, Response
+from web_stuff import render_template, redirect, Response, ADMINS
 from werkzeug.utils import escape
 from werkzeug.exceptions import NotFound, Forbidden, HTTPException
 import json
 import pytree.csstree as csstree
 import pytree.export as export
 import sys
+import re
 from collections import defaultdict
 
 def compute_url(text_id):
@@ -94,6 +95,115 @@ def render_discourse(request,disc_no):
                            relations=json.dumps(doc.get('relations','')),
                            topics=json.dumps(doc.get('topics',[])))
 
+edu_re="[0-9]+(?:\\.[0-9]+)?"
+topic_s="T[0-9]+"
+topic_re=re.compile(topic_s)
+span_re="(?:"+edu_re+"(?:-"+edu_re+")?|"+topic_s+")"
+relation_re=re.compile("(\\w+(?:[- ]\\w+)*|\\?)\\s*\\(\\s*("+span_re+")\\s*,\\s*("+span_re+")\\s*\\)\\s*")
+comment_re=re.compile("//.*$");
+
+def parse_arg(arg):
+    if topic_re.match(arg):
+        return arg
+    else:
+        arg=arg.split('-')[0]
+        if '.' not in arg:
+            arg+='.0'
+        return arg
+
+def parse_relations(relations):
+    relations_unparsed=[]
+    relations_parsed=defaultdict(list)
+    for l in relations.split('\n'):
+        l_orig=l.strip()
+        l=l_orig
+        l=comment_re.sub('',l)
+        m=relation_re.match(l)
+        if not m:
+            relations_unparsed.append(l_orig)
+        else:
+            rel_label=m.group(1)
+            rel_arg1=parse_arg(m.group(2))
+            rel_arg2=parse_arg(m.group(3))
+            relations_parsed[rel_arg1].append(l_orig)
+    return relations_parsed,relations_unparsed
+        
+def make_rels(rels):
+    if rels is None or len(rels)==0:
+        return ''
+    elif len(rels)==1:
+        return rels[0].encode('ISO-8859-1')
+    else:
+        return '<br>'+'<br>'.join(rels).encode('ISO-8859-1')
+def render_discourse_printable(request,disc_no):
+    db=request.corpus
+    corpus=db.corpus
+    t_id=int(disc_no)
+    if not request.user:
+        raise Forbidden("must be logged in")
+    if request.user and request.user in ADMINS and 'who' in request.args:
+        who=request.args['who']
+    else:
+        who=request.user
+    doc=db.get_discourse(t_id,who)
+    texts=corpus.attribute("text_id",'s')
+    sents=corpus.attribute("s",'s')
+    start,end,text_attrs=texts[t_id]
+    sent_id=sents.cpos2struc(start)
+    sentences=doc['sentences']
+    edus=doc['edus']
+    tokens=doc['tokens']
+    indent=doc['indent']
+    topic_rels,relations_unparsed=parse_relations(doc.get('relations',''))
+    topics=doc.get('topics',[])
+    # go through words, creating discourse
+    out=StringIO()
+    out.write('''<html><head><title>Discourse %d:%s</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-15" />
+    <link rel="stylesheet" href="/static/discourseEdit.css" type="text/css">
+    </head>
+    <body>
+    <h1>Discourse %d:%s</h1>
+    '''%(t_id,who,t_id,who))
+    next_sent=0
+    next_edu=0
+    next_topic=0
+    sub_edu=0
+    INDENT_STEP=20
+    in_div=False
+    for i,tok in enumerate(tokens):
+        if next_topic<len(topics) and topics[next_topic][0]==i:
+            if in_div:
+                out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
+                in_div=False
+            rel=make_rels(topic_rels.get('T%d'%(next_topic,),None))
+            out.write('<div class="topic"><span class="edu-label">T%d</span>\n'%(next_topic,))
+            out.write(topics[next_topic][1].encode('ISO-8859-1'))
+            out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
+            next_topic +=1
+        if next_edu<len(edus) and edus[next_edu]==i:
+            if in_div:
+                out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
+                in_div=False
+            next_edu+=1
+            sub_edu+=1
+            if next_sent<len(sentences) and sentences[next_sent]==i:
+                sub_edu=0
+                next_sent+=1
+            rel=make_rels(topic_rels.get('%d.%d'%(next_sent,sub_edu),None))
+            out.write('<div class="edu" style="margin-left:%dpx"><span class="edu-label">%d.%d</span>'%(indent[next_edu-1]*INDENT_STEP,next_sent,sub_edu))
+            in_div=True
+        out.write('%s '%(tok.encode('ISO-8859-1'),))
+    if in_div:
+        out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
+    if relations_unparsed:
+        out.write('<h2>unparsed relations:</h2>')
+        out.write('<br>'.join(relations_unparsed).encode('ISO-8859-1'))
+    out.write('</body>\n</html>\n')
+    return Response([out.getvalue()],content_type='text/html; charset=ISO-8859-15')
+    
+            
+
 def list_discourse(request):
     db=request.corpus
     words=db.words
@@ -108,7 +218,11 @@ def list_discourse(request):
         else:
             txt0=text_ids[docid]
             txt="%s: %s"%(txt0[2],' '.join(words[txt0[0]:txt0[0]+5]))
-            doc_lst.append((request.user,r['_docno'],txt.decode('ISO-8859-15')))
+            if request.user in ADMINS:
+                users=[doc['_user'] for doc in db.db.discourse.find({'_docno':docid})]
+            else:
+                users=[]
+            doc_lst.append((request.user,r['_docno'],txt.decode('ISO-8859-15'),users))
     return render_template('discourse_list.html',
                            results=doc_lst)
 
