@@ -285,7 +285,7 @@ function topic_keydown(event) {
 	redisplay_all();
     } else if (key==13 || key==27 ||
 	       key==40 || key==38) {
-	var rel=topic_rels['T'+next_topic];
+	var rel=topic_rels['T'+cur_topic];
 	if (rel==undefined) { rel='(no rel)'; }
 	$('#t'+cur_topic).html('<span class="edu-label">T'+
 			       cur_topic+'</span>'+
