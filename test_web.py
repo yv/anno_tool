@@ -9,31 +9,28 @@ import pytree.export as export
 import sys
 import re
 from collections import defaultdict
-
-def compute_url(text_id):
-    if text_id.startswith('wsj'):
-        return '#'
-    year=text_id[1:3]
-    month=text_id[3:5]
-    day=text_id[5:7]
-    artno=int(text_id[8:])
-    return 'http://tintoretto.sfb.uni-tuebingen.de/taz/19%s/%s/%s/art%03d.htm'%(year,month,day,artno)
+from annodb.corpora import corpus_sattr, corpus_d_sattr, corpus_urls
 
 def render_sentence(request,sent_no):
     db=request.corpus
     tueba_corpus=db.corpus
     sno=int(sent_no)-1
-    words=tueba_corpus.attribute("word",'p')
-    sents=tueba_corpus.attribute("s",'s')
-    texts=tueba_corpus.attribute("text_id",'s')
+    words=db.words
+    sents=db.sentences
+    texts=tueba_corpus.attribute(corpus_sattr.get(db.corpus_name,'text_id'),'s')
+    texts_d=tueba_corpus.attribute(corpus_d_sattr.get(db.corpus_name,'text_id'),'s')
     max_sent=len(sents)
-    start,end,sent_attrs=sents[sno]
+    start,end=sents[sno][:2]
     tokens=[]
     for i in xrange(start,end+1):
         tokens.append(words[i].decode('ISO-8859-1'))
     t_id=texts.cpos2struc(end-1)
+    t_id_d=texts_d.cpos2struc(end-1)
     unused_start,unused_end,t_attrs=texts[t_id]
-    text_url=compute_url(t_attrs)
+    if db.corpus_name in corpus_urls:
+        text_url=corpus_urls[db.corpus_name](t_attrs,db.corpus_name)
+    else:
+        text_url='#'
     parses=db.get_parses(sno)
     trees_out=StringIO()
     names_parses=sorted([k for k in parses.iterkeys() if k!='_id'])
@@ -73,7 +70,7 @@ def render_sentence(request,sent_no):
                            text_id=t_attrs, text_url=text_url,
                            prev_sent='/pycwb/sentence/%d'%(sno,),
                            next_sent='/pycwb/sentence/%d'%(sno+2,),
-                           disc_id=t_id)
+                           disc_id=t_id_d)
 
 
 def render_discourse(request,disc_no):
@@ -81,7 +78,7 @@ def render_discourse(request,disc_no):
     corpus=db.corpus
     t_id=int(disc_no)
     doc=db.get_discourse(t_id,request.user)
-    texts=corpus.attribute("text_id",'s')
+    texts=corpus.attribute(corpus_d_sattr.get(db.corpus_name,'text_id'),'s')
     sents=corpus.attribute("s",'s')
     start,end,text_attrs=texts[t_id]
     sent_id=sents.cpos2struc(start)
@@ -132,7 +129,7 @@ def make_rels(rels):
     if rels is None or len(rels)==0:
         return ''
     elif len(rels)==1:
-        return rels[0].encode('ISO-8859-1')
+        return rels[0].encode('ISO-8859-1',errors='xmlcharrefreplace')
     else:
         return '<br>'+'<br>'.join(rels).encode('ISO-8859-1')
 def render_discourse_printable(request,disc_no):
@@ -171,6 +168,7 @@ def render_discourse_printable(request,disc_no):
     sub_edu=0
     INDENT_STEP=20
     in_div=False
+    rel=''
     for i,tok in enumerate(tokens):
         if next_topic<len(topics) and topics[next_topic][0]==i:
             if in_div:
@@ -261,7 +259,7 @@ def render_search(request,word):
         for k in idlist:
             sno=sents.cpos2struc(k)
             tokens=[]
-            start,end,sent_attrs=sents[sno]
+            start,end=sents[sno][:2]
             for i in xrange(start,end+1):
                 w=words[i].decode('ISO-8859-1')
                 if i==k:

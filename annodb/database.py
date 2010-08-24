@@ -1,9 +1,12 @@
 import sys
 import re
+import os.path
 import CWB.CL as cwb
 import pymongo
 import hashlib
 import fshp
+from corpora import corpus_d_sattr
+import bsp_index
 
 couch_ignore_attributes=set(['_id','_rev','type',
                              'span','corpus','annotator','level',
@@ -11,6 +14,8 @@ couch_ignore_attributes=set(['_id','_rev','type',
 
 srv=pymongo.Connection.paired(('192.168.1.1',27017),
                               ('192.168.1.2',27017))
+PARSES_ROOT='/export/local/yannick/parses'
+ALIGNMENT_ROOT='/export/local/yannick/align'
 #srv=pymongo.Connection('192.168.1.2')
 
 def get_database():
@@ -139,6 +144,16 @@ class AnnoDB(object):
         self.words=self.corpus.attribute('word','p')
         self.corpus_name=corpus_name
         self.db=get_database()[corpus_name]
+        parses_dir=os.path.join(PARSES_ROOT,self.corpus_name)
+        align_dir=os.path.join(ALIGNMENT_ROOT,self.corpus_name)
+        if os.path.exists(parses_dir):
+            self.parses=bsp_index.load_directory(parses_dir)
+        else:
+            self.parses=None
+        if os.path.exists(align_dir):
+            self.alignments=bsp_index.load_directory(align_dir)
+        else:
+            self.alignments=None
     def get_task(self,taskname):
         doc=self.db.tasks.find_one({'_id':taskname})
         if doc is not None:
@@ -150,9 +165,21 @@ class AnnoDB(object):
         if doc is None:
             print >>sys.stderr,"Not found: %s"%(repr(sent_no),)
             doc={'_id':sent_no}
+        if self.parses is not None:
+            self.parses.get_parses(sent_no, doc)
         return doc
     def save_parses(self, doc):
         self.db.parses.save(doc)
+    def get_alignments(self, sent_no):
+        doc=self.db.align.find_one({'_id':sent_no})
+        if doc is None:
+            print >>sys.stderr,"Not found: %s"%(repr(sent_no),)
+            doc={'_id':sent_no}
+        if self.parses is not None:
+            self.parses.get_parses(sent_no, doc)
+        return doc
+    def save_alignments(self, doc):
+        self.db.align.save(doc)
     def create_task(self,name,level):
         _id='task_'+name
         a=self.db.tasks.find_one({'_id':_id})
@@ -295,14 +322,14 @@ class AnnoDB(object):
         if result is None:
             words=self.words
             sents=self.sentences
-            texts=self.corpus.attribute("text_id",'s')
-            t_start,t_end,unused_attrs=texts[disc_id]
+            texts=self.corpus.attribute(corpus_d_sattr.get(self.corpus_name,"text_id"),'s')
+            t_start,t_end=texts[disc_id][:2]
             tokens=[w.decode('ISO-8859-15') for w in words[t_start:t_end+1]]
             sent=sents.cpos2struc(t_start)
             sent_end=sents.cpos2struc(t_end)
             sentences=[]
             for k in xrange(sent,sent_end+1):
-                s_start,unused_end,unused_attr=sents[k]
+                s_start,unused_end=sents[k][:2]
                 sentences.append(s_start-t_start)
             edus=sentences[:]
             indent=[0]*len(edus)

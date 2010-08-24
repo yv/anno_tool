@@ -25,9 +25,7 @@ from jinja2 import Environment, FileSystemLoader
 import json
 from annodb.database import login_user, get_corpus, \
      default_database, get_database
-
-allowed_corpora_nologin=['TUEBA4','R6PRE1']
-allowed_corpora=allowed_corpora_nologin+['PTB']
+from annodb.corpora import allowed_corpora_nologin, allowed_corpora
 
 TEMPLATE_PATH=os.path.join(os.path.dirname(__file__),'templates')
 #mylookup=TemplateLookup(directories=[TEMPLATE_PATH])
