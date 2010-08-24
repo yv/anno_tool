@@ -1,6 +1,7 @@
 from annodb import schema
 from cStringIO import StringIO
-from web_stuff import render_template, redirect, Response, ADMINS
+from web_stuff import render_template, render_template_nocache, \
+     redirect, Response, ADMINS
 from werkzeug.utils import escape
 from werkzeug.exceptions import NotFound, Forbidden, HTTPException
 import json
