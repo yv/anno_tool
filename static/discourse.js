@@ -283,7 +283,7 @@ function topic_keydown(event) {
 	key==8 && val=='') {
 	topics.splice(cur_topic,1);
 	redisplay_all();
-	return false;
+	event.preventDefault();
     } else if (key==13 || key==27 ||
 	       key==40 || key==38) {
 	var rel=topic_rels['T'+cur_topic];
