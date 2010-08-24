@@ -131,7 +131,7 @@ def make_rels(rels):
     elif len(rels)==1:
         return rels[0].encode('ISO-8859-1','xmlcharrefreplace')
     else:
-        return '<br>'+'<br>'.join(rels).encode('ISO-8859-1')
+        return '<br>'+'<br>'.join(rels).encode('ISO-8859-1','xmlcharrefreplace')
 def render_discourse_printable(request,disc_no):
     db=request.corpus
     corpus=db.corpus
