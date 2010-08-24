@@ -129,7 +129,7 @@ def make_rels(rels):
     if rels is None or len(rels)==0:
         return ''
     elif len(rels)==1:
-        return rels[0].encode('ISO-8859-1',errors='xmlcharrefreplace')
+        return rels[0].encode('ISO-8859-1','xmlcharrefreplace')
     else:
         return '<br>'+'<br>'.join(rels).encode('ISO-8859-1')
 def render_discourse_printable(request,disc_no):
