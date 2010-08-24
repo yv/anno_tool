@@ -35,6 +35,12 @@ def render_template(template, **context):
     return Response(mylookup.get_template(template).render(**context),
                     mimetype='text/html')
 
+def render_template_nocache(template, **context):
+    return Response(mylookup.get_template(template).render(**context),
+                    mimetype='text/html',
+                    headers=[('Pragma','no-store, no-cache'),
+                             ('Cache-control','no-store, no-cache, must-revalidate')])
+
 # don't use this key but a different one; you could just use
 # os.unrandom(20) to get something random.  Changing this key
 # invalidates all sessions at once.

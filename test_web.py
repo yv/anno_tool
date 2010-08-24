@@ -82,15 +82,15 @@ def render_discourse(request,disc_no):
     sents=corpus.attribute("s",'s')
     start,end,text_attrs=texts[t_id]
     sent_id=sents.cpos2struc(start)
-    return render_template('discourse.html',
-                           disc_id=disc_no,
-                           sent_id=sent_id,
-                           sentences=json.dumps(doc['sentences']),
-                           edus=json.dumps(doc['edus']),
-                           tokens=json.dumps(doc['tokens']),
-                           indent=json.dumps(doc['indent']),
-                           relations=json.dumps(doc.get('relations','')),
-                           topics=json.dumps(doc.get('topics',[])))
+    return render_template_nocache('discourse.html',
+                                   disc_id=disc_no,
+                                   sent_id=sent_id,
+                                   sentences=json.dumps(doc['sentences']),
+                                   edus=json.dumps(doc['edus']),
+                                   tokens=json.dumps(doc['tokens']),
+                                   indent=json.dumps(doc['indent']),
+                                   relations=json.dumps(doc.get('relations','')),
+                                   topics=json.dumps(doc.get('topics',[])))
 
 edu_re="[0-9]+(?:\\.[0-9]+)?"
 topic_s="T[0-9]+"
