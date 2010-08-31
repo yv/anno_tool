@@ -12,6 +12,29 @@ import re
 from collections import defaultdict
 from annodb.corpora import corpus_sattr, corpus_d_sattr, corpus_urls
 
+def escape_uni(s):
+    return escape(s).encode('ISO-8859-1','xmlcharrefreplace')
+
+def write_alignment(align,out):
+    words1=align['words1']
+    words2=align['words2']
+    alignment=set([(x[1],x[0]) for x in align['alignment']])
+    print >>out,'<table>'
+    print >>out,'<tr><td></td>'
+    for w in words1:
+        print >>out,'<td>%s</td>'%(escape_uni(w))
+    print >>out,'</tr>'
+    for i,w2 in enumerate(words2):
+        print >>out,'<tr><td>%s</td>'%(escape_uni(w2))
+        for j,w in enumerate(words1):
+            if (i,j) in alignment:
+                print >>out,'<td bgcolor="#0033aa">x</td>'
+            else:
+                print >>out,'<td>.</td>'
+        print >>out,'</tr>'
+    print >>out,'</table>'
+        
+
 def render_sentence(request,sent_no):
     db=request.corpus
     tueba_corpus=db.corpus
@@ -33,14 +56,18 @@ def render_sentence(request,sent_no):
     else:
         text_url='#'
     parses=db.get_parses(sno)
+    alignments=db.get_alignments(sno)
     trees_out=StringIO()
     names_parses=sorted([k for k in parses.iterkeys() if k!='_id'])
+    names_alignments=sorted([k for k in alignments.iterkeys() if k!='_id'])
     annotations=db.find_annotations([start,end],'*gold*')
-    if names_parses or annotations:
+    if names_parses or names_alignments or annotations:
         print >>trees_out,'<div id="parses-tabs">'
         print >>trees_out,'<ul>'
         for k in names_parses:
             print >>trees_out,'<li><a href="#parses-%s">%s (parse)</a></li>'%(k,k)
+        for k in names_alignments:
+            print >>trees_out,'<li><a href="#alignments-%s">%s (align)</a></li>'%(k,k)
         levels=defaultdict(StringIO)
         for anno in annotations:
             level=anno['level']
@@ -55,6 +82,11 @@ def render_sentence(request,sent_no):
             #trees_out.write('<b>%s</b> <a href="javascript:$(\'tree:%s\').toggle()">[show]</a><br/>\n'%(k,k))
             t=export.from_json(v)
             csstree.write_html(t,trees_out,_id='tree-'+k)
+            print >>trees_out,'</div>'
+        for k in names_alignments:
+            v=alignments[k]
+            print >>trees_out,'<div id="alignments-%s">'%(k,)
+            write_alignment(v,trees_out)
             print >>trees_out,'</div>'
         for k in names: 
             print >>trees_out,'<div id="level-tabs-%s">'%(k,)

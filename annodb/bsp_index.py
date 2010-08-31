@@ -132,7 +132,7 @@ def load_directory(dirname,force_recreate=False):
                 txt2bin(idx_fname)
             leaves.append(BSPLeaf(base_fname))
         parse_idx=make_bsp_tree(leaves)
-        cPickle.dump(parse_idx, file('parse_idx.pik','w'), protocol=0)
+        cPickle.dump(parse_idx, file(os.path.join(dirname,'parse_idx.pik'),'w'), protocol=-1)
     return parse_idx
             
         

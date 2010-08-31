@@ -150,8 +150,7 @@ def index(request):
                              tasks=tasks, tasks0=tasks,
                              corpus_name=corpus_name,
                              corpora=corpora)
-    expire_date=datetime.datetime.now()
-    expire_date=expire_date.replace(month=expire_date.month+1)
+    expire_date=datetime.datetime.now()+datetime.timedelta(30)
     response.set_cookie('corpus',corpus_name,
                         expires=expire_date)
     return response

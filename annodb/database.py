@@ -173,10 +173,9 @@ class AnnoDB(object):
     def get_alignments(self, sent_no):
         doc=self.db.align.find_one({'_id':sent_no})
         if doc is None:
-            print >>sys.stderr,"Not found: %s"%(repr(sent_no),)
             doc={'_id':sent_no}
-        if self.parses is not None:
-            self.parses.get_parses(sent_no, doc)
+        if self.alignments is not None:
+            self.alignments.get_parses(sent_no, doc)
         return doc
     def save_alignments(self, doc):
         self.db.align.save(doc)
