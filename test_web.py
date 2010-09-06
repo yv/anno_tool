@@ -123,6 +123,7 @@ def render_discourse(request,disc_no):
                                    tokens=json.dumps(doc['tokens']),
                                    indent=json.dumps(doc['indent']),
                                    relations=json.dumps(doc.get('relations','')),
+                                   nonedu=json.dumps(doc.get('nonedu',{})),
                                    topics=json.dumps(doc.get('topics',[])))
 
 edu_re="[0-9]+(?:\\.[0-9]+)?"
@@ -182,6 +183,7 @@ def render_discourse_printable(request,disc_no):
     sent_id=sents.cpos2struc(start)
     sentences=doc['sentences']
     edus=doc['edus']
+    nonedu=doc.get('nonedu',{})
     tokens=doc['tokens']
     indent=doc['indent']
     topic_rels,relations_unparsed=parse_relations(doc.get('relations',''))
@@ -222,7 +224,11 @@ def render_discourse_printable(request,disc_no):
                 sub_edu=0
                 next_sent+=1
             rel=make_rels(topic_rels.get('%d.%d'%(next_sent,sub_edu),None))
-            out.write('<div class="edu" style="margin-left:%dpx"><span class="edu-label">%d.%d</span>'%(indent[next_edu-1]*INDENT_STEP,next_sent,sub_edu))
+            if nonedu.get(unicode(i),None):
+                cls='nonedu'
+            else:
+                cls='edu'
+            out.write('<div class="%s" style="margin-left:%dpx"><span class="edu-label">%d.%d</span>'%(cls,indent[next_edu-1]*INDENT_STEP,next_sent,sub_edu))
             in_div=True
         out.write('%s '%(tok.encode('ISO-8859-1'),))
     if in_div:
@@ -232,8 +238,6 @@ def render_discourse_printable(request,disc_no):
         out.write('<br>'.join(relations_unparsed).encode('ISO-8859-1'))
     out.write('</body>\n</html>\n')
     return Response([out.getvalue()],content_type='text/html; charset=ISO-8859-15')
-    
-            
 
 def list_discourse(request):
     db=request.corpus

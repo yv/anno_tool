@@ -163,10 +163,11 @@ class AnnoDB(object):
     def get_parses(self, sent_no):
         doc=self.db.parses.find_one({'_id':sent_no})
         if doc is None:
-            print >>sys.stderr,"Not found: %s"%(repr(sent_no),)
             doc={'_id':sent_no}
         if self.parses is not None:
             self.parses.get_parses(sent_no, doc)
+        ##if len(doc)==1:
+        ##    print >>sys.stderr,"Not found: %s"%(repr(sent_no),)
         return doc
     def save_parses(self, doc):
         self.db.parses.save(doc)

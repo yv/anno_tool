@@ -6,6 +6,7 @@
 //edus=[0,5,11];
 //indent=[0,0,0];
 //topics=[];
+//nonedu={}
 
 topic_rels={};
 
@@ -45,9 +46,14 @@ function make_segments() {
 		sub_edu=0;
 		next_sent++;
 	    }
+	    if (nonedu[i]) {
+		cls='nonedu';
+	    } else {
+		cls='edu';
+	    }
 	    rel=topic_rels[''+next_sent+'.'+sub_edu];
 	    if (rel==undefined) { rel='(no rel)'; }
-	    s+='<div class="edu" id="edu'+next_edu+
+	    s+='<div class="'+cls+'" id="edu'+next_edu+
 		'" style="margin-left:'+(indent[next_edu-1]*INDENT_STEP)+'px"><span class="edu-label">'+
 		next_sent+'.'+sub_edu+'</span>';
 	    in_div=true;
@@ -234,6 +240,17 @@ function text_keydown(event) {
     } else if (key == 84) {
 	edit_topic();
 	return false;
+    } else if (key == 78) {
+	// N - toggle non-edu status
+	var pos=edus[find_current_edu()];
+	if (nonedu[pos]) {
+	    delete nonedu[pos];
+	} else {
+	    nonedu[pos]=1;
+	}
+	dirty['nonedu']=nonedu;
+	resetTimeout();
+	redisplay_all();
     } else if (key == 119) {
 	// F8 - show text info
 	$info.text("sentence id:"+(sent_id+find_current_sentence()))

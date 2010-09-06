@@ -22,7 +22,8 @@ class BSPLeaf(object):
     def load_parts(self):
         fname_sno=self.prefix+'.sno.bin'
         fname_offset=self.prefix+'.offset.bin'
-        self.sno_part=numpy.memmap(fname_sno,'uint32','r')
+        #self.sno_part=numpy.memmap(fname_sno,'uint32','r')
+        self.sno_part=numpy.fromfile(fname_sno,'uint32')
         self.offset_part=numpy.memmap(fname_offset,'uint32','r')
     def unload_parts(self):
         self.sno_part=None
