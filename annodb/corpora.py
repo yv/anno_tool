@@ -1,4 +1,4 @@
-allowed_corpora_nologin=['TUEBA4','R6PRE1','EUROPARL_EN']
+allowed_corpora_nologin=['TUEBA4','R6PRE1','EUROPARL_EN','EUROPARL_DE']
 allowed_corpora=allowed_corpora_nologin+['PTB']
 
 def compute_url_tueba(text_id,unused_corpus):
@@ -14,8 +14,11 @@ def compute_url_europarl(text_id,corpus_name):
     day=text_id[-9:-7]
     return 'http://www.europarl.europa.eu/sides/getDoc.do?pubRef=-//EP//TEXT+CRE+20%s%s%s+ITEMS+DOC+XML+V0//%s'%(year,month,day,corpus_name[-2:])
 
-corpus_sattr={'EUROPARL_EN':'file_name'}
-corpus_d_sattr={'EUROPARL_EN':'SPEAKER_NAME'}
+corpus_sattr={'EUROPARL_EN':'file_name',
+              'EUROPARL_DE':'file_name'}
+corpus_d_sattr={'EUROPARL_EN':'SPEAKER_NAME',
+                'EUROPARL_DE':'file_name'}
 corpus_urls={'TUEBA4':compute_url_tueba,
              'R6PRE1':compute_url_tueba,
-             'EUROPARL_EN':compute_url_europarl}
+             'EUROPARL_EN':compute_url_europarl,
+             'EUROPARL_DE':compute_url_europarl}

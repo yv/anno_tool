@@ -1,4 +1,4 @@
-import json
+import simplejson as json
 import numpy
 import cPickle
 import os.path
