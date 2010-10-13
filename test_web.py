@@ -246,7 +246,7 @@ def render_discourse_printable(request,disc_no):
 def list_discourse(request):
     db=request.corpus
     words=db.words
-    text_ids=db.corpus.attribute('text_id','s')
+    text_ids=db.corpus.attribute(corpus_d_sattr.get(db.corpus_name,'text_id'),'s')
     results=db.db.discourse.find({'_user':request.user})
     doc_lst=[]
     for r in results:

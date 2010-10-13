@@ -315,6 +315,8 @@ class AnnoDB(object):
         docs=[anno._doc for anno in annos]
         for doc in docs:
             self.db.annotation.save(doc)
+    def get_texts_attribute(self):
+        return self.corpus.attribute(corpus_d_sattr.get(self.corpus_name,"text_id"),'s')
     def get_discourse(self,disc_id,user=None):
         result=self.db.discourse.find_one({'_id':'%s~%s'%(disc_id,user),
                                            '_docno':disc_id,
