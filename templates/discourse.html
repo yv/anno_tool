@@ -26,8 +26,8 @@
   topics={{topics}};
   relations={{relations}};
   nonedu={{nonedu}};
-
-save_endpoint='/pycwb/saveDiscourse/'+disc_id;
+  corpus_name={{corpus_name}}
+save_endpoint='/pycwb/saveDiscourse/'+disc_id+'?force_corpus='+corpus_name;
 
 function on_layout_resize(elm,pane) {
  $('#text').css({'height':($('.ui-layout-center').height()-2)+'px'});

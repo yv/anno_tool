@@ -118,6 +118,7 @@ def render_discourse(request,disc_no):
     start,end,text_attrs=texts[t_id]
     sent_id=sents.cpos2struc(start)
     response=render_template_nocache('discourse.html',
+                                     corpus_name=json.dumps(request.corpus.corpus_name),
                                      disc_id=disc_no,
                                      sent_id=sent_id,
                                      sentences=json.dumps(doc['sentences']),
