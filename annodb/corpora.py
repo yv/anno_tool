@@ -17,7 +17,7 @@ def compute_url_europarl(text_id,corpus_name):
 corpus_sattr={'EUROPARL_EN':'file_name',
               'EUROPARL_DE':'file_name'}
 corpus_d_sattr={'EUROPARL_EN':'SPEAKER_NAME',
-                'EUROPARL_DE':'file_name'}
+                'EUROPARL_DE':'SPEAKER_NAME'}
 corpus_urls={'TUEBA4':compute_url_tueba,
              'R6PRE1':compute_url_tueba,
              'EUROPARL_EN':compute_url_europarl,
