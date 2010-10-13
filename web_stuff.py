@@ -84,6 +84,10 @@ class AppRequest(Request):
         data=self.cookies.get('corpus')
         if not data or data not in allowed_corpora:
             data=default_database
+        if 'force_corpus' in self.args:
+            data2=self.args['force_corpus']
+            if data2 in allowed_corpora and data!=data2:
+                data=data2
         return get_corpus(data)
 
     @cached_property
@@ -92,6 +96,14 @@ class AppRequest(Request):
         if not data:
             return SecureCookie(secret_key=SECRET_KEY)
         return SecureCookie.unserialize(data, SECRET_KEY)
+    
+    def set_corpus_cookie(self,response):
+        data=self.corpus.corpus_name
+        if not data or data not in allowed_corpora:
+            data=default_database
+        expire_date=datetime.datetime.now()+datetime.timedelta(30)
+        response.set_cookie('corpus',data,
+                        expires=expire_date)
 
 def login_form(request):
     error = ''
