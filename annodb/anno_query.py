@@ -123,9 +123,11 @@ def annotate(request,taskname):
     for anno in annotations:
         if mode!='wanted' or not is_ready(anno):
             schema.make_widgets(anno,db,out,out_js)
-    return render_template('annodummy.html',task=task,
-                           js_code=out_js.getvalue().decode('ISO-8859-15'),
-                           output=out.getvalue().decode('ISO-8859-15'))
+    response=render_template('annodummy.html',task=task,
+                             js_code=out_js.getvalue().decode('ISO-8859-15'),
+                             output=out.getvalue().decode('ISO-8859-15'))
+    request.set_corpus_cookie(response)
+    return response
 
 
 def annotate2(request,taskname):

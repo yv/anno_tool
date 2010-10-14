@@ -372,13 +372,18 @@ function parse_relations(rels) {
 	} else {
 	    var rel1=result[2];
 	    if (rel1.match('T[0-9]+')) {
-		topic_rels[rel1]=line;
 	    } else {
 		rel1=rel1.split('-')[0];
 		if (rel1.match('^[0-9]+$')) {
 		    rel1=rel1+'.0';
 		}
+	    }
+	    if (topic_rels[rel1]==undefined) {
 		topic_rels[rel1]=line;
+	    }  else if (topic_rels[rel1].match('^<br>')) {
+		topic_rels[rel1]+='<br>'+line;
+	    } else {
+		topic_rels[rel1]='<br>'+topic_rels[rel1]+'<br>'+line;
 	    }
 	    //errors=errors+'Relation:'+result[1]+' arg1:'+result[2]+' arg2:'+result[3]+'\n';
 	}
