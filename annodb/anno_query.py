@@ -181,7 +181,7 @@ def adjudicate(request,taskname):
                     seen_vals.add(anno[k])
                 except KeyError:
                     pass
-            prefix=anno_a._id+':'+k
+            prefix=anno_a._id+'-'+k
             for v in seen_vals:
                 if v==anno_a.get(k,None):
                     cls="chosen"
