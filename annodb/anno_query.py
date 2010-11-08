@@ -192,6 +192,13 @@ def adjudicate(request,taskname):
                 out.write('<a class="%s" onclick="chosen_txt(\'%s\',\'%s\');" id="%s_%s">%s</a> (%s)\n'%(cls,prefix,v,prefix,v,v,names_ch))
             out.write('</td><td><input id="txt:%s" onkeyup="after_blur_2(\'%s\')" value="%s"></td></tr>'%(prefix,prefix,anno_a.get(k,'')))
         print >>out,"</table>"
+        comments=[]
+        for anno,name in zip(part,names):
+            if 'comment' in anno and anno['comment']:
+                comments.append('<i>%s:</i>%s'%(name,escape(anno['comment']).replace('\n','<br>')))
+        if comments:
+            print >>out,"<b>comments:</b><br>"
+            print >>out,(u'<br>'.join(comments)).encode('ISO-8859-15','xmlcharrefreplace')
     return render_template('annodummy.html',task=task,
                            js_code=out_js.getvalue().decode('ISO-8859-15'),
                            output=out.getvalue().decode('ISO-8859-15'))
