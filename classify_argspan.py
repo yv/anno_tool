@@ -3,13 +3,13 @@ sys.path.append('/home/yannickv/proj/pytree')
 
 import json
 from pytree import export, deps
-from pynlp.en import ptb_heads
+from graph_search import dijkstra_search
 from annodb import database
 from getopt import getopt
 from array import array
 from dist_sim.fcomb import FCombo
 from ml_utils import mkdata
-from java_if import make_sd
+from java_jcc import make_sd
 import morpha
 import numpy
 import traceback
@@ -22,8 +22,6 @@ annos=ptb.db.annotation
 words=ptb.words
 sents=ptb.sentences
 text_id=ptb.corpus.attribute('text_id','s')
-
-deps_extractor=deps.SimpleDepExtractor(ptb_heads.semhead_table)
 
 normalize_connector=set(['after','before','because','when','until','since','if'])
 
@@ -267,6 +265,7 @@ left_ignore_re=re.compile('(?:[,:]|``)$')
 right_ignore_re=re.compile("(?:[,:]|'')$")
 
 class ConnInfo(object):
+    last_tree=None
     def __init__(self,**kw):
         self.__dict__.update(kw)
     def set_from_anno(self,anno):
@@ -295,8 +294,16 @@ class ConnInfo(object):
         argspan2[0]-=s_start
         argspan2[1]-=s_start
         self.argspan2=argspan2
-        t_json=ptb.get_parses(self.sent_no)['release']
-        t=export.from_json(t_json)
+        if ConnInfo.last_tree is not None and ConnInfo.last_tree.sent_no==self.sent_no:
+            print "Reused s%s"%(self.sent_no)
+            t=self.last_tree
+        else:
+            t_json=ptb.get_parses(self.sent_no)['release']
+            t=export.from_json(t_json)
+            make_sd(t)
+            morpha.lemmatize(t)
+            t.sent_no=self.sent_no
+            ConnInfo.last_tree=t
         self.t=t
         if spans[0][0]-s_start>=len(t.terminals) or spans[0][0]-s_start<0:
             self.kind='multi-sentence'
@@ -351,6 +358,34 @@ def pruned_candlist(n_start,paths):
 train_criteria={'level':'pdtb','reltype':'Explicit','span':{'$lt':441305}}
 test_criteria={'level':'pdtb','reltype':'Explicit','span':{'$gte':441305,'$lt':1004073}}
 
+
+## tiny train and test set for debugging
+##train_criteria={'level':'pdtb','reltype':'Explicit','span':{'$lt':4000}}
+##test_criteria={'level':'pdtb','reltype':'Explicit','span':{'$gte':4000,'$lt':8000}}
+
+def sd_neighbours(n):
+    result=[]
+    for rel,n_to in n.sd_gov:
+        result.append((1,n_to,'+'+rel))
+    for rel,n_from in n.sd_dep:
+        result.append((1,n_from,'-'+rel))
+    return result
+
+def make_deppath(node1,node2):
+    try:
+        if node1.isTerminal():
+            head1=node1
+        else:
+            head1=node1.head
+        if node2.isTerminal():
+            head2=node2
+        else:
+            head2=node2.head
+    except AttributeError:
+        return None
+    return dijkstra_search([head1],[head2],sd_neighbours)
+
+
 # Step 1: gather paths
 for anno in annos.find(train_criteria):
     ci=ConnInfo()
@@ -364,6 +399,15 @@ for anno in annos.find(train_criteria):
     if ci.n1 is not None:
         path1=make_path(ci.n_conn_start,ci.n1)
         enter_path(path1[0],path1[1],all_paths_arg1)
+        dpath=make_deppath(ci.n_conn_start,ci.n1)
+        if dpath:
+            print "N1:",make_deppath(ci.n_conn_start,ci.n1)
+        else:
+            try:
+                print "No N1:",ci.n_conn_start,ci.n1,ci.n_conn_start.head.sd_gov,ci.n1.head.sd_gov
+            except AttributeError:
+                print "No N1 (no head):",ci.n_conn_start,ci.n1
+    print "N2:",make_deppath(ci.n_conn_end,ci.n2)
     path2=make_path(ci.n_conn_end,ci.n2)
     enter_path(path2[0],path2[1],all_paths_arg2)
 
@@ -371,6 +415,8 @@ def anaphoric_features(ci,feats):
     feats.append("C"+'+'.join(['_'.join(ws) for ws in ci.ws]))
     feats.append("W1"+ci.n_conn_start.word)
     feats.append("P1"+ci.n_conn_start.cat)
+    terms=ci.t.terminals
+    feats.append("PA"+''.join([n.cat for span in ci.spans for n in ci.t.terminals[span[0]:span[1]]]))
 
 def arg2only_features(ci,c,feats):
     feats.append("C"+'+'.join(['_'.join(ws) for ws in ci.ws]))
@@ -379,6 +425,11 @@ def arg2only_features(ci,c,feats):
     n2=c[2]
     path2=make_path(ci.n_conn_end,n2)
     feats.append("p2%s+%s"%('-'.join(path2[0]),'-'.join(path2[1])))
+    dpath2=make_deppath(ci.n_conn_end,n2)
+    if dpath2 is not None:
+        feats.append("d2%s"%(''.join(dpath2[3])))
+    else:
+        feats.append("d2-")
 
 def both_features(ci,c1,c2,feats):
     feats.append("C"+'+'.join(['_'.join(ws) for ws in ci.ws]))
@@ -391,7 +442,17 @@ def both_features(ci,c1,c2,feats):
     path2=make_path(ci.n_conn_end,n2)
     feats.append("p2%s+%s"%('-'.join(path2[0]),'-'.join(path2[1])))
     pivot_features(ci.n_conn_end,n1,n2,feats)
-
+    dpath1=make_deppath(ci.n_conn_start,n1)
+    if dpath1 is not None:
+        print dpath1
+        feats.append("d1%s"%(''.join(dpath1[3])))
+    else:
+        feats.append("d1-")
+    dpath2=make_deppath(ci.n_conn_end,n2)
+    if dpath2 is not None:
+        feats.append("d2%s"%(''.join(dpath2[3])))
+    else:
+        feats.append("d2-")
 
 # Step 2: determine path candidates and train classifier/rankers
 fc_anaphoric=FCombo(2,bias_item='**BIAS**')
@@ -410,7 +471,6 @@ for anno in annos.find(train_criteria):
     if ci.t is None:
         continue
     t=ci.t
-    deps_extractor(t)
     morpha.lemmatize(t)
     cands2=pruned_candlist(ci.n_conn_end,all_paths_arg2)
     if ci.n1 is None:
@@ -482,8 +542,6 @@ for anno in annos.find(test_criteria):
     if ci.t is None:
         continue
     t=ci.t
-    deps_extractor(t)
-    morpha.lemmatize(t)
     cands2=pruned_candlist(ci.n_conn_end,all_paths_arg2)
     if ci.n1 is None:
         anaphoric_val=False

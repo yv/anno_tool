@@ -119,11 +119,12 @@ def annotate(request,taskname):
     out=StringIO()
     out_js=StringIO()
     if mode=='wanted':
-        print >>out, '<div><a href="?mode=all">show all</a></div>'
+        print >>out, '<div><a href="?mode=all&force_corpus=%s">show all</a></div>'%(db.corpus_name,)
     for anno in annotations:
         if mode!='wanted' or not is_ready(anno):
             schema.make_widgets(anno,db,out,out_js)
     response=render_template('annodummy.html',task=task,
+                             corpus_name=db.corpus_name,
                              js_code=out_js.getvalue().decode('ISO-8859-15'),
                              output=out.getvalue().decode('ISO-8859-15'))
     request.set_corpus_cookie(response)
@@ -147,6 +148,7 @@ def annotate2(request,taskname):
     for anno in annotations:
         scheme.make_widgets(anno,db,out,jscode)
     return render_template('annodummy2.html',
+                           corpus_name=db.corpus_name,
                            jscode=jscode.getvalue())
 
 
@@ -201,6 +203,7 @@ def adjudicate(request,taskname):
             print >>out,(u'<br>'.join(comments)).encode('ISO-8859-15','xmlcharrefreplace')
     return render_template('annodummy.html',task=task,
                            js_code=out_js.getvalue().decode('ISO-8859-15'),
+                           corpus_name=db.corpus_name,
                            output=out.getvalue().decode('ISO-8859-15'))
 
 class ForAll(object):

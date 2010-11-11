@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Annotation tasks</title>
+<title>[{{corpus}}] Annotation tasks</title>
 <script src="/static/jq/jquery-1.4.2.min.js"></script>
 <script src="/static/jq/jquery.tokeninput.js"></script>
 <script src="/static/jq/jquery.ui.widget.min.js"></script>
@@ -41,7 +41,7 @@ function do_save(item_id) {
                 processData:false,
                 type:'POST',
                 contentType:'text/plain',
-                url:'/pycwb/saveTask/'+item_id});
+                url:'/pycwb/saveTask/'+item_id+'?force_corpus={{corpus}}'});
   if (p.status!=200) { alert(p.responseText); }
   $('#save-'+item_id).button({disabled:true});
 }
@@ -65,11 +65,11 @@ value=""
 name="nm:{{task._id}}"></td>
 <td><a id="save-{{task._id}}"
 onclick="do_save('{{task._id}}')">Save</a>
-[<a class="action" href="/pycwb/adjudicate/{{task._id}}">Adjudicate</a>]
+[<a class="action" href="/pycwb/adjudicate/{{task._id}}?force_corpus={{corpus}}">Adjudicate</a>]
 {% if task.level=='konn2' %}
-[<a class="action" href="/pycwb/annotate2/{{task._id}}">Annotate</a>]
+[<a class="action" href="/pycwb/annotate2/{{task._id}}?force_corpus={{corpus}}">Annotate</a>]
 {% else %}
-[<a class="action" href="/pycwb/annotate/{{task._id}}">Annotate</a>]
+[<a class="action" href="/pycwb/annotate/{{task._id}}?force_corpus={{corpus}}">Annotate</a>]
 {% endif %}
 </td></tr>
 {% endfor %}

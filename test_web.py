@@ -264,6 +264,7 @@ def list_discourse(request):
                 users=[]
             doc_lst.append((request.user,r['_docno'],txt.decode('ISO-8859-15'),users))
     return render_template('discourse_list.html',
+                           corpus_name=db.corpus_name,
                            results=doc_lst)
 
 def save_discourse(request,disc_no):

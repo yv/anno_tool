@@ -2,7 +2,7 @@
  "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-  <title>Annotation database</title>
+  <title>[{{corpus_name}}] Annotation database</title>
 <script language="javascript" src="/static/json2.js"></script> 
 <script language="javascript" src="/static/prototype.js"></script> 
 <script language="javascript" src="/static/qct.js"></script>
@@ -11,13 +11,13 @@
 <script type="text/javascript">
 <!--
 {{js_code}}
+corpus_name="{{corpus_name}}";
 //-->
 </script>
 </head>
 
 <body>
-<h1>{{task._id}}</h1>
+<h1>{{task._id}} ({{corpus_name}})</h1>
 <div id="status">loaded.</div>
 {{output}}
 </body></html>
-

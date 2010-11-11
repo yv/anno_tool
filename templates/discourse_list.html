@@ -1,14 +1,15 @@
 <html>
 <head>
-<title>Discourse Annotator</title>
+<title>[{{corpus_name}}] Discourse Annotator</title>
 <link rel="stylesheet" href="/static/discourseEdit.css">
 </head>
 <body>
+<h1>Discourse annotation for {{corpus_name}}</h1>
 {% for user, docid, text, all_users in results %}
 <div>
-<a href="/pycwb/discourse/{{docid}}">{{text|escape}}</a>
+<a href="/pycwb/discourse/{{docid}}?force_corpus={{corpus_name}}">{{text|escape}}</a>
 {% for user2 in all_users %}
-[<a href="/pycwb/printDiscourse/{{docid}}?who={{user2}}">{{user2}}</a>]
+[<a href="/pycwb/printDiscourse/{{docid}}?who={{user2}}&force_corpus={{corpus_name}}">{{user2}}</a>]
 {% endfor %}
 </div>
 {% endfor %}

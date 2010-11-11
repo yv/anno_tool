@@ -3,7 +3,7 @@ function set_status(s) {
 }
  
 tm=0;
- 
+corpus_name=null;
 dirty={};
  
 function resetTimeout() {
@@ -23,7 +23,11 @@ function after_error() {
 }
  
 function after_timeout() {
-    ajaxRequest=new Ajax.Request('/pycwb/saveAttributes',{
+    var endpoint='/pycwb/saveAttributes'
+    if (corpus_name) {
+	endpoint+='?force_corpus='+corpus_name;
+    }
+    ajaxRequest=new Ajax.Request(endpoint,{
 				     method: 'post',
 				     contentType: 'text/json',
 				     postBody: JSON.stringify(dirty),
