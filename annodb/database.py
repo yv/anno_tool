@@ -262,7 +262,7 @@ class AnnoDB(object):
             if not first:
                 out.write('<br>\n')
             if k==sent0_orig:
-                out.write('<a href="/pycwb/sentence/%s">s%s</a> '%(sent0_orig+1,sent0_orig+1))
+                out.write('<a href="/pycwb/sentence/%s?force_corpus=%s">s%s</a> '%(sent0_orig+1,self.corpus_name,sent0_orig+1))
             first=False
             for off in xrange(sent_span[0],sent_span[1]+1):
                 if off==span[0]:
