@@ -19,17 +19,13 @@ import me_opt_new as me_opt
 
 ptb=database.get_corpus('PTB')
 annos=ptb.db.annotation
-words=ptb.words
-sents=ptb.sentences
-text_id=ptb.corpus.attribute('text_id','s')
+#text_id=ptb.corpus.attribute('text_id','s')
 
 normalize_connector=set(['after','before','because','when','until','since','if'])
 
 def new_paths():
     return ({},{},array('i',[0]))
 
-all_paths_arg1=new_paths()
-all_paths_arg2=new_paths()
 def enter_path(up_cat,down_cat,node):
     for i,c in enumerate(up_cat):
         if c in node[0]:
@@ -268,9 +264,15 @@ class ConnInfo(object):
     last_tree=None
     def __init__(self,**kw):
         self.__dict__.update(kw)
-    def set_from_anno(self,anno):
+    def set_from_anno(self,anno,corpus=None):
         spans=anno['conn_parts']
         self.spans=spans
+        if corpus is None:
+            self.corpus=ptb
+        else:
+            self.corpus=corpus
+        words=self.corpus.words
+        sents=self.corpus.sentences
         ws=[tuple([w.lower() for w in words[span[0]:span[1]]]) for span in spans]
         self.ws=ws
         if len(ws)==1 and ws[0][-1] in normalize_connector:
@@ -278,7 +280,8 @@ class ConnInfo(object):
             spans=[[spans[-1][1]-1,spans[-1][1]]]
         self.sent_no=sents.cpos2struc(spans[-1][0])
         s_start,s_end=sents[self.sent_no][:2]
-        argspan1=anno['arg1']
+        argspan1=list(anno['arg1'])
+        argspan2=list(anno['arg2'])
         while left_ignore_re.match(words[argspan1[0]]):
             argspan1[0]+=1
         while right_ignore_re.match(words[argspan1[1]-1]):
@@ -286,7 +289,6 @@ class ConnInfo(object):
         argspan1[0]-=s_start
         argspan1[1]-=s_start
         self.argspan1=argspan1
-        argspan2=anno['arg2']
         while left_ignore_re.match(words[argspan2[0]]):
             argspan2[0]+=1
         while right_ignore_re.match(words[argspan2[1]-1]):
@@ -298,7 +300,11 @@ class ConnInfo(object):
             print "Reused s%s"%(self.sent_no)
             t=self.last_tree
         else:
-            t_json=ptb.get_parses(self.sent_no)['release']
+            parses_doc=self.corpus.get_parses(self.sent_no)
+            if 'release' in parses_doc:
+                t_json=parses_doc['release']
+            elif 'pcfgla' in parses_doc:
+                t_json=parses_doc['pcfgla']
             t=export.from_json(t_json)
             make_sd(t)
             morpha.lemmatize(t)
@@ -330,22 +336,6 @@ class ConnInfo(object):
         self.n2=find_node_simple(t,argspan2[0],argspan2[1]-argspan2[0])
 
 
-def pruned_candlist(n_start,paths):
-    cands=[]
-    gather_candidates_up(n_start,[],paths,cands)
-    if not cands:
-        try:
-            parent_full=n_start.parent.to_full([])
-        except KeyError:
-            parent_full=n_start.parent
-        try:
-            possible_keys=paths[0][n_start.cat][0].keys()
-        except KeyError:
-            possible_keys=None
-        print >>sys.stderr, "No cands for %s (parent=%s, feasible=%s)"%(n_start.to_full([]),parent_full,possible_keys)
-        return []
-    max_score=max([x[3] for x in cands])
-    return [x for x in cands if x[3]>=0.1*max_score]
 
 ## PTB sections (start)
 ##  0 ->       0
@@ -360,8 +350,8 @@ test_criteria={'level':'pdtb','reltype':'Explicit','span':{'$gte':441305,'$lt':1
 
 
 ## tiny train and test set for debugging
-##train_criteria={'level':'pdtb','reltype':'Explicit','span':{'$lt':4000}}
-##test_criteria={'level':'pdtb','reltype':'Explicit','span':{'$gte':4000,'$lt':8000}}
+## train_criteria={'level':'pdtb','reltype':'Explicit','span':{'$lt':4000}}
+## test_criteria={'level':'pdtb','reltype':'Explicit','span':{'$gte':4000,'$lt':8000}}
 
 def sd_neighbours(n):
     result=[]
@@ -385,32 +375,62 @@ def make_deppath(node1,node2):
         return None
     return dijkstra_search([head1],[head2],sd_neighbours)
 
+def pruned_candlist(n_start,paths):
+    cands=[]
+    gather_candidates_up(n_start,[],paths,cands)
+    if not cands:
+        try:
+            parent_full=n_start.parent.to_full([])
+        except KeyError:
+            parent_full=n_start.parent
+        try:
+            possible_keys=paths[0][n_start.cat][0].keys()
+        except KeyError:
+            possible_keys=None
+        print >>sys.stderr, "No cands for %s (parent=%s, feasible=%s)"%(n_start.to_full([]),parent_full,possible_keys)
+        return []
+    max_score=max([x[3] for x in cands])
+    return [x for x in cands if x[3]>=0.1*max_score]
 
-# Step 1: gather paths
-for anno in annos.find(train_criteria):
-    ci=ConnInfo()
-    try:
-        ci.set_from_anno(anno)
-    except:
-        traceback.print_exc()
-        break
-    if ci.t is None:
-        continue
-    if ci.n1 is not None:
-        path1=make_path(ci.n_conn_start,ci.n1)
-        enter_path(path1[0],path1[1],all_paths_arg1)
-        dpath=make_deppath(ci.n_conn_start,ci.n1)
-        if dpath:
-            print "N1:",make_deppath(ci.n_conn_start,ci.n1)
-        else:
-            try:
-                print "No N1:",ci.n_conn_start,ci.n1,ci.n_conn_start.head.sd_gov,ci.n1.head.sd_gov
-            except AttributeError:
-                print "No N1 (no head):",ci.n_conn_start,ci.n1
-    print "N2:",make_deppath(ci.n_conn_end,ci.n2)
-    path2=make_path(ci.n_conn_end,ci.n2)
-    enter_path(path2[0],path2[1],all_paths_arg2)
+class ConstituentCandidates:
+    def __init__(self,paths1,paths2):
+        self.paths1=paths1
+        self.paths2=paths2
+    def arg1_candidates(self,ci):
+        return pruned_candlist(ci.n_conn_start,self.paths1)
+    def arg2_candidates(self,ci):
+        return pruned_candlist(ci.n_conn_end,self.paths2)
 
+#annos.find(train_criteria)
+def make_allpaths(all_annos):
+    all_paths_arg1=new_paths()
+    all_paths_arg2=new_paths()
+    # Step 1: gather paths
+    for anno in all_annos:
+        ci=ConnInfo()
+        try:
+            ci.set_from_anno(anno)
+        except:
+            traceback.print_exc()
+            break
+        if ci.t is None:
+            continue
+        if ci.n1 is not None:
+            path1=make_path(ci.n_conn_start,ci.n1)
+            enter_path(path1[0],path1[1],all_paths_arg1)
+            dpath=make_deppath(ci.n_conn_start,ci.n1)
+            if dpath:
+                print "N1:",make_deppath(ci.n_conn_start,ci.n1)
+            else:
+                try:
+                    print "No N1:",ci.n_conn_start,ci.n1,ci.n_conn_start.head.sd_gov,ci.n1.head.sd_gov
+                except AttributeError:
+                    print "No N1 (no head):",ci.n_conn_start,ci.n1
+        print "N2:",make_deppath(ci.n_conn_end,ci.n2)
+        path2=make_path(ci.n_conn_end,ci.n2)
+        enter_path(path2[0],path2[1],all_paths_arg2)
+    return ConstituentCandidates(all_paths_arg1,all_paths_arg2)
+    
 def anaphoric_features(ci,feats):
     feats.append("C"+'+'.join(['_'.join(ws) for ws in ci.ws]))
     feats.append("W1"+ci.n_conn_start.word)
@@ -454,72 +474,131 @@ def both_features(ci,c1,c2,feats):
     else:
         feats.append("d2-")
 
-# Step 2: determine path candidates and train classifier/rankers
-fc_anaphoric=FCombo(2,bias_item='**BIAS**')
-data_anaphoric=[]
-fc_arg2only=FCombo(2)
-data_arg2only=[]
-fc_both=FCombo(2)
-data_both=[]
-for anno in annos.find(train_criteria):
-    ci=ConnInfo()
-    try:
-        ci.set_from_anno(anno)
-    except:
-        traceback.print_exc()
-        break
-    if ci.t is None:
-        continue
-    t=ci.t
-    morpha.lemmatize(t)
-    cands2=pruned_candlist(ci.n_conn_end,all_paths_arg2)
-    if ci.n1 is None:
-        anaphoric_val=False
-        ## create arg2only examples
-        good=[]
-        bad=[]
+class NodeChooser:
+    def __init__(self,
+                 fc_anaphoric,weights_anaphoric, feat_anaphoric,
+                 fc_arg2only, weights_arg2only, feat_arg2only,
+                 fc_both, weights_both, feat_both):
+        self.fc_ana=fc_anaphoric
+        self.w_ana=weights_anaphoric
+        self.ff_ana=feat_anaphoric
+        self.fc_arg2=fc_arg2only
+        self.w_arg2=weights_arg2only
+        self.ff_arg2=feat_arg2only
+        self.fc_both=fc_both
+        self.w_both=weights_both
+        self.ff_both=feat_both
+    def choose_arg2(self,ci,cands):
+        best=None
+        best_score=-1000
         for c in cands2:
             feat=[]
-            arg2only_features(ci,c,feat)
-            fval=fc_arg2only(mkdata(feat))
-            if ci.n2==c[2]:
-                good.append(fval)
-            else:
-                bad.append(fval)
-        if good and bad:
-            data_arg2only.append([good,bad])
-    else:
-        anaphoric_val=True
-        ## create _both examples
-        n1=ci.n1
-        cands1=pruned_candlist(ci.n_conn_start,all_paths_arg1)
-        good=[]
-        bad=[]
+            self.ff_arg2(ci,c,feat)
+            fval=self.fc_arg2(mkdata(feat))
+            score=fval.dotFull(self.w_arg2)
+            if score>best_score:
+                best=c
+                best_score=score
+        return best
+    def choose_both(self,ci,cands1,cands2):
+        best=(None,None)
+        best_score=-1000
         for c1 in cands1:
             for c2 in cands2:
                 ## create arg_both examples
                 feat=[]
-                both_features(ci,c1,c2,feat)
-                fval=fc_both(mkdata(feat))
-                if ci.n1==c1[2] and ci.n2==c2[2]:
+                self.ff_both(ci,c1,c2,feat)
+                fval=self.fc_both(mkdata(feat))
+                score=fval.dotFull(self.w_both)
+                if score>best_score:
+                    best=(c1,c2)
+                    best_score=score
+        return best
+    def is_anaphoric(self,ci):
+        feat=[]
+        self.ff_ana(ci,feat)
+        return (self.fc_ana(mkdata(feat)).dotFull(self.w_ana)>0)
+
+
+def path_rankers(all_annos,cands):
+    # Step 2: determine path candidates and train classifier/rankers
+    fc_anaphoric=FCombo(2,bias_item='**BIAS**')
+    data_anaphoric=[]
+    fc_arg2only=FCombo(2)
+    data_arg2only=[]
+    fc_both=FCombo(2)
+    data_both=[]
+    for anno in all_annos:
+        ci=ConnInfo()
+        try:
+            ci.set_from_anno(anno)
+        except:
+            traceback.print_exc()
+            break
+        if ci.t is None:
+            continue
+        t=ci.t
+        morpha.lemmatize(t)
+        cands2=cands.arg2_candidates(ci)
+        print "arg2_candidates: %d"%(len(cands2,))
+        if ci.n1 is None:
+            anaphoric_val=False
+            ## create arg2only examples
+            good=[]
+            bad=[]
+            for c in cands2:
+                feat=[]
+                arg2only_features(ci,c,feat)
+                fval=fc_arg2only(mkdata(feat))
+                if ci.n2==c[2]:
                     good.append(fval)
                 else:
                     bad.append(fval)
-        if good and bad:
-            data_both.append([good,bad])
-    feat=[]
-    anaphoric_features(ci,feat)
-    data_anaphoric.append((fc_anaphoric(mkdata(feat)),anaphoric_val))
+            if good and bad:
+                data_arg2only.append([good,bad])
+        else:
+            anaphoric_val=True
+            ## create _both examples
+            n1=ci.n1
+            cands1=cands.arg1_candidates(ci)
+            print "arg1_candidates: %d"%(len(cands1,))
+            good=[]
+            bad=[]
+            for c1 in cands1:
+                for c2 in cands2:
+                    ## create arg_both examples
+                    feat=[]
+                    both_features(ci,c1,c2,feat)
+                    fval=fc_both(mkdata(feat))
+                    if ci.n1==c1[2] and ci.n2==c2[2]:
+                        good.append(fval)
+                    else:
+                        bad.append(fval)
+            if good and bad:
+                data_both.append([good,bad])
+        feat=[]
+        anaphoric_features(ci,feat)
+        data_anaphoric.append((fc_anaphoric(mkdata(feat)),anaphoric_val))
+    print "arg2only: %d examples"%(len(data_arg2only),)
+    print "both:     %d examples"%(len(data_both),)
+    print "anaphoric:%d examples"%(len(data_anaphoric),)
+    ## Step 2b: create classifiers/rankers
+    fc_arg2only.dict.growing=False
+    fc_both.dict.growing=False
+    fc_anaphoric.dict.growing=False
+    weights_arg2only=me_opt.train_me_sparse(data_arg2only,fc_arg2only.dict)
+    weights_both=me_opt.train_me_sparse(data_both,fc_both.dict)
+    x=numpy.zeros(len(fc_anaphoric.dict),'d')
+    iflag,n_iter,x,d1=me_opt.run_lbfgs(x,me_opt.sparse_unary_func,(data_anaphoric,))
+    weights_anaphoric=x
+    return NodeChooser(fc_anaphoric,weights_anaphoric,anaphoric_features,
+                       fc_arg2only,weights_arg2only,arg2only_features,
+                       fc_both,weights_both,both_features)
 
-## Step 2b: create classifiers/rankers
-fc_arg2only.dict.growing=False
-fc_both.dict.growing=False
-fc_anaphoric.dict.growing=False
-weights_arg2only=me_opt.train_me_sparse(data_arg2only,fc_arg2only.dict)
-weights_both=me_opt.train_me_sparse(data_both,fc_both.dict)
-x=numpy.zeros(len(fc_anaphoric.dict),'d')
-iflag,n_iter,x,d1=me_opt.run_lbfgs(x,me_opt.sparse_unary_func,(data_anaphoric,))
-weights_anaphoric=x
+
+train_annos=list(annos.find(train_criteria))
+my_cands=make_allpaths(train_annos)
+rankers=path_rankers(train_annos,my_cands)
 
 ## Step 3: evaluate everything
 arg1_total=0
@@ -542,20 +621,10 @@ for anno in annos.find(test_criteria):
     if ci.t is None:
         continue
     t=ci.t
-    cands2=pruned_candlist(ci.n_conn_end,all_paths_arg2)
+    cands2=my_cands.arg2_candidates(ci)
     if ci.n1 is None:
         anaphoric_val=False
-        ## create arg2only examples
-        best=None
-        best_score=-1000
-        for c in cands2:
-            feat=[]
-            arg2only_features(ci,c,feat)
-            fval=fc_arg2only(mkdata(feat))
-            score=fval.dotFull(weights_arg2only)
-            if score>best_score:
-                best=c
-                best_score=score
+        best=rankers.choose_arg2(ci,cands2)
         arg2_total+=1
         if best!=None and ci.n2==best[2]:
             arg2_exact+=1
@@ -565,20 +634,8 @@ for anno in annos.find(test_criteria):
         anaphoric_val=True
         ## create _both examples
         n1=ci.n1
-        cands1=pruned_candlist(ci.n_conn_start,all_paths_arg1)
-        best=(None,None)
-        best_score=-1000
-        for c1 in cands1:
-            for c2 in cands2:
-                ## create arg_both examples
-                feat=[]
-                both_features(ci,c1,c2,feat)
-                fval=fc_both(mkdata(feat))
-                score=fval.dotFull(weights_both)
-                if score>best_score:
-                    best=(c1,c2)
-                    best_score=score
-        best1,best2=best
+        cands1=my_cands.arg1_candidates(ci)
+        best1,best2=rankers.choose_both(ci,cands1,cands2)
         arg1_total+=1
         if best1!=None:
             if ci.n1==best1[2]:
@@ -595,9 +652,7 @@ for anno in annos.find(test_criteria):
                 arg2_exact+=1
             if ci.n2.head==best2[2].head:
                 arg2_head+=1
-    feat=[]
-    anaphoric_features(ci,feat)
-    anaphoric_decision=(fc_anaphoric(mkdata(feat)).dotFull(weights_anaphoric)>0)
+    anaphoric_decision=rankers.is_anaphoric(ci)
     anaphoric_eval[anaphoric_val][anaphoric_decision]+=1
 
 print "Arg1(exact): %d/%d=%.3f"%(arg1_exact,arg1_total,float(arg1_exact)/arg1_total)
