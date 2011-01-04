@@ -14,6 +14,9 @@ def compute_url_europarl(text_id,corpus_name):
     day=text_id[-9:-7]
     return 'http://www.europarl.europa.eu/sides/getDoc.do?pubRef=-//EP//TEXT+CRE+20%s%s%s+ITEMS+DOC+XML+V0//%s'%(year,month,day,corpus_name[-2:])
 
+parser_ordering_de=['release','tueba']
+parser_ordering_en=['release','pcfgla']
+
 corpus_sattr={'EUROPARL_EN':'file_name',
               'EUROPARL_DE':'file_name'}
 corpus_d_sattr={'EUROPARL_EN':'SPEAKER_NAME',
@@ -22,3 +25,8 @@ corpus_urls={'TUEBA4':compute_url_tueba,
              'R6PRE1':compute_url_tueba,
              'EUROPARL_EN':compute_url_europarl,
              'EUROPARL_DE':compute_url_europarl}
+parse_order={'TUEBA4':parser_ordering_de,
+             'R6PRE1':parser_ordering_de,
+             'EUROPARL_DE':parser_ordering_de,
+             'PTB':parser_ordering_en,
+             'EUROPARL_EN':parser_ordering_en}

@@ -13,13 +13,10 @@ from java_jcc import make_sd
 import morpha
 import numpy
 import traceback
+import cPickle
 import re
 import sys
 import me_opt_new as me_opt
-
-ptb=database.get_corpus('PTB')
-annos=ptb.db.annotation
-#text_id=ptb.corpus.attribute('text_id','s')
 
 normalize_connector=set(['after','before','because','when','until','since','if'])
 
@@ -257,20 +254,31 @@ def find_modals(n,md,want_word):
         elif is_s(chld.cat) or chld.cat.startswith('V'):
             find_modals(chld,md,want_word)
 
-left_ignore_re=re.compile('(?:[,:]|``)$')
-right_ignore_re=re.compile("(?:[,:]|'')$")
+left_ignore_re=re.compile('(?:[\\.\\?\\!,:]|``)$')
+right_ignore_re=re.compile("(?:[\\.\\?\\!,:]|'')$")
+
+def cleaned_span(span_orig,other_spans,words):
+    exclude=set()
+    span=span_orig[:]
+    for s in other_spans:
+        if s[0]<=span[0] and s[1]>=span[1]:
+            continue
+        exclude.update(xrange(s[0],s[1]))
+    while left_ignore_re.match(words[span[0]]) or span[0] in exclude:
+        span[0]+=1
+    while right_ignore_re.match(words[span[1]-1]) or span[1]-1 in exclude:
+        span[1]-=1
+    return span
+
 
 class ConnInfo(object):
     last_tree=None
     def __init__(self,**kw):
         self.__dict__.update(kw)
-    def set_from_anno(self,anno,corpus=None):
-        spans=anno['conn_parts']
+    def set_conn_info(self,spans,corpus):
+        """set the connective part of the info"""
         self.spans=spans
-        if corpus is None:
-            self.corpus=ptb
-        else:
-            self.corpus=corpus
+        self.corpus=corpus
         words=self.corpus.words
         sents=self.corpus.sentences
         ws=[tuple([w.lower() for w in words[span[0]:span[1]]]) for span in spans]
@@ -278,7 +286,32 @@ class ConnInfo(object):
         if len(ws)==1 and ws[0][-1] in normalize_connector:
             ws=((ws[0][-1],),)
             spans=[[spans[-1][1]-1,spans[-1][1]]]
-        self.sent_no=sents.cpos2struc(spans[-1][0])
+        self.sent_no=sents.cpos2struc(spans[-1][0])        
+        parses_doc=self.corpus.get_parses(self.sent_no)
+        if 'release' in parses_doc:
+            t_json=parses_doc['release']
+        elif 'pcfgla' in parses_doc:
+            t_json=parses_doc['pcfgla']
+        t=export.from_json(t_json)
+        make_sd(t)
+        morpha.lemmatize(t)
+        t.sent_no=self.sent_no
+        self.t=t
+        s_start,s_end=sents[self.sent_no][:2]
+        if spans[0][0]-s_start>=len(t.terminals) or spans[0][0]-s_start<0:
+            self.kind='multi-sentence'
+            self.t=None
+            return
+        self.n_conn_start=t.terminals[spans[0][0]-s_start]
+        self.n_conn_end=t.terminals[spans[-1][1]-s_start-1]
+    def set_from_anno(self,anno,corpus):
+        spans=anno['conn_parts']
+        self.set_conn_info(spans,corpus)
+        if self.t is None:
+            return
+        words=self.corpus.words
+        sents=self.corpus.sentences
+        t=self.t
         s_start,s_end=sents[self.sent_no][:2]
         argspan1=list(anno['arg1'])
         argspan2=list(anno['arg2'])
@@ -296,27 +329,6 @@ class ConnInfo(object):
         argspan2[0]-=s_start
         argspan2[1]-=s_start
         self.argspan2=argspan2
-        if ConnInfo.last_tree is not None and ConnInfo.last_tree.sent_no==self.sent_no:
-            print "Reused s%s"%(self.sent_no)
-            t=self.last_tree
-        else:
-            parses_doc=self.corpus.get_parses(self.sent_no)
-            if 'release' in parses_doc:
-                t_json=parses_doc['release']
-            elif 'pcfgla' in parses_doc:
-                t_json=parses_doc['pcfgla']
-            t=export.from_json(t_json)
-            make_sd(t)
-            morpha.lemmatize(t)
-            t.sent_no=self.sent_no
-            ConnInfo.last_tree=t
-        self.t=t
-        if spans[0][0]-s_start>=len(t.terminals) or spans[0][0]-s_start<0:
-            self.kind='multi-sentence'
-            self.t=None
-            return
-        self.n_conn_start=t.terminals[spans[0][0]-s_start]
-        self.n_conn_end=t.terminals[spans[-1][1]-s_start-1]
         if argspan1[0]<0:
             self.kind='anaphoric'
             self.n1=None
@@ -334,24 +346,43 @@ class ConnInfo(object):
                 raise
             self.n1=find_node_simple(t,argspan1[0],argspan1[1]-argspan1[0])
         self.n2=find_node_simple(t,argspan2[0],argspan2[1]-argspan2[0])
+    def set_from_prediction(self,spans,corpus,generator,chooser):
+        self.set_conn_info(spans,corpus)
+        if self.t is None:
+            return
+        anaphoric_decision=chooser.is_anaphoric(self)
+        words=self.corpus.words
+        sents=self.corpus.sentences
+        s_start,s_end=sents[self.sent_no][:2]
+        if anaphoric_decision==False:
+            self.n1=None
+            cands=generator.arg2_candidates(self)
+            best2=chooser.choose_arg2(self,cands)
+            if best2 is None:
+                self.n2=None
+            else:
+                self.n2=best2[2]
+                self.argspan2=cleaned_span([self.n2.start+s_start,self.n2.end+s_start],spans,words)
+        else:
+            cands1=generator.arg1_candidates(self)
+            cands2=generator.arg2_candidates(self)
+            best1,best2=chooser.choose_both(self,cands1,cands2)
+            allspans=spans[:]
+            if best1 is None:
+                self.n1=None
+            else:
+                self.n1=best1[2]
+                allspans.append([self.n1.start+s_start,self.n1.end+s_start])
+            if best2 is None:
+                self.n2=None
+            else:
+                self.n2=best2[2]
+                allspans.append([self.n2.start+s_start,self.n2.end+s_start])
+            if self.n1 is not None:
+                self.argspan1=cleaned_span([self.n1.start+s_start,self.n1.end+s_start],allspans,words)
+            if self.n2 is not None:
+                self.argspan2=cleaned_span([self.n2.start+s_start,self.n2.end+s_start],allspans,words)
 
-
-
-## PTB sections (start)
-##  0 ->       0
-## 10 ->  441305
-## 20 ->  956696
-## 22 -> 1004073
-## 23 -> 1044112
-## 24 -> 1140913
-## train on sec 00-09, test on 10-21
-train_criteria={'level':'pdtb','reltype':'Explicit','span':{'$lt':441305}}
-test_criteria={'level':'pdtb','reltype':'Explicit','span':{'$gte':441305,'$lt':1004073}}
-
-
-## tiny train and test set for debugging
-## train_criteria={'level':'pdtb','reltype':'Explicit','span':{'$lt':4000}}
-## test_criteria={'level':'pdtb','reltype':'Explicit','span':{'$gte':4000,'$lt':8000}}
 
 def sd_neighbours(n):
     result=[]
@@ -402,14 +433,14 @@ class ConstituentCandidates:
         return pruned_candlist(ci.n_conn_end,self.paths2)
 
 #annos.find(train_criteria)
-def make_allpaths(all_annos):
+def make_allpaths(all_annos,corpus):
     all_paths_arg1=new_paths()
     all_paths_arg2=new_paths()
     # Step 1: gather paths
     for anno in all_annos:
         ci=ConnInfo()
         try:
-            ci.set_from_anno(anno)
+            ci.set_from_anno(anno,corpus)
         except:
             traceback.print_exc()
             break
@@ -420,13 +451,13 @@ def make_allpaths(all_annos):
             enter_path(path1[0],path1[1],all_paths_arg1)
             dpath=make_deppath(ci.n_conn_start,ci.n1)
             if dpath:
-                print "N1:",make_deppath(ci.n_conn_start,ci.n1)
+                print >>sys.stderr, "N1:",make_deppath(ci.n_conn_start,ci.n1)
             else:
                 try:
-                    print "No N1:",ci.n_conn_start,ci.n1,ci.n_conn_start.head.sd_gov,ci.n1.head.sd_gov
+                    print >>sys.stderr, "No N1:",ci.n_conn_start,ci.n1,ci.n_conn_start.head.sd_gov,ci.n1.head.sd_gov
                 except AttributeError:
-                    print "No N1 (no head):",ci.n_conn_start,ci.n1
-        print "N2:",make_deppath(ci.n_conn_end,ci.n2)
+                    print >>sys.stderr, "No N1 (no head):",ci.n_conn_start,ci.n1
+        print >>sys.stderr, "N2:",make_deppath(ci.n_conn_end,ci.n2)
         path2=make_path(ci.n_conn_end,ci.n2)
         enter_path(path2[0],path2[1],all_paths_arg2)
     return ConstituentCandidates(all_paths_arg1,all_paths_arg2)
@@ -464,7 +495,7 @@ def both_features(ci,c1,c2,feats):
     pivot_features(ci.n_conn_end,n1,n2,feats)
     dpath1=make_deppath(ci.n_conn_start,n1)
     if dpath1 is not None:
-        print dpath1
+        #print >>sys.stderr, dpath1
         feats.append("d1%s"%(''.join(dpath1[3])))
     else:
         feats.append("d1-")
@@ -491,7 +522,7 @@ class NodeChooser:
     def choose_arg2(self,ci,cands):
         best=None
         best_score=-1000
-        for c in cands2:
+        for c in cands:
             feat=[]
             self.ff_arg2(ci,c,feat)
             fval=self.fc_arg2(mkdata(feat))
@@ -520,7 +551,7 @@ class NodeChooser:
         return (self.fc_ana(mkdata(feat)).dotFull(self.w_ana)>0)
 
 
-def path_rankers(all_annos,cands):
+def path_rankers(all_annos,cands,corpus):
     # Step 2: determine path candidates and train classifier/rankers
     fc_anaphoric=FCombo(2,bias_item='**BIAS**')
     data_anaphoric=[]
@@ -531,7 +562,7 @@ def path_rankers(all_annos,cands):
     for anno in all_annos:
         ci=ConnInfo()
         try:
-            ci.set_from_anno(anno)
+            ci.set_from_anno(anno,corpus)
         except:
             traceback.print_exc()
             break
@@ -540,7 +571,7 @@ def path_rankers(all_annos,cands):
         t=ci.t
         morpha.lemmatize(t)
         cands2=cands.arg2_candidates(ci)
-        print "arg2_candidates: %d"%(len(cands2,))
+        #print "arg2_candidates: %d"%(len(cands2,))
         if ci.n1 is None:
             anaphoric_val=False
             ## create arg2only examples
@@ -596,72 +627,99 @@ def path_rankers(all_annos,cands):
                        fc_both,weights_both,both_features)
 
 
-train_annos=list(annos.find(train_criteria))
-my_cands=make_allpaths(train_annos)
-rankers=path_rankers(train_annos,my_cands)
+def do_main(want_save=False):
+    ptb=database.get_corpus('PTB')
+    annos=ptb.db.annotation
 
-## Step 3: evaluate everything
-arg1_total=0
-arg1_exact=0
-arg1_head=0
+    ## PTB sections (start)
+    ##  0 ->       0
+    ## 10 ->  441305
+    ## 20 ->  956696
+    ## 22 -> 1004073
+    ## 23 -> 1044112
+    ## 24 -> 1140913
+    ## train on sec 00-09, test on 10-21
+    train_criteria={'level':'pdtb','reltype':'Explicit','span':{'$lt':441305}}
+    test_criteria={'level':'pdtb','reltype':'Explicit','span':{'$gte':441305,'$lt':1004073}}
 
-arg2_total=0
-arg2_exact=0
-arg2_head=0
+    ## tiny train and test set for debugging
+    ## train_criteria={'level':'pdtb','reltype':'Explicit','span':{'$lt':4000}}
+    ## test_criteria={'level':'pdtb','reltype':'Explicit','span':{'$gte':4000,'$lt':8000}}
 
-anaphoric_eval=numpy.zeros([2,2])
+    train_annos=list(annos.find(train_criteria))
+    my_cands=make_allpaths(train_annos,ptb)
+    rankers=path_rankers(train_annos,my_cands,ptb)
 
-for anno in annos.find(test_criteria):
-    ci=ConnInfo()
-    try:
-        ci.set_from_anno(anno)
-    except:
-        traceback.print_exc()
-        break
-    if ci.t is None:
-        continue
-    t=ci.t
-    cands2=my_cands.arg2_candidates(ci)
-    if ci.n1 is None:
-        anaphoric_val=False
-        best=rankers.choose_arg2(ci,cands2)
-        arg2_total+=1
-        if best!=None and ci.n2==best[2]:
-            arg2_exact+=1
-        if best!=None and ci.n2.head==best[2].head:
-            arg2_head+=1
-    else:
-        anaphoric_val=True
-        ## create _both examples
-        n1=ci.n1
-        cands1=my_cands.arg1_candidates(ci)
-        best1,best2=rankers.choose_both(ci,cands1,cands2)
-        arg1_total+=1
-        if best1!=None:
-            if ci.n1==best1[2]:
-                arg1_exact+=1
-            if ci.n1.head==best1[2].head:
-                arg1_head+=1
-            else:
-                print ' '.join([n.word for n in ci.t.terminals]),ci.ws
-                print "wrong Arg1: %s"%(best1[2].to_full([]))
-                print "wanted: %s"%(ci.n1.to_full([]))
-        arg2_total+=1
-        if best2!=None:
-            if ci.n2==best2[2]:
+    if want_save:
+        f=file('conn_args.pik','w')
+        cPickle.dump((my_cands,rankers),f,-1)
+        f.close()
+
+    ## Step 3: evaluate everything
+    arg1_total=0
+    arg1_exact=0
+    arg1_head=0
+
+    arg2_total=0
+    arg2_exact=0
+    arg2_head=0
+
+    anaphoric_eval=numpy.zeros([2,2])
+
+    for anno in annos.find(test_criteria):
+        ci=ConnInfo()
+        try:
+            ci.set_from_anno(anno,ptb)
+        except:
+            traceback.print_exc()
+            break
+        if ci.t is None:
+            continue
+        t=ci.t
+        cands2=my_cands.arg2_candidates(ci)
+        if ci.n1 is None:
+            anaphoric_val=False
+            best=rankers.choose_arg2(ci,cands2)
+            arg2_total+=1
+            if best!=None and ci.n2==best[2]:
                 arg2_exact+=1
-            if ci.n2.head==best2[2].head:
+            if best!=None and ci.n2.head==best[2].head:
                 arg2_head+=1
-    anaphoric_decision=rankers.is_anaphoric(ci)
-    anaphoric_eval[anaphoric_val][anaphoric_decision]+=1
+        else:
+            anaphoric_val=True
+            ## create _both examples
+            n1=ci.n1
+            cands1=my_cands.arg1_candidates(ci)
+            best1,best2=rankers.choose_both(ci,cands1,cands2)
+            arg1_total+=1
+            if best1!=None:
+                if ci.n1==best1[2]:
+                    arg1_exact+=1
+                if ci.n1.head==best1[2].head:
+                    arg1_head+=1
+                else:
+                    print ' '.join([n.word for n in ci.t.terminals]),ci.ws
+                    print "wrong Arg1: %s"%(best1[2].to_full([]))
+                    print "wanted: %s"%(ci.n1.to_full([]))
+            arg2_total+=1
+            if best2!=None:
+                if ci.n2==best2[2]:
+                    arg2_exact+=1
+                if ci.n2.head==best2[2].head:
+                    arg2_head+=1
+        anaphoric_decision=rankers.is_anaphoric(ci)
+        anaphoric_eval[anaphoric_val][anaphoric_decision]+=1
 
-print "Arg1(exact): %d/%d=%.3f"%(arg1_exact,arg1_total,float(arg1_exact)/arg1_total)
-print "Arg1(head):  %d/%d=%.3f"%(arg1_head,arg1_total,float(arg1_head)/arg1_total)
-print "Arg2(exact): %d/%d=%.3f"%(arg2_exact,arg2_total,float(arg2_exact)/arg2_total)
-print "Arg2(head):  %d/%d=%.3f"%(arg2_head,arg2_total,float(arg2_head)/arg2_total)
-prec=float(anaphoric_eval[1,1])/anaphoric_eval[:,1].sum()
-recl=float(anaphoric_eval[1,1])/anaphoric_eval[1,:].sum()
-f1=2*prec*recl/(prec+recl)
-print "anaphoric: P=%d/%d=%.3f R=%d/%d=%.3f F1=%.3f"%(anaphoric_eval[1,1],anaphoric_eval[:,1].sum(),prec,
-                                                 anaphoric_eval[1,1],anaphoric_eval[1,:].sum(),recl,
-                                                 f1)
+    print "Arg1(exact): %d/%d=%.3f"%(arg1_exact,arg1_total,float(arg1_exact)/arg1_total)
+    print "Arg1(head):  %d/%d=%.3f"%(arg1_head,arg1_total,float(arg1_head)/arg1_total)
+    print "Arg2(exact): %d/%d=%.3f"%(arg2_exact,arg2_total,float(arg2_exact)/arg2_total)
+    print "Arg2(head):  %d/%d=%.3f"%(arg2_head,arg2_total,float(arg2_head)/arg2_total)
+    prec=float(anaphoric_eval[1,1])/anaphoric_eval[:,1].sum()
+    recl=float(anaphoric_eval[1,1])/anaphoric_eval[1,:].sum()
+    f1=2*prec*recl/(prec+recl)
+    print "anaphoric: P=%d/%d=%.3f R=%d/%d=%.3f F1=%.3f"%(anaphoric_eval[1,1],anaphoric_eval[:,1].sum(),prec,
+                                                     anaphoric_eval[1,1],anaphoric_eval[1,:].sum(),recl,
+                                                     f1)
+
+if __name__=='__main__':
+    do_main()

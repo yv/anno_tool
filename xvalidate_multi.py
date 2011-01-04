@@ -22,10 +22,11 @@ lenient=False
 max_depth=None
 n_processors=1
 classification='hier'
+reassign_folds=True
 
 n_rare=10
 
-opts,args=getopt(sys.argv[1:],'C:P:p:w:d:s:l')
+opts,args=getopt(sys.argv[1:],'C:P:p:w:d:s:lR')
 for k,v in opts:
     if k=='-p':
         predictions_fname=v
@@ -42,6 +43,8 @@ for k,v in opts:
     elif k=='-C':
         assert v in ['hier','flat']
         classification_scheme=v
+    elif k=='-R':
+        reassign_folds=True
 
 if n_processors==1:
     def cleanup():
@@ -66,12 +69,10 @@ else:
         else:
             return p.map
 
-n_bins=10
-
 
 all_data=[]
 
-all_data,labelset=load_data(args[0],max_depth)
+all_data,labelset=load_data(args[0],max_depth,reassign_folds)
 
 print labelset.words
 

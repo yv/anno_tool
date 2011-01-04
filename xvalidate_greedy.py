@@ -14,7 +14,7 @@ from ml_utils import classify_greedy, reduce_classifier, mkdata
 #import me_opt2 as me_opt
 #import sgd_opt as me_opt
 import me_opt_new as me_opt
-from xvalidate_common import make_stats, print_eval
+from xvalidate_common import make_stats, print_eval, n_bins
 
 predictions_fname=None
 weights_fname=None
@@ -23,8 +23,9 @@ lenient=False
 max_depth=None
 n_processors=1
 classification='hier'
+reassign_folds=False
 
-opts,args=getopt(sys.argv[1:],'C:P:p:w:d:s:l')
+opts,args=getopt(sys.argv[1:],'C:P:p:w:d:s:lR')
 for k,v in opts:
     if k=='-p':
         predictions_fname=v
@@ -38,6 +39,8 @@ for k,v in opts:
         stats_fname=v
     elif k=='-P':
         n_processors=int(v)
+    elif k=='-R':
+        reassign_folds=True
     elif k=='-C':
         assert v in ['hier','flat','seq']
         classification_scheme=v
@@ -65,8 +68,6 @@ else:
         else:
             return p.map
 
-n_bins=10
-
 data_bins=[[] for unused_ in xrange(n_bins)]
 
 
@@ -76,12 +77,17 @@ def shrink_to(lbl,d):
         lbl='.'.join(parts[:d])
     return lbl
 
+all_data,labelset=load_data(args[0],max_depth,reassign_folds)
+
 labelset=PythonAlphabet()
 all_data=[]
+lineno=0
 for l in file(args[0]):
     bin_nr,data,label,unused_span=json.loads(l)
     new_label=[]
     new_label_2=[]
+    if reassign_folds:
+        bin_nr=lineno%n_bins
     for lbl in label:
         if max_depth is not None:
             lbl=shrink_to(lbl,max_depth)
@@ -90,6 +96,7 @@ for l in file(args[0]):
         new_label_2.append(lbl)
     all_data.append((bin_nr,data,new_label_2))
     data_bins[bin_nr].append((new_label,mkdata(data)))
+    lineno+=1
 labelset.growing=False
 
 def make_fold_classifier(fold_no):

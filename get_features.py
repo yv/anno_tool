@@ -1,13 +1,29 @@
-#!/usr/bin/env python
+ #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 from itertools import izip
 import pytree.export as export
-import mongoDB.annodb as annodb
-import pynlp.de.smor_pos as smor_pos
+import annodb.database as annodb
+from annodb.schema import schemas
+from pynlp.de import smor_pos, tueba_heads
+from pytree import deps
+import simplejson as json
 
-db=annodb.AnnoDB()
+import sys
+sys.path.append('/home/yannickv/proj/pytree')
+import germanet
+import pydeps
+
+db=annodb.get_corpus('R6PRE1')
 lemmas=db.corpus.attribute('lemma','p')
-task=db.get_task('task_waehrend2_new')
+
+stupid_head_finder=deps.SimpleDepExtractor(tueba_heads.hr_table+[(None,[(None,'HD','r'),(None,'l')])],['$,','$.'])
+
+hier_map={}
+def make_schema(entries,prefix):
+    for x in entries:
+        hier_map[x[0]]=prefix+x[0]
+        make_schema(x[2],'%s%s.'%(prefix,x[0]))
+make_schema(schemas['konn2'].schema,'')
 
 def find_args(n):
     if n.parent.cat=='C':
@@ -68,6 +84,24 @@ def gather_args(nodes,result):
                     gather_args(n1.children,result)
                     break
 
+def add_hypernyms(synsets,result):
+    for syn in synsets:
+        hyper=syn.getHypernyms()
+        if not hyper:
+            result.append(syn.getWords()[0].word)
+        else:
+            add_hypernyms(hyper,result)
+
+def get_verb_features(vlemma):
+    vlemma=vlemma.replace('#','')
+    synsets=germanet.synsets_for_word(vlemma)
+    result=[]
+    add_hypernyms(synsets,result)
+    result2=set()
+    for syn in synsets:
+        result2.add(syn.lexGroup.name)
+    return sorted(set(result)),sorted(result2)
+
 def get_verbs(n):
     fin_verbs=[]
     nfin_verbs=[]
@@ -82,9 +116,14 @@ def get_verbs(n):
                         gather_verbs(n2.children,fin_verbs,[])
                         if fin_verbs: break
     if not fin_verbs:
-        main_v=nfin_verbs[0]
-        all_v=nfin_verbs[1:]
-        flags.add('nonfin')
+        if nfin_verbs:
+            main_v=nfin_verbs[0]
+            all_v=nfin_verbs[1:]
+            flags.add('nonfin')
+        else:
+            main_v=n.head
+            all_v=[]
+            flags.add('null')
     else:
         main_v=fin_verbs[0]
         all_v=nfin_verbs
@@ -140,30 +179,80 @@ def gather_verbs(nodes,fin_v,nfin_v):
                     gather_verbs(n1.children,fin_v,nfin_v)
                     break
 
-for span in task.spans:
+
+def get_target(anno):
+    rel1=anno.rel1
+    tgt=[hier_map[rel1]]
+    if 'rel2' in anno._doc and anno.rel2!='NULL':
+        tgt.append(hier_map[anno.rel2])
+    return tgt
+
+def grok_encoding(s):
+    if isinstance(s,str):
+        return s.decode('ISO-8859-15')
+    else:
+        return unicode(s)
+
+annotator='melike'
+tasks=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,6)]
+print tasks
+spans=set([tuple(span) for task in tasks for span in task.spans])
+
+f_out=file('nachdem_1-6.json','w')
+
+for span in spans:
     sent_no=db.sentences.cpos2struc(span[0])
     sent_span=db.sentences[sent_no]
     t=export.from_json(db.get_parses(sent_no)['release'])
+    stupid_head_finder(t)
     for n,lemma in izip(t.terminals,lemmas[sent_span[0]:sent_span[1]+1]):
         n.lemma=lemma
     offset=span[0]-sent_span[0]
     n=t.terminals[offset]
-    anno=db.get_annotation('anna','konn',span)
+    anno=db.get_annotation(annotator,'konn2',span)
     print "--- s%s"%(sent_no+1,)
     sub_cl,main_cl=find_args(n)
+    feats=[]
+    if not main_cl: continue
     print "SUB: ",sub_cl.to_penn()
     print "MAIN:",main_cl.to_penn()
     print "field:",sub_cl.parent.cat
-    print "neg[sub]: ",find_negation(sub_cl)
-    print "neg[main]:",find_negation(main_cl)
+    feats.append('fd'+sub_cl.parent.cat)
+    neg_sub=find_negation(sub_cl)
+    print "neg[sub]: ",neg_sub
+    if neg_sub:
+        feats.append('NS+')
+    else:
+        feats.append('NS-')
+    neg_main=find_negation(main_cl)
+    print "neg[main]:",neg_main
+    if neg_main:
+        feats.append('NM+')
+    else:
+        feats.append('NM-')
     print "args[sub]:"
-    print get_verbs(sub_cl)
+    (p,flags)=get_verbs(sub_cl)
+    feats.append('LS'+p)
+    for k in flags:
+        feats.append('TFS'+k)
+    print p,flags
+    print get_verb_features(p)
     for k,v in find_nomargs(sub_cl):
         print "  %s: %s"%(k,v.to_penn())
     print "args[main]:"
-    print get_verbs(main_cl)
+    (p,flags)=get_verbs(main_cl)
+    feats.append('LM'+p)
+    for k in flags:
+        feats.append('TFM'+k)
+    print p,flags
+    print get_verb_features(p)
     for k,v in find_nomargs(main_cl):
         print "  %s: %s"%(k,v.to_penn())    
     #print "anno: temporal=%s contrastive=%s"%(anno.temporal,anno.contrastive)
-    #print "anno: rel1=%s rel2=%s"%(anno.rel1,anno.rel2)
-    print anno._doc
+    target=get_target(anno)
+    print target
+    #print "anno: rel1=%s rel2=%s"%(anno.rel1,anno._doc.get('rel2','NULL'))
+    print feats
+    #print anno._doc
+    print >>f_out, json.dumps([0,map(grok_encoding,feats),target,span])
+f_out.close()

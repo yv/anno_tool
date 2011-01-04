@@ -5,7 +5,7 @@ from alphabet import PythonAlphabet
 from itertools import izip
 
 __all__=['mkdata','shrink_to','load_data','make_stats',
-         'print_weights','print_eval']
+         'print_weights','print_eval','n_bins']
 
 def mkdata(feats):
     lst=[]
@@ -22,11 +22,16 @@ def shrink_to(lbl,d):
         lbl='.'.join(parts[:d])
     return lbl
 
-def load_data(fname, max_depth=None):
+n_bins=10
+
+def load_data(fname, max_depth=None,reassign_folds=False):
     all_data=[]
+    line_no=0
     labelset=PythonAlphabet()
     for l in file(fname):
         bin_nr,data,label,unused_span=json.loads(l)
+        if reassign_folds:
+            bin_nr=line_no%n_bins
         new_label=[]
         for lbl in label:
             if max_depth is not None:
@@ -34,6 +39,7 @@ def load_data(fname, max_depth=None):
             labelset[lbl]
             new_label.append(lbl)
         all_data.append((bin_nr,data,new_label))
+        line_no+=1
     labelset.growing=False
     return all_data, labelset
 
