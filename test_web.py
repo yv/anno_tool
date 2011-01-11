@@ -182,7 +182,7 @@ def render_discourse_printable(request,disc_no):
     else:
         who=request.user
     doc=db.get_discourse(t_id,who)
-    texts=corpus.attribute("text_id",'s')
+    texts=corpus.attribute(corpus_d_sattr.get(db.corpus_name,'text_id'),'s')
     sents=corpus.attribute("s",'s')
     start,end,text_attrs=texts[t_id]
     sent_id=sents.cpos2struc(start)

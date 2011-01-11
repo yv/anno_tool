@@ -1,6 +1,7 @@
  #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 from itertools import izip
+from collections import defaultdict
 import pytree.export as export
 import annodb.database as annodb
 from annodb.schema import schemas
@@ -12,6 +13,55 @@ import sys
 sys.path.append('/home/yannickv/proj/pytree')
 import germanet
 import pydeps
+
+adverb_classes={}
+# nicht: erst, gerade (Fokusinteraktion)
+# nicht: zugleich (parallel)
+for k in '''anfangs bald beizeiten früh
+nun jetzt gerade derzeit inzwischen soeben
+gestern vorgestern neulich bisher bislang früher damals kürzlich letztens seinerzeit
+morgen übermorgen seither später nachher demnächst'''.split():
+    adverb_classes[k]='tmp'
+for k in '''daher darum deshalb deswegen''':
+    adverb_classes[k]='causal'
+
+def classify_adverb(n):
+    lem=n.head.lemma
+    if lem in adverb_classes:
+        return adverb_classes[lem]
+    return None
+
+def classify_px(n):
+    lem=n.head.lemma
+    if n.children[-1].cat not in ['NX','NCX']:
+        return None
+    case=n.head.morph[0]
+    lem2=n.children[-1].head.lemma
+    cls_lem2=set()
+    for syn in germanet.synsets_for_word(lem2):
+        cls_lem2.update(germanet.classify_synset(syn))
+    if lem=='wegen':
+        return 'causal'
+    elif lem=='trotz':
+        return 'concessive'
+    if case=='d':
+        if lem=='in' and 'zeiteinheit' in cls_lem2:
+            return 'tmp'
+        elif lem=='an' and 'tag' in cls_lem2:
+            return 'tmp'
+        elif lem=='nach' and 'information' in cls_lem2:
+            return 'source'
+        elif lem=='nach' and 'ereignis' in cls_lem2:
+            return 'tmp'
+        elif lem=='vor':
+            if 'ereignis' in cls_lem2:
+                # vor dem Unfall
+                return 'tmp'
+            if 'zeiteinheit' in cls_lem2:
+                # vor zwei Wochen, vor dem 1. Mai
+                return 'tmp'
+        elif lem=='während':
+            return 'tmp'
 
 db=annodb.get_corpus('R6PRE1')
 lemmas=db.corpus.attribute('lemma','p')
@@ -83,6 +133,28 @@ def gather_args(nodes,result):
                 if n1.cat=='FKONJ':
                     gather_args(n1.children,result)
                     break
+
+def gather_adjuncts(nodes,result,exclude):
+    for n in nodes:
+        if n.cat in ['VF','MF','NF']:
+            for n1 in n.children:
+                if n1 in exclude: continue
+                if n1.cat in ['NX','NCX']:
+                    if n1.edge_label=='MOD' and n.cat!='NF':
+                        result['tmp'].append(n1)
+                elif n1.cat=='PX':
+                    result[classify_px(n1)].append(n1)
+                elif n1.cat=='ADVX':
+                    result[classify_adverb(n1)].append(n1)
+        elif n.cat=='FKOORD':
+            for n1 in n.children:
+                if n1.cat=='FKONJ':
+                    gather_adjuncts(n1.children,result,exclude)
+                    break
+def find_adjuncts(n,exclude=[]):
+    result=defaultdict(list)
+    gather_adjuncts(n.children,result,exclude)
+    return result
 
 def add_hypernyms(synsets,result):
     for syn in synsets:
@@ -193,12 +265,28 @@ def grok_encoding(s):
     else:
         return unicode(s)
 
+def compatible_pronoun(n1,n2):
+    if n1.head.cat!='PPER':
+        return False
+    if n2.head.cat=='PPER':
+        return n1.head.morph[1:]==n2.head.morph[1:]
+    if n1.head.morph[3]!='3':
+        return False
+    if n1.head.morph[1:3]!=n2.head.morph[1:3]:
+        return False
+    for n in n2.children:
+        if n.cat=='PPOSAT':
+            return False
+    return True
+
 annotator='melike'
 tasks=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,6)]
 print tasks
 spans=set([tuple(span) for task in tasks for span in task.spans])
 
 f_out=file('nachdem_1-6.json','w')
+
+wanted_features=['csubj','mod']
 
 for span in spans:
     sent_no=db.sentences.cpos2struc(span[0])
@@ -237,8 +325,10 @@ for span in spans:
         feats.append('TFS'+k)
     print p,flags
     print get_verb_features(p)
-    for k,v in find_nomargs(sub_cl):
+    nomargs_sub=find_nomargs(sub_cl)
+    for k,v in nomargs_sub:
         print "  %s: %s"%(k,v.to_penn())
+    if 'mod' in wanted_features:
     print "args[main]:"
     (p,flags)=get_verbs(main_cl)
     feats.append('LM'+p)
@@ -246,13 +336,48 @@ for span in spans:
         feats.append('TFM'+k)
     print p,flags
     print get_verb_features(p)
-    for k,v in find_nomargs(main_cl):
-        print "  %s: %s"%(k,v.to_penn())    
+    nomargs_main=find_nomargs(main_cl)
+    for k,v in nomargs_main:
+        print "  %s: %s"%(k,v.to_penn())
+    if 'mod' in wanted_features:
+        mod_main=find_adjuncts(main_cl,[sub_cl])
+        mod_sub=find_adjuncts(sub_cl)
+        for (mod,modS) in [(mod_main,'M'),(mod_sub,'S')]:
+            for k in ['tmp','causal','concessive']:
+                if k in mod:
+                    val='+'
+                else:
+                    val='-'
+                feats.append('mod%s%s%s'%(modS,k,val))
+        if mod_main:
+            print "mod[main]"
+            for k in mod_main:
+                if k is not None:
+                    for v in mod_main[k]:
+                        print " %s: %s"%(k,v.to_penn())
+        if mod_sub:
+            print "mod[sub]"
+            for k in mod_sub:
+                if k is not None:
+                    for v in mod_sub[k]:
+                        print " %s: %s"%(k,v.to_penn())
+    if 'csubj' in wanted_features:
+        subj_main=[x[1] for x in nomargs_main if x[0]=='ON']
+        subj_sub=[x[1] for x in nomargs_sub if x[0]=='ON']
+        if len(subj_main)==1 and len(subj_sub)==1:
+            if compatible_pronoun(subj_main[0],subj_sub[0]):
+                feats.append('cpM+')
+            else:
+                feats.append('cpM-')
+            if compatible_pronoun(subj_sub[0],subj_main[0]):
+                feats.append('cpS+')
+            else:
+                feats.append('cpS-')
     #print "anno: temporal=%s contrastive=%s"%(anno.temporal,anno.contrastive)
     target=get_target(anno)
     print target
     #print "anno: rel1=%s rel2=%s"%(anno.rel1,anno._doc.get('rel2','NULL'))
     print feats
     #print anno._doc
-    print >>f_out, json.dumps([0,map(grok_encoding,feats),target,span])
+    print >>f_out, json.dumps([0,map(grok_encoding,feats),target,[span[0],span[1]-1]])
 f_out.close()

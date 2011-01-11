@@ -1,11 +1,23 @@
 import sys
 import numpy
 import json
+import codecs
 from alphabet import PythonAlphabet
 from itertools import izip
 
 __all__=['mkdata','shrink_to','load_data','make_stats',
-         'print_weights','print_eval','n_bins']
+         'print_weights','print_eval','n_bins','add_options_common']
+
+def add_options_common(oparse):
+    oparse.add_option('-w', dest='weights_fname')
+    oparse.add_option('-p', dest='predictions_fname', help='File for predictions')
+    oparse.add_option('-s', dest='stats_fname', help='File for evaluation statistics')
+    oparse.add_option('-R', action='store_true',
+                      dest='reassign_folds')
+    oparse.add_option('-d', action='store', type='int',
+                      dest='max_depth')
+    oparse.add_option('-P', type='int',
+                      dest='n_processors',default=1)
 
 def mkdata(feats):
     lst=[]
@@ -24,7 +36,9 @@ def shrink_to(lbl,d):
 
 n_bins=10
 
-def load_data(fname, max_depth=None,reassign_folds=False):
+def load_data(fname, opts):
+    reassign_folds=opts.reassign_folds
+    max_depth=opts.max_depth
     all_data=[]
     line_no=0
     labelset=PythonAlphabet()
@@ -75,7 +89,7 @@ def make_stats(data,classifications,
     return stats
 
 def print_weights(fname,fc,classifiers,epsilon=1e-4):
-    f_weights=file(fname,'w')
+    f_weights=codecs.open(fname,'w','ISO-8859-15')
     all_feats=[]
     for feat,ws in izip(fc.dict.words,izip(*classifiers)):
         aws=numpy.array(ws)

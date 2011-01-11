@@ -39,15 +39,15 @@ class AMISLearner:
     def __init__(self,basedir=None):
         if basedir is None:
             self.basedir=tempfile.mkdtemp(prefix='amis')
-            self.want_cleanup=True
+            self.want_cleanup=2
         else:
             self.basedir=basedir
-            self.want_cleanup=False
+            self.want_cleanup=1
         self.num_iterations=70
         self.conf_written=False
         self.data_format='AmisTree'
         self.estimation_algorithm='BFGSMAP'
-        self.count_threshold=2
+        self.count_threshold=1
     def write_conf(self):
         fname=os.path.join(self.basedir,'amis.conf')
         f=file(fname,'w')
@@ -75,6 +75,8 @@ class AMISLearner:
         retval=os.spawnv(os.P_WAIT,treelexer_path,args)
         assert retval==0, (args,retval)
         self.infile_written=True
+        if self.want_cleanup>=1:
+            os.remove(os.path.join(self.basedir,'all.event0'))
     def run_learner(self):
         if not self.conf_written:
             self.write_conf()
