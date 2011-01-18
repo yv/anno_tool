@@ -270,6 +270,20 @@ def mood_features(node,fs,what):
             #print >>sys.stderr, "No args identified: %s"%(node.parent.to_full([]))
             pass
 
+def do_lex(node,fs):
+    args=get_arguments(node)
+    if args:
+        try:
+            a1_lemma=args[0].head.lemma
+            fs.append('SH1='+a1_lemma)
+        except AttributeError:
+            pass
+        try:
+            a2_lemma=args[1].head.lemma
+            fs.append('SH2='+a2_lemma)
+        except AttributeError:
+            pass
+
 def as_features(node):
     args=get_arguments(node)
     if args and args[2] in ['in-sbar','in-pp_s']:
@@ -295,8 +309,9 @@ if __name__=='__main__':
     use_syn=False
     use_mood=None
     use_as=True
+    use_lex=False
     multiclass=False
-    opts,args=getopt(sys.argv[1:], 'csSM:mr12')
+    opts,args=getopt(sys.argv[1:], 'csSM:mr12L')
     #print >>sys.stderr, args
     db=database.get_corpus(args[0])
     for k,v in opts:
@@ -315,6 +330,8 @@ if __name__=='__main__':
         elif k=='-2': only_arg2=True
         elif k=='-M':
             use_mood=int(v)
+        elif k=='-L':
+            use_lex=True
     for l in file(args[1]):
         file_name,sent_no,offset,length,span,conn,cls = json.loads(l)
         if multiclass:
@@ -354,4 +371,10 @@ if __name__=='__main__':
             if node1==None:
                 node1=find_node_simple(t,offset,length)
             as_features(node1)
+        if use_lex:
+            make_sd(t)
+            morpha.lemmatize(t)
+            if node1==None:
+                node1=find_node_simple(t,offset,length)
+            do_lex(node1,fs)
         print json.dumps([0,fs,target,span])

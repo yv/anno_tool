@@ -121,9 +121,11 @@ mod_scheme=[('class',['tmp','loc','sit','freq','dur',
                       'final','causal','concessive','cond','dir',
                       'instr','focus','source','manner',
                       'commentary','modalprt','intensifier'])]
+ne_scheme=[('tag',['PER','ORG','LOC','GPE','OTHER'])]
 
 schemas['konn']=SimpleSchema(konn_scheme)
 schemas['mod']=SimpleSchema(mod_scheme)
+schemas['ne']=SimpleSchema(ne_scheme)
 
 def load_schema(f):
     stack=[]

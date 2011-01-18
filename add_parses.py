@@ -3,7 +3,7 @@ import pytree.export as export
 import annodb.database as annodb
 import getopt
 
-corpus_name='TUEBA4'
+corpus_name=None
 parse_name='release'
 
 opts,args=getopt.getopt(sys.argv[1:],'c:p:')
@@ -12,6 +12,10 @@ for k,v in opts:
         corpus_name=v
     elif k=='-p':
         parse_name=v
+
+if corpus_name is None:
+    print >>sys.stderr, "Need to specify corpus_name"
+    sys.exit(1)
 
 db=annodb.AnnoDB(corpus_name)
 f=file(args[0])

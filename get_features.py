@@ -1,4 +1,4 @@
- #!/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 from itertools import izip
 from collections import defaultdict
@@ -22,16 +22,31 @@ nun jetzt gerade derzeit inzwischen soeben
 gestern vorgestern neulich bisher bislang früher damals kürzlich letztens seinerzeit
 morgen übermorgen seither später nachher demnächst'''.split():
     adverb_classes[k]='tmp'
-for k in '''daher darum deshalb deswegen''':
+for k in '''daher darum deshalb deswegen'''.split():
     adverb_classes[k]='causal'
+for k in '''auch ebenfalls ebenso gleichfalls'''.split():
+    adverb_classes[k]='focus-koord-incl'
+for k in '''nur bloß lediglich allein ausschließlich einzig'''.split():
+    adverb_classes[k]='focus-restr-excl'
+for k in '''erst schon bereits noch'''.split():
+    adverb_classes[k]='focus-tmp'
+for k in '''zweifellos zweifelsohne fraglos tatsächlich
+sicher bestimmt gewiß vermutlich wahrscheinlich
+angeblich vorgeblich
+leider'''.split():
+    adverb_classes[k]='comment'
 
 def classify_adverb(n):
     lem=n.head.lemma
     if lem in adverb_classes:
         return adverb_classes[lem]
+    if lem.endswith('weise'):
+        return 'comment'
     return None
 
 def classify_px(n):
+    if n.children[0].edge_label=='APP' and n.children[0].cat=='PX':
+        n=n.children[0]
     lem=n.head.lemma
     if n.children[-1].cat not in ['NX','NCX']:
         return None
@@ -60,7 +75,7 @@ def classify_px(n):
             if 'zeiteinheit' in cls_lem2:
                 # vor zwei Wochen, vor dem 1. Mai
                 return 'tmp'
-        elif lem=='während':
+        elif lem in ['während','seit']:
             return 'tmp'
 
 db=annodb.get_corpus('R6PRE1')
@@ -76,23 +91,41 @@ def make_schema(entries,prefix):
 make_schema(schemas['konn2'].schema,'')
 
 def find_args(n):
-    if n.parent.cat=='C':
-        pp=n.parent.parent
-        assert pp.cat in ['SIMPX','FKONJ']
-        sub_cl=pp
-        while pp.edge_label=='KONJ':
-            pp=pp.parent
-        if pp.parent:
-            pp=pp.parent
-            while pp.parent and pp.cat not in ['SIMPX','R-SIMPX','FKONJ']:
+    if n.cat=='KOUS':
+        if n.parent.cat=='C':
+            pp=n.parent.parent
+            assert pp.cat in ['SIMPX','FKONJ']
+            sub_cl=pp
+            while pp.edge_label=='KONJ':
                 pp=pp.parent
-            main_cl=pp
+            if pp.parent:
+                pp=pp.parent
+                while pp.parent and pp.cat not in ['SIMPX','R-SIMPX','FKONJ']:
+                    pp=pp.parent
+                main_cl=pp
+            else:
+                main_cl=None
+            return sub_cl,main_cl
         else:
-            main_cl=None
+            print "weird: %s"%(n,)
+            return None,None
+    elif n.cat=='KON':
+        pp=n.parent
+        seen_kon=False
+        main_cl=None
+        sub_cl=None
+        for n1 in pp.children:
+            if n1.cat in ['SIMPX','FKONJ']:
+                if seen_kon:
+                    sub_cl=n1
+                else:
+                    main_cl=n1
+            if n1.cat=='KON':
+                seen_kon=True
+        if main_cl is not None and main_cl.cat=='FKONJ':
+            main_cl=pp.parent
         return sub_cl,main_cl
-    else:
-        print "weird: %s"%(n,)
-        return None,None
+            
 
 def find_negation(n):
     result=[]
@@ -201,6 +234,7 @@ def get_verbs(n):
         all_v=nfin_verbs
         flags.add('tense=%s'%(main_v.morph[3]))
         flags.add('mood=%s'%(main_v.morph[2]))
+    print main_v,all_v
     pred=main_v.lemma
     for n in all_v:
         if n.cat.endswith('PP'):
@@ -233,6 +267,22 @@ def get_verbs(n):
             pred='%s#%s'%(n.word,pred)
     return (pred,flags)
 
+def extend_v(lst,nodes):
+    for n in nodes:
+        if n.isTerminal() and n.cat[0]=='V':
+            lst.append(n)
+        elif n.cat[0]!='V':
+            continue
+        else:
+            for n1 in n.children:
+                if n1.edge_label=='KONJ':
+                    if n1.isTerminal():
+                        lst.append(n1)
+                    else:
+                        extend_v(lst,n1.children)
+                    break
+    print lst,nodes
+
 def gather_verbs(nodes,fin_v,nfin_v):
     for n in nodes:
         if n.cat in ['LK','VC']:
@@ -240,7 +290,7 @@ def gather_verbs(nodes,fin_v,nfin_v):
                 if n1.cat=='VXFIN':
                     fin_v.extend(n1.children)
                 elif n1.cat=='VXINF':
-                    nfin_v.extend(n1.children)
+                    extend_v(nfin_v,n1.children)
                 elif n1.cat=='PTKVZ':
                     nfin_v.append(n1)
                 else:
@@ -279,33 +329,24 @@ def compatible_pronoun(n1,n2):
             return False
     return True
 
-annotator='melike'
-tasks=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,6)]
-print tasks
-spans=set([tuple(span) for task in tasks for span in task.spans])
 
-f_out=file('nachdem_1-6.json','w')
+wanted_features=['csubj','mod','lex']
 
-wanted_features=['csubj','mod']
-
-for span in spans:
-    sent_no=db.sentences.cpos2struc(span[0])
-    sent_span=db.sentences[sent_no]
-    t=export.from_json(db.get_parses(sent_no)['release'])
-    stupid_head_finder(t)
-    for n,lemma in izip(t.terminals,lemmas[sent_span[0]:sent_span[1]+1]):
-        n.lemma=lemma
-    offset=span[0]-sent_span[0]
-    n=t.terminals[offset]
-    anno=db.get_annotation(annotator,'konn2',span)
-    print "--- s%s"%(sent_no+1,)
-    sub_cl,main_cl=find_args(n)
+def get_features(t, sub_cl, main_cl):
     feats=[]
-    if not main_cl: continue
-    print "SUB: ",sub_cl.to_penn()
-    print "MAIN:",main_cl.to_penn()
-    print "field:",sub_cl.parent.cat
-    feats.append('fd'+sub_cl.parent.cat)
+    sub_parent=sub_cl.parent
+    # if sub_parent.cat=='ADVX' and sub_parent.parent:
+    #     #feats.append('modADV')
+    #     cls=classify_adverb(sub_parent)
+    #     #if cls:
+    #     #    feats.append('modADV='+cls)
+    #     #feats.append('modADV='+sub_parent.head.lemma)
+    if (sub_parent.cat in ['ADVX','PX','NX'] and
+        sub_parent.parent and
+        sub_parent.parent.cat in ['VF','MF','NF']):
+        sub_parent=sub_parent.parent
+    print "field:",sub_parent.cat
+    feats.append('fd'+sub_parent.cat)
     neg_sub=find_negation(sub_cl)
     print "neg[sub]: ",neg_sub
     if neg_sub:
@@ -320,7 +361,8 @@ for span in spans:
         feats.append('NM-')
     print "args[sub]:"
     (p,flags)=get_verbs(sub_cl)
-    feats.append('LS'+p)
+    if 'lex' in wanted_features:
+        feats.append('LS'+p)
     for k in flags:
         feats.append('TFS'+k)
     print p,flags
@@ -329,9 +371,10 @@ for span in spans:
     for k,v in nomargs_sub:
         print "  %s: %s"%(k,v.to_penn())
     if 'mod' in wanted_features:
-    print "args[main]:"
+        print "args[main]:"
     (p,flags)=get_verbs(main_cl)
-    feats.append('LM'+p)
+    if 'lex' in wanted_features:
+        feats.append('LM'+p)
     for k in flags:
         feats.append('TFM'+k)
     print p,flags
@@ -343,7 +386,7 @@ for span in spans:
         mod_main=find_adjuncts(main_cl,[sub_cl])
         mod_sub=find_adjuncts(sub_cl)
         for (mod,modS) in [(mod_main,'M'),(mod_sub,'S')]:
-            for k in ['tmp','causal','concessive']:
+            for k in ['tmp','causal','concessive','focus-koord-incl','comment']:
                 if k in mod:
                     val='+'
                 else:
@@ -352,15 +395,13 @@ for span in spans:
         if mod_main:
             print "mod[main]"
             for k in mod_main:
-                if k is not None:
-                    for v in mod_main[k]:
-                        print " %s: %s"%(k,v.to_penn())
+                for v in mod_main[k]:
+                    print " %s: %s"%(k,v.to_penn())
         if mod_sub:
             print "mod[sub]"
             for k in mod_sub:
-                if k is not None:
-                    for v in mod_sub[k]:
-                        print " %s: %s"%(k,v.to_penn())
+                for v in mod_sub[k]:
+                    print " %s: %s"%(k,v.to_penn())
     if 'csubj' in wanted_features:
         subj_main=[x[1] for x in nomargs_main if x[0]=='ON']
         subj_sub=[x[1] for x in nomargs_sub if x[0]=='ON']
@@ -373,11 +414,56 @@ for span in spans:
                 feats.append('cpS+')
             else:
                 feats.append('cpS-')
-    #print "anno: temporal=%s contrastive=%s"%(anno.temporal,anno.contrastive)
-    target=get_target(anno)
-    print target
-    #print "anno: rel1=%s rel2=%s"%(anno.rel1,anno._doc.get('rel2','NULL'))
-    print feats
-    #print anno._doc
-    print >>f_out, json.dumps([0,map(grok_encoding,feats),target,[span[0],span[1]-1]])
+    main_end=main_cl.end
+    if len(t.terminals)>main_end and t.terminals[main_end].cat=='$.':
+        feats.append('PUNC'+t.terminals[main_end].word)
+    return feats
+
+def process_spans(spans,annotator):
+    for span in spans:
+        sent_no=db.sentences.cpos2struc(span[0])
+        sent_span=db.sentences[sent_no]
+        t=export.from_json(db.get_parses(sent_no)['release'])
+        stupid_head_finder(t)
+        for n,lemma in izip(t.terminals,lemmas[sent_span[0]:sent_span[1]+1]):
+            n.lemma=lemma
+        offset=span[0]-sent_span[0]
+        n=t.terminals[offset]
+        anno=db.get_annotation(annotator,'konn2',span)
+        if 'rel1' not in anno or anno.rel1=='NULL': continue
+        print "--- s%s"%(sent_no+1,)
+        sub_cl,main_cl=find_args(n)
+        if not main_cl: continue
+        if not sub_cl: continue
+        print "SUB: ",sub_cl.to_penn()
+        print "MAIN:",main_cl.to_penn()
+        #print "anno: temporal=%s contrastive=%s"%(anno.temporal,anno.contrastive)
+        feats=get_features(t,sub_cl,main_cl)
+        target=get_target(anno)
+        print target
+        #print "anno: rel1=%s rel2=%s"%(anno.rel1,anno._doc.get('rel2','NULL'))
+        print feats
+        #print anno._doc
+        print >>f_out, json.dumps([0,map(grok_encoding,feats),target,[span[0],span[1]-1]])
+
+tasks=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
+print tasks
+spans=sorted(set([tuple(span) for task in tasks for span in task.spans]))
+f_out=file('nachdem_1-6.json','w')
+process_spans(spans,'melike')
 f_out.close()
+
+tasks2=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,3)]
+print tasks
+spans=sorted(set([tuple(span) for task in tasks2 for span in task.spans]))
+f_out=file('waehrend_1-2.json','w')
+process_spans(spans,'stefanie')
+f_out.close()
+
+# tasks2=[db.get_task('task_aberA_new')]
+# print tasks2
+# spans=sorted(set([tuple(span) for task in tasks2 for span in task.spans]))
+
+# f_out=file('aberA.json','w')
+# process_spans(spans,'sabrina')
+# f_out.close()

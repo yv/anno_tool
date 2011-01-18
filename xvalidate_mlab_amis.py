@@ -106,7 +106,7 @@ def classify(dat):
         if score > best_score:
             best=label
             best_score=score
-    return best
+    return label_gen.restored_label(best)
 
 
 
