@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
+import math
 from itertools import izip
 from collections import defaultdict
 import pytree.export as export
@@ -12,76 +13,21 @@ import simplejson as json
 import sys
 sys.path.append('/home/yannickv/proj/pytree')
 import germanet
+import wordsenses
 import pydeps
-
-adverb_classes={}
-# nicht: erst, gerade (Fokusinteraktion)
-# nicht: zugleich (parallel)
-for k in '''anfangs bald beizeiten früh
-nun jetzt gerade derzeit inzwischen soeben
-gestern vorgestern neulich bisher bislang früher damals kürzlich letztens seinerzeit
-morgen übermorgen seither später nachher demnächst'''.split():
-    adverb_classes[k]='tmp'
-for k in '''daher darum deshalb deswegen'''.split():
-    adverb_classes[k]='causal'
-for k in '''auch ebenfalls ebenso gleichfalls'''.split():
-    adverb_classes[k]='focus-koord-incl'
-for k in '''nur bloß lediglich allein ausschließlich einzig'''.split():
-    adverb_classes[k]='focus-restr-excl'
-for k in '''erst schon bereits noch'''.split():
-    adverb_classes[k]='focus-tmp'
-for k in '''zweifellos zweifelsohne fraglos tatsächlich
-sicher bestimmt gewiß vermutlich wahrscheinlich
-angeblich vorgeblich
-leider'''.split():
-    adverb_classes[k]='comment'
-
-def classify_adverb(n):
-    lem=n.head.lemma
-    if lem in adverb_classes:
-        return adverb_classes[lem]
-    if lem.endswith('weise'):
-        return 'comment'
-    return None
-
-def classify_px(n):
-    if n.children[0].edge_label=='APP' and n.children[0].cat=='PX':
-        n=n.children[0]
-    lem=n.head.lemma
-    if n.children[-1].cat not in ['NX','NCX']:
-        return None
-    case=n.head.morph[0]
-    lem2=n.children[-1].head.lemma
-    cls_lem2=set()
-    for syn in germanet.synsets_for_word(lem2):
-        cls_lem2.update(germanet.classify_synset(syn))
-    if lem=='wegen':
-        return 'causal'
-    elif lem=='trotz':
-        return 'concessive'
-    if case=='d':
-        if lem=='in' and 'zeiteinheit' in cls_lem2:
-            return 'tmp'
-        elif lem=='an' and 'tag' in cls_lem2:
-            return 'tmp'
-        elif lem=='nach' and 'information' in cls_lem2:
-            return 'source'
-        elif lem=='nach' and 'ereignis' in cls_lem2:
-            return 'tmp'
-        elif lem=='vor':
-            if 'ereignis' in cls_lem2:
-                # vor dem Unfall
-                return 'tmp'
-            if 'zeiteinheit' in cls_lem2:
-                # vor zwei Wochen, vor dem 1. Mai
-                return 'tmp'
-        elif lem in ['während','seit']:
-            return 'tmp'
+from sem_features import classify_adverb, classify_px, semclass_for_node, get_productions
 
 db=annodb.get_corpus('R6PRE1')
 lemmas=db.corpus.attribute('lemma','p')
 
 stupid_head_finder=deps.SimpleDepExtractor(tueba_heads.hr_table+[(None,[(None,'HD','r'),(None,'l')])],['$,','$.'])
+
+def null_warning_handler(w,args):
+    if w in ['nolabel','nohead']:
+        return
+    sys.stderr.write(deps.messages[w]%args)
+
+deps.warning_handler=null_warning_handler
 
 hier_map={}
 def make_schema(entries,prefix):
@@ -125,7 +71,6 @@ def find_args(n):
         if main_cl is not None and main_cl.cat=='FKONJ':
             main_cl=pp.parent
         return sub_cl,main_cl
-            
 
 def find_negation(n):
     result=[]
@@ -330,7 +275,10 @@ def compatible_pronoun(n1,n2):
     return True
 
 
-wanted_features=['csubj','mod','lex']
+wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel']
+#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairs','productions']
+#wanted_features=['wordpairs','productions']
+#wanted_features=[]
 
 def get_features(t, sub_cl, main_cl):
     feats=[]
@@ -349,39 +297,42 @@ def get_features(t, sub_cl, main_cl):
     feats.append('fd'+sub_parent.cat)
     neg_sub=find_negation(sub_cl)
     print "neg[sub]: ",neg_sub
-    if neg_sub:
-        feats.append('NS+')
-    else:
-        feats.append('NS-')
+    if 'neg' in wanted_features:
+        if neg_sub:
+            feats.append('NS+')
+        else:
+            feats.append('NS-')
     neg_main=find_negation(main_cl)
     print "neg[main]:",neg_main
-    if neg_main:
-        feats.append('NM+')
-    else:
-        feats.append('NM-')
-    print "args[sub]:"
+    if 'neg' in wanted_features:
+        if neg_main:
+            feats.append('NM+')
+        else:
+            feats.append('NM-')
     (p,flags)=get_verbs(sub_cl)
     if 'lex' in wanted_features:
         feats.append('LS'+p)
-    for k in flags:
-        feats.append('TFS'+k)
+    if 'tmp' in wanted_features:
+        for k in flags:
+            feats.append('TFS'+k)
     print p,flags
     print get_verb_features(p)
+    print "args[sub]:"
     nomargs_sub=find_nomargs(sub_cl)
     for k,v in nomargs_sub:
-        print "  %s: %s"%(k,v.to_penn())
-    if 'mod' in wanted_features:
-        print "args[main]:"
+        print "  %s: %s[%s]"%(k,v.to_penn(), semclass_for_node(v))
     (p,flags)=get_verbs(main_cl)
     if 'lex' in wanted_features:
         feats.append('LM'+p)
-    for k in flags:
-        feats.append('TFM'+k)
+    if 'tmp' in wanted_features:
+        for k in flags:
+            feats.append('TFM'+k)
     print p,flags
     print get_verb_features(p)
+    print "args[main]:"
     nomargs_main=find_nomargs(main_cl)
     for k,v in nomargs_main:
-        print "  %s: %s"%(k,v.to_penn())
+        print "  %s: %s[%s]"%(k,v.to_penn(),semclass_for_node(v))
     if 'mod' in wanted_features:
         mod_main=find_adjuncts(main_cl,[sub_cl])
         mod_sub=find_adjuncts(sub_cl)
@@ -415,15 +366,138 @@ def get_features(t, sub_cl, main_cl):
             else:
                 feats.append('cpS-')
     main_end=main_cl.end
-    if len(t.terminals)>main_end and t.terminals[main_end].cat=='$.':
-        feats.append('PUNC'+t.terminals[main_end].word)
+    if 'punc' in wanted_features:
+        if len(t.terminals)>main_end and t.terminals[main_end].cat=='$.':
+            feats.append('PUNC'+t.terminals[main_end].word)
     return feats
+
+def production_features(t,sub_cl,main_cl):
+    result=[]
+    lst_main=[]
+    lst_sub=[]
+    get_productions(main_cl,[sub_cl],lst_main)
+    get_productions(sub_cl,[main_cl],lst_sub)
+    set_main=set(lst_main)
+    set_main.intersection_update(wanted_productions)
+    set_sub=set(lst_sub)
+    set_sub.intersection_update(wanted_productions)
+    for k in set_main:
+        if k in set_sub:
+            result.append('prB%s'%(k,))
+        else:
+            result.append('prM%s'%(k,))
+    for k in set_sub:
+        if k not in set_main:
+            result.append('prS%s'%(k,))
+    return result
+
+def wordpair_features(t,sub_cl,main_cl):
+    result=[]
+    idx_main=set(xrange(main_cl.start,main_cl.end))
+    idx_sub=set(xrange(sub_cl.start,sub_cl.end))
+    idx_main.difference_update(idx_sub)
+    #idx_sub.difference_update(idx_main)
+    words_main=[t.terminals[i].lemma for i in sorted(idx_main)]
+    words_sub=[t.terminals[i].lemma for i in sorted(idx_sub)]
+    for k in ['%s_%s'%(x,y) for x in words_main for y in words_sub]:
+        if k in wanted_pairs:
+            result.append('WP'+k)
+    print result
+    return result
+
+def retrieve_synsets(t,idxs):
+    wanted_lemmas=[]
+    for idx in idxs:
+        n=t.terminals[idx]
+        if n.cat in ['NN','NE','ADJA','ADJD','VVFIN','VVINF','VVIZU']:
+            w=n.lemma.replace('#','')
+            wc=n.cat[0].lower()
+            synsets=[syn for syn in germanet.synsets_for_word(w)
+                     if syn.lexGroup.wordclass[0]==wc]
+            wanted_lemmas.append((n,synsets))
+    return wanted_lemmas
+
+def lexrel_features(t, sub_cl, main_cl,feats):
+    idx_main=set(xrange(main_cl.start,main_cl.end))
+    idx_sub=set(xrange(sub_cl.start,sub_cl.end))
+    idx_main.difference_update(idx_sub)
+    lemmas_s=retrieve_synsets(t,idx_sub)
+    lemmas_m=retrieve_synsets(t,idx_main)
+    for n_s,synsets_s in lemmas_s:
+        for n_m,synsets_m in lemmas_m:
+            # gwn_path=wordsenses.relate_senses(synsets_s,
+            #                                   synsets_m)
+            # if gwn_path:
+            #     print 'GWN', n_s.lemma, n_m.lemma, gwn_path
+            lcs,dist=wordsenses.lcs_path(synsets_s,synsets_m)
+            if lcs is not None:
+                print "GWN-LCS",n_s,n_m,lcs.explain(), dist
+                feats.append('lcs_exact_%d'%(lcs.synsetId,))
+                hyp_map={}
+                wordsenses.gather_hyperonyms(lcs.synsetId,hyp_map,0,2)
+                for k in hyp_map:
+                    feats.append('lcs_super_%d'%(k,))
+
+class FeatureCounter:
+    def __init__(self):
+        self.counts=defaultdict(int)
+        self.total=0
+    def add(self,lst):
+        all_productions=set(lst)
+        for k in all_productions:
+            self.counts[k]+=1
+        self.total+=1
+    def by_entropy(self,x):
+        if x[1]==self.total: return 0
+        p=float(x[1])/self.total
+        return -p*math.log(p)*(1.0-p)*math.log(1-p)
+    def select(self,key=None,N=500,min_count=5):
+        if key==None:
+            key=self.by_entropy
+        counts=sorted(self.counts.iteritems(),key=key)
+        print "Cutoff at %s (with min_count=%d)"%(counts[N],min_count)
+        return set([x[0] for x in counts[:N] if x[1]>=min_count])
+
+def do_counting(spans):
+    constituents=FeatureCounter()
+    wordpairs=FeatureCounter()
+    for span in spans:
+        sent_no=db.sentences.cpos2struc(span[0])
+        sent_span=db.sentences[sent_no]
+        offset=span[0]-sent_span[0]
+        t=export.from_json(db.get_parses(sent_no)['release'])
+        for n in t.topdown_enumeration():
+            if n.cat=='NCX': n.cat='NX'
+        for n,lemma in izip(t.terminals,lemmas[sent_span[0]:sent_span[1]+1]):
+            n.lemma=lemma
+        stupid_head_finder(t)
+        all_productions=set()
+        n=t.terminals[offset]
+        sub_cl,main_cl=find_args(n)
+        if not main_cl: continue
+        if not sub_cl: continue
+        lst=[]
+        get_productions(main_cl,[sub_cl],lst)
+        get_productions(sub_cl,[main_cl],lst)
+        constituents.add(lst)
+        idx_main=set(xrange(main_cl.start,main_cl.end))
+        idx_sub=set(xrange(sub_cl.start,sub_cl.end))
+        idx_main.difference_update(idx_sub)
+        #idx_sub.difference_update(idx_main)
+        words_main=[t.terminals[i].lemma for i in sorted(idx_main)]
+        words_sub=[t.terminals[i].lemma for i in sorted(idx_sub)]
+        wordpairs.add(['%s_%s'%(x,y) for x in words_main for y in words_sub])
+    features_const=constituents.select()
+    features_pairs=wordpairs.select()
+    return features_const,features_pairs
 
 def process_spans(spans,annotator):
     for span in spans:
         sent_no=db.sentences.cpos2struc(span[0])
         sent_span=db.sentences[sent_no]
         t=export.from_json(db.get_parses(sent_no)['release'])
+        for n in t.topdown_enumeration():
+            if n.cat=='NCX': n.cat='NX'
         stupid_head_finder(t)
         for n,lemma in izip(t.terminals,lemmas[sent_span[0]:sent_span[1]+1]):
             n.lemma=lemma
@@ -439,6 +513,12 @@ def process_spans(spans,annotator):
         print "MAIN:",main_cl.to_penn()
         #print "anno: temporal=%s contrastive=%s"%(anno.temporal,anno.contrastive)
         feats=get_features(t,sub_cl,main_cl)
+        if 'productions' in wanted_features:
+            feats+=production_features(t,sub_cl,main_cl)
+        if 'wordpairs' in wanted_features:
+            feats+=wordpair_features(t,sub_cl,main_cl)
+        if 'lexrel' in wanted_features:
+            lexrel_features(t, sub_cl, main_cl,feats)
         target=get_target(anno)
         print target
         #print "anno: rel1=%s rel2=%s"%(anno.rel1,anno._doc.get('rel2','NULL'))
@@ -449,6 +529,10 @@ def process_spans(spans,annotator):
 tasks=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
 print tasks
 spans=sorted(set([tuple(span) for task in tasks for span in task.spans]))
+if 'productions' in wanted_features or 'wordpairs' in wanted_features:
+    wanted_productions,wanted_pairs=do_counting(spans)
+    print wanted_productions
+    print wanted_pairs
 f_out=file('nachdem_1-6.json','w')
 process_spans(spans,'melike')
 f_out.close()
@@ -456,8 +540,9 @@ f_out.close()
 tasks2=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,3)]
 print tasks
 spans=sorted(set([tuple(span) for task in tasks2 for span in task.spans]))
+# TBD: update wanted_productions
 f_out=file('waehrend_1-2.json','w')
-process_spans(spans,'stefanie')
+process_spans(spans,'melike')
 f_out.close()
 
 # tasks2=[db.get_task('task_aberA_new')]

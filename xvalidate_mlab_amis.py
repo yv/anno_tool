@@ -15,6 +15,7 @@ from alphabet import PythonAlphabet
 from amis_wrapper import AMISLearner
 #import me_opt2 as me_opt
 #import sgd_opt as me_opt
+import random
 import me_opt_new as me_opt
 
 from lxml import etree
@@ -62,14 +63,23 @@ label_gen=LabelGenerator(opts,all_data)
 print >>sys.stderr, "preparing training file..."
 
 learners=[AMISLearner('/export/local/yannick/konn-cls/fold-%d'%(i,)) for i in xrange(n_bins)]
+if opts.cutoff>1:
+    for lrn in learners:
+        lrn.count_threshold=opts.cutoff
 streams=[x.open_events() for x in learners]
 
-fc=FCombo(2)
+left_out=0
+rnd_gen=random.Random(opts.seed)
+#fc=FCombo(2,bias_item='__bias__')
+fc=FCombo(opts.degree)
 fc.codec=codecs.lookup('ISO-8859-15')
 lineno=0
 buf=StringIO()
 for bin_nr,data,label in all_data:
     lineno+=1
+    if rnd_gen.random()>=opts.subsample:
+        left_out+=1
+        continue
     wanted,unwanted=label_gen.gen_examples(label,data)
     assert wanted,label
     assert unwanted,label
@@ -86,6 +96,7 @@ for bin_nr,data,label in all_data:
             streams[i].write(s)
 fc.dict.growing=False
 for f in streams: f.close()
+
 
 print >>sys.stderr, "training models..."
 
@@ -113,4 +124,6 @@ def classify(dat):
 stats=make_stats_multi(all_data,
                        make_mapper(True)(classify,all_data),
                        opts)
+if left_out:
+    print >>sys.stderr, "Subsampling: left out %d/%d examples"%(left_out,len(all_data))
 print_stats(stats)

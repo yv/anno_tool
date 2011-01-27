@@ -18,6 +18,14 @@ def add_options_common(oparse):
                       dest='max_depth')
     oparse.add_option('-P', type='int',
                       dest='n_processors',default=1)
+    oparse.add_option('--subsample', action='store', type='float',
+                      dest='subsample', default=1.0)
+    oparse.add_option('--tag',dest='assigned_tag')
+    oparse.add_option('--rand-seed',dest='seed',default=None)
+    oparse.add_option('--cutoff',dest='cutoff', type='int',
+                      default=1)
+    oparse.add_option('--degree',dest='degree', type='int',
+                      default=2, help='feature expansion degree')
 
 def mkdata(feats):
     lst=[]

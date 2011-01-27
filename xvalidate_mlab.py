@@ -58,9 +58,13 @@ label_gen=LabelGenerator(opts,all_data)
 
 print >>sys.stderr, "preparing feature vectors..."
 
+left_out=0
 data_bins=[[] for unused_ in xrange(n_bins)]
 fc=FCombo(2)
 for bin_nr,data,label in all_data:
+    if random.random() >= opts.subsample:
+        left_out+=1
+        continue
     wanted,unwanted=label_gen.gen_examples(label,data)
     assert wanted,label
     if not unwanted:
@@ -104,4 +108,6 @@ def classify(dat):
 stats=make_stats_multi(all_data,
                        make_mapper(True)(classify,all_data),
                        opts)
+if left_out:
+    print >>sys.stderr, "Subsampling: left out %d/%d examples"%(left_out,len(all_data))
 print_stats(stats)

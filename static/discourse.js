@@ -253,7 +253,7 @@ function text_keydown(event) {
 	redisplay_all();
     } else if (key == 119) {
 	// F8 - show text info
-	$info.text("sentence id:"+(sent_id+find_current_sentence()))
+	$info.text("sentence id:"+(sent_id+1+find_current_sentence()))
 	    .dialog('open');
     } else if (key == 118) {
 	$rels.dialog('open');

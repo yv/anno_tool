@@ -273,6 +273,12 @@ def make_stats_multi(all_data, system_labels_a,
     stats_fname=opts.stats_fname
     system_labels=list(system_labels_a)
     node_root=etree.Element('eval-data')
+    if opts.subsample is not None:
+        etree.SubElement(node_root,'param',program='xvalidate',
+                         name='subsample',value=str(opts.subsample))
+    if opts.assigned_tag is not None:
+        etree.SubElement(node_root,'param',program='--',
+                         name='tag',value=assigned_tag)
     num_examples=len(all_data)
     for d in xrange(1,max_depth+1):
         node_depth=etree.SubElement(node_root,'group',name='depth=%d'%(d,))

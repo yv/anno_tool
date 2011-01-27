@@ -3,6 +3,7 @@ from pytree import export
 from annodb import database
 from getopt import getopt
 from java_jcc import make_sd
+import jcc_wrapper
 import re
 import sys
 import morpha
@@ -302,16 +303,34 @@ def as_features(node):
                     fs.append('asT1'+a2)
             else:
                 fs.append('asT-')
-        
+
+class ConnectiveInstance(object):
+    def __init__(self,span,**args):
+        self.span=span
+        sent_no=db.sentences.cpos2struc(span[0])
+        t=db.get_best_parse(sent_no)
+        if t is None:
+            raise ValueError("Cannot find sentence %d. Arrgh!"%(sent_no,))
+        self.t=t
+        offset=span[0]-db.sentences[sent_no][0]
+        length=span[1]-span[0]
+        self.node=find_node(t,offset,length)
+        self.node_simple=find_node_simple(t,offset,length)
+        if need_deps:
+            make_sd(t)
+            morpha.lemmatize(t)
+        self.__dict__.update(args)
+
 
 if __name__=='__main__':
     use_conn=False
     use_syn=False
     use_mood=None
-    use_as=True
+    use_as=False
     use_lex=False
     multiclass=False
-    opts,args=getopt(sys.argv[1:], 'csSM:mr12L')
+    need_deps=False
+    opts,args=getopt(sys.argv[1:], 'csSM:mr12L',['--as'])
     #print >>sys.stderr, args
     db=database.get_corpus(args[0])
     for k,v in opts:
@@ -332,6 +351,10 @@ if __name__=='__main__':
             use_mood=int(v)
         elif k=='-L':
             use_lex=True
+            need_deps=True
+        elif k=='--as':
+            use_as=True
+            need_deps=True
     for l in file(args[1]):
         file_name,sent_no,offset,length,span,conn,cls = json.loads(l)
         if multiclass:
@@ -372,7 +395,11 @@ if __name__=='__main__':
                 node1=find_node_simple(t,offset,length)
             as_features(node1)
         if use_lex:
-            make_sd(t)
+            try:
+                make_sd(t)
+            except jcc_wrapper.JavaError:
+                print t.terminals
+                raise
             morpha.lemmatize(t)
             if node1==None:
                 node1=find_node_simple(t,offset,length)
