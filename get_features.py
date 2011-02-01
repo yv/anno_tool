@@ -275,8 +275,8 @@ def compatible_pronoun(n1,n2):
     return True
 
 
-wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel']
-#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairs','productions']
+#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc']
+wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc'] #,'wordpairs','productions']
 #wanted_features=['wordpairs','productions']
 #wanted_features=[]
 
@@ -312,6 +312,9 @@ def get_features(t, sub_cl, main_cl):
     (p,flags)=get_verbs(sub_cl)
     if 'lex' in wanted_features:
         feats.append('LS'+p)
+    if 'assoc' in wanted_features and p in assoc_features:
+        for k in assoc_features[p]:
+            feats.append('AS'+k)
     if 'tmp' in wanted_features:
         for k in flags:
             feats.append('TFS'+k)
@@ -324,6 +327,9 @@ def get_features(t, sub_cl, main_cl):
     (p,flags)=get_verbs(main_cl)
     if 'lex' in wanted_features:
         feats.append('LM'+p)
+    if 'assoc' in wanted_features and p in assoc_features:
+        for k in assoc_features[p]:
+            feats.append('AM'+k)
     if 'tmp' in wanted_features:
         for k in flags:
             feats.append('TFM'+k)
@@ -412,8 +418,15 @@ def retrieve_synsets(t,idxs):
         if n.cat in ['NN','NE','ADJA','ADJD','VVFIN','VVINF','VVIZU']:
             w=n.lemma.replace('#','')
             wc=n.cat[0].lower()
-            synsets=[syn for syn in germanet.synsets_for_word(w)
-                     if syn.lexGroup.wordclass[0]==wc]
+            if n.cat=='NN':
+                synsets=wordsenses.analyse_nn_lemma(w.split('|'))
+                synsets2=[syn for syn in synsets
+                          if not syn.getWords()[0].eigenname]
+                if synsets2:
+                    synsets=synsets2
+            else:
+                synsets=[syn for syn in germanet.synsets_for_word(w)
+                         if syn.lexGroup.wordclass[0]==wc]
             wanted_lemmas.append((n,synsets))
     return wanted_lemmas
 
@@ -423,6 +436,7 @@ def lexrel_features(t, sub_cl, main_cl,feats):
     idx_main.difference_update(idx_sub)
     lemmas_s=retrieve_synsets(t,idx_sub)
     lemmas_m=retrieve_synsets(t,idx_main)
+    hyp_map={}
     for n_s,synsets_s in lemmas_s:
         for n_m,synsets_m in lemmas_m:
             # gwn_path=wordsenses.relate_senses(synsets_s,
@@ -431,12 +445,24 @@ def lexrel_features(t, sub_cl, main_cl,feats):
             #     print 'GWN', n_s.lemma, n_m.lemma, gwn_path
             lcs,dist=wordsenses.lcs_path(synsets_s,synsets_m)
             if lcs is not None:
-                print "GWN-LCS",n_s,n_m,lcs.explain(), dist
-                feats.append('lcs_exact_%d'%(lcs.synsetId,))
-                hyp_map={}
-                wordsenses.gather_hyperonyms(lcs.synsetId,hyp_map,0,2)
-                for k in hyp_map:
-                    feats.append('lcs_super_%d'%(k,))
+                lcs_depth=wordsenses.synset_depth(lcs)
+                print "GWN-LCS",n_s,n_m,lcs.explain(), dist, lcs_depth
+                # if lcs in synsets_s:
+                #     if lcs in synsets_m:
+                #         feats.append('lcs_synonym')
+                #     else:
+                #         feats.append('lcs_hyperS')
+                #         #feats.append('lcs_hyperS_%d'%(lcs.synsetId,))
+                # elif lcs in synsets_m:
+                #         feats.append('lcs_hyperM')
+                #         #feats.append('lcs_hyperM_%d'%(lcs.synsetId,))                      
+                #feats.append('lcs_exact_%d'%(lcs.synsetId,))
+                if lcs.lexGroup.wordclass[0]!='n':
+                    wordsenses.gather_hyperonyms(lcs.synsetId,hyp_map,0,2)
+                elif lcs_depth>2:
+                    wordsenses.gather_hyperonyms(lcs.synsetId,hyp_map,0,min(2,lcs_depth-3))
+    for k in hyp_map:
+        feats.append('lcs_super_%d'%(k,))
 
 class FeatureCounter:
     def __init__(self):
@@ -525,6 +551,12 @@ def process_spans(spans,annotator):
         print feats
         #print anno._doc
         print >>f_out, json.dumps([0,map(grok_encoding,feats),target,[span[0],span[1]-1]])
+
+if 'assoc' in wanted_features:
+    assoc_features={}
+    for l in file('word_assoc.txt'):
+        line=l.strip().split()
+        assoc_features[line[0]]=line[1:]
 
 tasks=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
 print tasks
