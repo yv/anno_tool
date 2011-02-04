@@ -123,6 +123,7 @@ def annotate(request,taskname):
     for anno in annotations:
         if mode!='wanted' or not is_ready(anno):
             schema.make_widgets(anno,db,out,out_js)
+    print >>out, '<div><a href="/pycwb/mark_ready/%s?force_corpus=%s">als fertig markieren</a></div>'%(taskname,db.corpus_name)
     response=render_template('annodummy.html',task=task,
                              corpus_name=db.corpus_name,
                              js_code=out_js.getvalue().decode('ISO-8859-15'),
@@ -130,6 +131,23 @@ def annotate(request,taskname):
     request.set_corpus_cookie(response)
     return response
 
+def mark_ready(request,taskname):
+    db=request.corpus
+    task=db.get_task(taskname)
+    if task is None:
+        return NotFound("no such task")
+    schema=schemas[task.level]
+    if task is None:
+        raise NotFound("no such task")
+    user=request.user
+    if user is None:
+        return redirect('/pycwb/login')
+    if user not in task.annotators:
+        return NotFound("no such task")
+    if task.get_status(user) is None:
+        task.set_status(user,'ready')
+        task.save()
+    return redirect('/pycwb')
 
 def annotate2(request,taskname):
     db=request.corpus
@@ -167,6 +185,8 @@ def adjudicate(request,taskname):
     out_js=StringIO()
     ms=annotation_join(db,task)
     names=task.annotators
+    if not names:
+        return Response('Liste der Annotatoren ist leer.')
     level=task.level
     for part in ms:
         span=part[0].span

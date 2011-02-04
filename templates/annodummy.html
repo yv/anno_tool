@@ -7,7 +7,7 @@
 <script language="javascript" src="/static/prototype.js"></script> 
 <script language="javascript" src="/static/qct.js"></script>
 <link rel="stylesheet" href="/static/pycwb.css" type="text/css">
-
+<link rel="stylesheet" href="/static/lightbox.css" type="text/css">
 <script type="text/javascript">
 <!--
 {{js_code}}
@@ -20,4 +20,17 @@ corpus_name="{{corpus_name}}";
 <h1>{{task._id}} ({{corpus_name}})</h1>
 <div id="status">loaded.</div>
 {{output}}
+<div id="overlay"></div>
+<div id="lightbox">
+<b>Die Annotation konnte nicht gespeichert werden.</b>
+<p>
+<ul>
+<li>Bist Du als richtiger Benutzer eingeloggt?
+<li>Hast Du den richtigen Korpus ausgewählt?
+<li>Bist Du für diese Daten als AnnotatorIn eingetragen?
+<li>Funktioniert die Netzwerkverbindung?
+</ul>
+<p>
+[<a href="javascript:displayLightbox('none')">schließen</a>]
+</div>
 </body></html>

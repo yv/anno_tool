@@ -103,6 +103,16 @@ Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>)
 <a href="/pycwb/annotate/{{task._id}}">{{task._id}}</a><br>
 {% endif %}
 {% endfor %}
+{% if tasks_ready %}
+<i>(fertig)</i>
+{% for task in tasks_ready %}
+{% if task.level == 'konn2' %}
+<a href="/pycwb/annotate2/{{task._id}}">{{task._id}}</a>
+{% else %}
+<a href="/pycwb/annotate/{{task._id}}">{{task._id}}</a>
+{% endif %}
+{% endfor %}
+{% endif %}
 </div>
 <div style="margin-top: 3px">
 <a href="/pycwb/discourse_list">Discourse Structure annotation</a><br>

@@ -155,11 +155,19 @@ def index(request):
     if not request.user:
         tasks=sorted(db.get_tasks(), key=by_id)
         corpora=allowed_corpora_nologin
+        tasks_ready=[]
     else:
-        tasks=sorted(db.get_tasks(request.user), key=by_id)
+        user=request.user
+        tasks=[]
+        tasks_ready=[]
+        for task in sorted(db.get_tasks(request.user), key=by_id):
+            if task.get_status(user):
+                tasks_ready.append(task)
+            else:
+                tasks.append(task)
         corpora=allowed_corpora
     response=render_template('index.html',user=request.user,
-                             tasks=tasks, tasks0=tasks,
+                             tasks=tasks, tasks_ready=tasks_ready,
                              corpus_name=corpus_name,
                              corpora=corpora)
     expire_date=datetime.datetime.now()+datetime.timedelta(30)

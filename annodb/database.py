@@ -102,6 +102,18 @@ class Task(object):
                                 span)
             result.append(a)
         return result
+    def set_status(self,annotator,status):
+        if 'status' not in self._doc:
+            doc_status={}
+            self._doc['status']=doc_status
+        else:
+            doc_status=self._doc['status']
+        doc_status[annotator]=status
+    def get_status(self,annotator):
+        if 'status' not in self._doc:
+            return None
+        else:
+            return self._doc['status'].get(annotator,None)
     def save(self):
         self._db.db.tasks.save(self._doc)
 

@@ -20,6 +20,7 @@ function after_save() {
 
 function after_error() {
     set_status('Error: '+ajaxRequest.responseText);
+    displayLightbox('block');
 }
  
 function after_timeout() {
@@ -81,3 +82,9 @@ what_chosen[item]=what;
 dirty[item]=what;
 resetTimeout();
 }
+
+function displayLightbox(display){
+    $('overlay').style.display = display;
+    $('lightbox').style.display = display;
+}
+
