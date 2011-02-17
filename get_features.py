@@ -275,11 +275,6 @@ def compatible_pronoun(n1,n2):
     return True
 
 
-#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc']
-wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc'] #,'wordpairs','productions']
-#wanted_features=['wordpairs','productions']
-#wanted_features=[]
-
 def get_features(t, sub_cl, main_cl):
     feats=[]
     sub_parent=sub_cl.parent
@@ -552,29 +547,39 @@ def process_spans(spans,annotator):
         #print anno._doc
         print >>f_out, json.dumps([0,map(grok_encoding,feats),target,[span[0],span[1]-1]])
 
+#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc']
+wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc','wordpairs','productions']
+#wanted_features=['wordpairs','productions']
+#wanted_features=[]
+
+if len(sys.argv)>=2:
+    wanted_features=sys.argv[1].split(',')
+
+tasks_n=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
+tasks_w=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,7)]
+spans_n=sorted(set([tuple(span) for task in tasks_n for span in task.spans]))
+spans_w=sorted(set([tuple(span) for task in tasks_w for span in task.spans]))
+
+## 1. prepare necessary data (assoc, productions, wordpairs)
 if 'assoc' in wanted_features:
     assoc_features={}
     for l in file('word_assoc.txt'):
         line=l.strip().split()
         assoc_features[line[0]]=line[1:]
 
-tasks=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
-print tasks
-spans=sorted(set([tuple(span) for task in tasks for span in task.spans]))
 if 'productions' in wanted_features or 'wordpairs' in wanted_features:
-    wanted_productions,wanted_pairs=do_counting(spans)
+    wanted_productions,wanted_pairs=do_counting(spans_n+spans_w)
     print wanted_productions
     print wanted_pairs
+
+## 2. create data for nachdem and waehrend
 f_out=file('nachdem_1-6.json','w')
-process_spans(spans,'melike')
+process_spans(spans_n,'melike')
 f_out.close()
 
-tasks2=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,3)]
-print tasks
-spans=sorted(set([tuple(span) for task in tasks2 for span in task.spans]))
 # TBD: update wanted_productions
-f_out=file('waehrend_1-2.json','w')
-process_spans(spans,'melike')
+f_out=file('waehrend_1-4.json','w')
+process_spans(spans_w,'melike')
 f_out.close()
 
 # tasks2=[db.get_task('task_aberA_new')]

@@ -267,6 +267,49 @@ def list_discourse(request):
                            corpus_name=db.corpus_name,
                            results=doc_lst)
 
+def isolate_relations(relations):
+    different_relations=defaultdict(list)
+    for l in relations.split('\n'):
+        l_orig=l.strip()
+        l=l_orig
+        l=comment_re.sub('',l)
+        m=relation_re.match(l)
+        if m:
+            rel_arg1=parse_arg(m.group(2))
+            rel_label=m.group(1)
+            different_relations[rel_label].append(rel_arg1)
+    return different_relations
+
+
+def discourse_rels(request):
+    db=request.corpus
+    words=db.words
+    text_ids=db.corpus.attribute(corpus_d_sattr.get(db.corpus_name,'text_id'),'s')
+    results=db.db.discourse.find({'_user':request.user})
+    docs={}
+    rel_counts=defaultdict(int)
+    rel_occurrences=defaultdict(list)
+    for r in results:
+        try:
+            docid=int(r['_docno'])
+        except KeyError:
+            pass
+        else:
+            txt0=text_ids[docid]
+            txt="%s: %s"%(txt0[2],' '.join(words[txt0[0]:txt0[0]+5]))
+            txt=txt.decode('ISO-8859-15')
+            rels=isolate_relations(r['relations'])
+            for k in rels:
+                rel_counts[k]+=len(rels[k])
+                rel_occurrences[k].append((docid,txt,rels[k]))
+    result=[]
+    for rel in sorted(rel_counts.keys(),key=lambda x:-rel_counts[x]):
+        result.append((rel,rel_counts[rel],rel_occurrences[rel]))
+    return render_template('discourse_rels.html',
+                           corpus_name=db.corpus_name,
+                           results=result)
+
+
 def save_discourse(request,disc_no):
     db=request.corpus
     t_id=int(disc_no)

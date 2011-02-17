@@ -1,7 +1,7 @@
 import os
 from werkzeug import script, DispatcherMiddleware, redirect, \
     DebuggedApplication
-from annodb.database import create_user, create_task_anno, add_annotator
+from annodb.database import create_user, add_annotator
 from web_stuff import AppRequest, render_template
 from wsgi_app import application
 
@@ -28,10 +28,7 @@ action_rundebugging = script.make_runserver(make_debugged,static_files=static_di
 def action_add_user(username='user',passwd='glargfix'):
     create_user(username,passwd)
 
-def action_add_annotator(taskname='task1', username='yannick'):
-    add_annotator(taskname,username)
-
-def action_createtask(username='yannick',task='all1'):
-    create_task_anno(username, task)
+def action_add_annotator(dbname='xxx', taskname='task1', username='yannick'):
+    add_annotator(dbname, taskname, username)
 
 script.run()

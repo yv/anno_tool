@@ -3,10 +3,12 @@
 %% weitere Spalten: Flags zum Ausschluﬂ
 Temporal
 Result !waehrend
-+enable
-+cause
-++epistemic_cause *temporal
-++speech_act *temporal
++result_d_external
+++enable
+++cause
++result_d_internal *temporal
+++epistemic_cause
+++speech_act
 Comparison
 +parallel
 +contrast

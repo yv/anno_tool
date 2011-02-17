@@ -402,39 +402,15 @@ def get_corpus(name=default_database):
     result=databases[name]
     return result
 
-def create_task_anno(username,task,populate=None):
-    db=get_database()
-    task=db.get_task(task)
-    if task is None:
-        raise KeyError
-    annos=[]
-    for span in task.spans:
-        m=db.get_annotation(username,task.level,span)
-        if populate:
-            populate(m)
-        annos.append(m)
-    db.save_annotations(annos)
-
-def add_annotator(taskname, username):
-    db=get_database()
+def add_annotator(dbname, taskname, username):
+    db=get_corpus(dbname)
     task=db.get_task(taskname)
     if task is None:
         raise KeyError(taskname)
-    user0=task.annotators[0]
-    if task is None:
-        raise KeyError
-    annos=[]
-    for span in task.spans:
-        m=db.get_annotation(username,task.level,span)
-        if 'word' not in m:
-            m2=db.get_annotation(user0,task.level,span)
-            for k in ['word']:
-                m[k]=m2[k]
-        annos.append(m)
+    task.check_annotator(username)
     if username not in task.annotators:
         task.annotators.append(username)
         task.save()
-    db.save_annotations(annos)
 
 def annotation_join(db,task):
     result=[]

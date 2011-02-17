@@ -303,10 +303,30 @@ def make_stats_multi(all_data, system_labels_a,
         f.close()
     if stats_fname is not None:
         f=file(stats_fname,'w')
-        f.write(etree.tostring(stats,pretty_print=True,standalone=True))
+        f.write(etree.tostring(node_root,pretty_print=True,standalone=True))
         f.close()
     return node_root
 
+def gather_stats(node,ctx,result):
+    if node.tag=='eval-data':
+        pass
+    elif node.tag=='group':
+        ctx+=node.get('name')+'/'
+    elif node.tag=='singleVal':
+        result[ctx+node.get('name')]=float(node.get('score'))
+    elif node.tag=='relCount':
+        tp=int(node.get('tp'))
+        fp=int(node.get('fp'))
+        fn=int(node.get('fn'))
+        if tp==0:
+            p=r=f=0
+        else:
+            p=float(tp)/(tp+fp)
+            r=float(tp)/(tp+fn)
+            f=2*p*r/(p+r)
+        result[ctx+node.get('name')]=f
+    for n in node:
+        gather_stats(n,ctx,result)
 
 def print_stats(node,indent=0):
     indentS=' '*indent

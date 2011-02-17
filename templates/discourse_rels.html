@@ -1,0 +1,17 @@
+<html>
+<head>
+<title>[{{corpus_name}}] Annotated relations</title>
+<link rel="stylesheet" href="/static/discourseEdit.css">
+</head>
+<body>
+<h1>Annotated Relations {{corpus_name}}</h1>
+{% for rel_name, count, occurrences in results %}
+<div>
+<h3>{{rel_name}} ({{count}} occurrences)</h3>
+{% for docid,txt,edus in occurrences %}
+<a href="/pycwb/discourse/{{docid}}?force_corpus={{corpus_name}}">{{txt}}</a>
+{% for edu in edus %}{{edu}} {% endfor %}<br>
+{% endfor %}
+</div>
+{% endfor %}
+</body>
