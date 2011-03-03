@@ -243,11 +243,20 @@ class PDTBSchema:
                 spans.append((span[0],span[1],'<b>','</b>'))
         if reltype in ['Implicit','Explicit','AltLex']:
             attrs=['semtag','semtag2']
+            if reltype=='Explicit':
+                attrs.append('conn_head')
         else:
             attrs=['reltype']
-        for k in ['arg1','arg2']:
-            span0,span1=anno[k]
-            spans.append((span0,span1,'[<sub>%s</sub>'%(k,),']'))
+        for k in ['arg1','arg2','relattr','arg1attr','arg2attr']:
+            try:
+                parts=anno[k+'_parts']
+            except KeyError:
+                pass
+            else:
+                for span in parts:
+                    spans.append((span[0],span[1],
+                                  '[<sub>%s</sub>'%(k,),
+                                  '<sub>%s</sub>]'%(k,)))
         make_display_simple(attrs,anno,db,out,spans)
         
 schemas['pdtb']=PDTBSchema()

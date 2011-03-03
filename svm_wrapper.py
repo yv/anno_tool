@@ -1,6 +1,7 @@
 import os.path
 import tempfile
 import numpy
+import sys
 from itertools import izip
 from xvalidate_common import shrink_to
 
@@ -48,6 +49,11 @@ def read_weights(fname,fc=None):
         x[int(k_s)-1]=float(val_s)
     return b,x
 
+default_flags=['-w','3','-c','0.01','-l','1']
+def set_flags(new_flags):
+    global default_flags
+    default_flags=new_flags
+
 class SVMLearner:
     def __init__(self,basedir=None,prefix=None):
         if basedir is None:
@@ -60,15 +66,16 @@ class SVMLearner:
             self.prefix=prefix
         else:
             self.prefix=''
-        self.flags=['-w','3','-c','0.01','-l','1']
+        self.flags=default_flags
     def open_events(self):
         fname=os.path.join(self.basedir,self.prefix+'train.data')
         f=file(fname,'w')
         return f
     def train(self):
-        retval=os.spawnv(os.P_WAIT,svmlearn,[svmlearn]+self.flags+
-                         [os.path.join(self.basedir,self.prefix+'train.data'),
-                          os.path.join(self.basedir,self.prefix+'train.model')])
+        args=([svmlearn]+self.flags+
+              [os.path.join(self.basedir,self.prefix+'train.data'),
+               os.path.join(self.basedir,self.prefix+'train.model')])
+        retval=os.spawnv(os.P_WAIT,svmlearn,args)
         assert retval==0, (args,retval)
     def read_weights(self,fc=None):
         return read_weights(os.path.join(self.basedir,self.prefix+'train.model'),fc)
@@ -108,6 +115,8 @@ def train_greedy(vectors, labels, basedir=None, fc=None, d=1):
     all_labels=sorted(labelset)
     if len(all_labels)==1:
         return ([(all_labels[0],None,None)],None)
+    print >>sys.stderr, all_labels
+    assert d<10
     vecs=[]
     cont={}
     for label in all_labels:
@@ -116,16 +125,23 @@ def train_greedy(vectors, labels, basedir=None, fc=None, d=1):
         f=learner.open_events()
         sub_cl_vec=[]
         sub_cl_lab=[]
+        n_pos=0
+        n_neg=0
         for vec,lab0,lab in izip(vectors,labels0,labels):
             if label in lab0:
+                n_pos+=1
                 f.write('+1')
                 sub_cl_vec.append(vec)
                 sub_cl_lab.append([lb for lb in lab if lb.startswith(label)])
             else:
+                n_neg+=1
                 f.write('-1')
             vec.write_pairs(f)
             f.write('\n')
         f.close()
+        if n_neg==0:
+            print >>sys.stderr, "No negative examples for %s. Are we done?"%(label,)
+            return ([(label,None,None)],None)
         learner.train()
         bias,w_classify=learner.read_weights(fc)
         vecs.append((label,bias,w_classify))

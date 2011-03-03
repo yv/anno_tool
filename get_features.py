@@ -392,15 +392,23 @@ def production_features(t,sub_cl,main_cl):
             result.append('prS%s'%(k,))
     return result
 
-def wordpair_features(t,sub_cl,main_cl):
+ignore_pos=['NN','NE','VVFIN','VVINF','VVIZU','VVPP']
+
+#TODO: only include a given wordpair once?
+def wordpair_features(t,sub_cl,main_cl,conn):
     result=[]
     idx_main=set(xrange(main_cl.start,main_cl.end))
     idx_sub=set(xrange(sub_cl.start,sub_cl.end))
     idx_main.difference_update(idx_sub)
+    #idx_sub.discard(conn)
     #idx_sub.difference_update(idx_main)
-    words_main=[t.terminals[i].lemma for i in sorted(idx_main)]
-    words_sub=[t.terminals[i].lemma for i in sorted(idx_sub)]
-    for k in ['%s_%s'%(x,y) for x in words_main for y in words_sub]:
+    words_main=[t.terminals[i].lemma for i in sorted(idx_main)
+                if t.terminals[i].cat not in ignore_pos]
+    words_sub=[t.terminals[i].lemma for i in sorted(idx_sub)
+               if t.terminals[i].cat not in ignore_pos]
+    wps=['%s_%s'%(x,y) for x in words_main for y in words_sub]
+    #wps.intersection_update(wanted_pairs)
+    for k in wps:
         if k in wanted_pairs:
             result.append('WP'+k)
     print result
@@ -504,13 +512,52 @@ def do_counting(spans):
         idx_main=set(xrange(main_cl.start,main_cl.end))
         idx_sub=set(xrange(sub_cl.start,sub_cl.end))
         idx_main.difference_update(idx_sub)
+        #idx_sub.discard(offset)
         #idx_sub.difference_update(idx_main)
-        words_main=[t.terminals[i].lemma for i in sorted(idx_main)]
-        words_sub=[t.terminals[i].lemma for i in sorted(idx_sub)]
+        words_main=[t.terminals[i].lemma for i in sorted(idx_main)
+                    if t.terminals[i].cat not in ignore_pos]
+        words_sub=[t.terminals[i].lemma for i in sorted(idx_sub)
+                   if t.terminals[i].cat not in ignore_pos]
         wordpairs.add(['%s_%s'%(x,y) for x in words_main for y in words_sub])
     features_const=constituents.select()
     features_pairs=wordpairs.select()
     return features_const,features_pairs
+
+buckets=[3,5,10,15,20]
+def discretize(n):
+    if n<buckets[0]:
+        return n
+    for b in buckets[1:]:
+        if n<=b:
+            return b
+    return buckets[-1]+1
+
+pos_groups={'$,':'c','ADJA':'a','NN':'n',
+            'VVFIN':'v','VVPP':'v','VVINF':'v',
+            'VVIZU':'v'}
+def arg_lengths(t,sub_cl,main_cl,conn):
+    result=[]
+    idx_main=set(xrange(main_cl.start,main_cl.end))
+    idx_sub=set(xrange(sub_cl.start,sub_cl.end))
+    idx_main.difference_update(idx_sub)
+    idx_sub.discard(conn)
+    result.append('alTM%d'%(discretize(len(idx_main,))))
+    result.append('alTS%d'%(discretize(len(idx_sub,))))
+    group_counts=defaultdict(int)
+    for i in idx_main:
+        t_cat=t.terminals[i].cat
+        if t_cat in pos_groups:
+            group_counts[pos_groups[t_cat]]+=1
+    for k in group_counts:
+        result.append('al%sM%d'%(k,discretize(group_counts[k])))
+    group_counts=defaultdict(int)
+    for i in idx_sub:
+        t_cat=t.terminals[i].cat
+        if t_cat in pos_groups:
+            group_counts[pos_groups[t_cat]]+=1
+    for k in group_counts:
+        result.append('al%sS%d'%(k,discretize(group_counts[k])))
+    return result
 
 def process_spans(spans,annotator):
     for span in spans:
@@ -537,7 +584,9 @@ def process_spans(spans,annotator):
         if 'productions' in wanted_features:
             feats+=production_features(t,sub_cl,main_cl)
         if 'wordpairs' in wanted_features:
-            feats+=wordpair_features(t,sub_cl,main_cl)
+            feats+=wordpair_features(t,sub_cl,main_cl,offset)
+        if 'arglen' in wanted_features:
+            feats+=arg_lengths(t, sub_cl, main_cl, offset)
         if 'lexrel' in wanted_features:
             lexrel_features(t, sub_cl, main_cl,feats)
         target=get_target(anno)
@@ -548,7 +597,8 @@ def process_spans(spans,annotator):
         print >>f_out, json.dumps([0,map(grok_encoding,feats),target,[span[0],span[1]-1]])
 
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc']
-wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc','wordpairs','productions']
+#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc','wordpairs','productions']
+wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairs','productions']
 #wanted_features=['wordpairs','productions']
 #wanted_features=[]
 

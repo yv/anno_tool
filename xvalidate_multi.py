@@ -1,6 +1,6 @@
 import sys
 sys.path.append('/home/yannickv/proj/pytree')
-
+import optparse
 from itertools import izip,imap
 from multiprocessing import Pool
 import json
@@ -15,38 +15,20 @@ import me_opt_new as me_opt
 from xvalidate_common import *
      
 
-predictions_fname=None
-weights_fname=None
-stats_fname=None
-lenient=False
+lenient=True
 max_depth=None
-n_processors=1
-classification='hier'
-reassign_folds=True
+classification='flat'
 
 n_rare=10
 
-opts,args=getopt(sys.argv[1:],'C:P:p:w:d:s:lR')
-for k,v in opts:
-    if k=='-p':
-        predictions_fname=v
-    elif k=='-w':
-        weights_fname=v
-    elif k=='-d':
-        max_depth=int(v)
-    elif k=='-l':
-        lenient=True
-    elif k=='-s':
-        stats_fname=v
-    elif k=='-P':
-        n_processors=int(v)
-    elif k=='-C':
-        assert v in ['hier','flat']
-        classification_scheme=v
-    elif k=='-R':
-        reassign_folds=True
+oparse=optparse.OptionParser()
+add_options_common(oparse)
+oparse.set_defaults(reassign_folds=True,max_depth=3)
 
-if n_processors==1:
+opts,args=oparse.parse_args(sys.argv[1:])
+
+
+if opts.n_processors==1:
     def cleanup():
         pass
     def make_mapper(want_iter=False):
@@ -72,7 +54,7 @@ else:
 
 all_data=[]
 
-all_data,labelset=load_data(args[0],max_depth,reassign_folds)
+all_data,labelset=load_data(args[0],opts)
 
 print labelset.words
 
@@ -90,7 +72,7 @@ elif classification=='flat':
     
 
 data_bins=[[] for unused_ in xrange(n_bins)]
-fc=FCombo(2)
+fc=FCombo(opts.degree)
 for bin_nr,data,label in all_data:
     correct=[]
     incorrect=[]
@@ -121,8 +103,8 @@ def make_fold_classifier(fold_no):
 classifiers=make_mapper()(make_fold_classifier,xrange(n_bins))
 cleanup()
 
-if weights_fname is not None:
-    print_weights(weights_fname,fc,classifiers)
+if opts.weights_fname is not None:
+    print_weights(opts.weights_fname,fc,classifiers)
 
 def classify(dat):
     bin_nr,data,label=dat
@@ -138,7 +120,7 @@ def classify(dat):
 stats=make_stats(all_data,
                  make_mapper(True)(classify,all_data),
                  labelset, lenient,
-                 predictions_fname, stats_fname)
+                 opts.predictions_fname, opts.stats_fname)
 if max_depth is None:
     max_depth=max([len(lbl.split('.')) for lbl in labelset.words])
 for d in xrange(1,max_depth+1):

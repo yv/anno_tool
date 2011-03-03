@@ -7,6 +7,7 @@ from multiprocessing import Pool
 import json
 import numpy
 import optparse
+import random
 from dist_sim.fcomb import FCombo
 from alphabet import PythonAlphabet
 #import me_opt2 as me_opt
