@@ -81,8 +81,8 @@ span_re="(?:"+edu_re+"(?:-"+edu_re+")?|"+topic_s+")"
 relation_re=re.compile("(\\w+(?:[- ]\\w+)*|\\?)\\s*\\(\\s*("+span_re+")\\s*,\\s*("+span_re+")\\s*\\)\\s*")
 comment_re=re.compile("//.*$");
 class Text(object):
-    def __init__(self,doc_id,doc_no):
-        self.origin=doc_id
+    def __init__(self,origin,doc_no):
+        self.origin=origin
         self.topics={}
         self.edus={}
         self.edu_ranges={}

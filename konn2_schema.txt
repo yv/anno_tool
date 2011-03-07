@@ -1,8 +1,8 @@
 %% Annotations-Schema
 %% Erste Spalte: Relationsname (mit "+"-Zeichen entsprechend Taxonomie-Tiefe)
 %% weitere Spalten: Flags zum Ausschluﬂ
-Temporal
-Result !waehrend
+Temporal !aber
+Result !waehrend !aber
 +result_d_external
 ++enable
 ++cause
@@ -13,3 +13,5 @@ Comparison
 +parallel
 +contrast
 Concession !nachdem !waehrend
++contraexpectation
++evaluative
