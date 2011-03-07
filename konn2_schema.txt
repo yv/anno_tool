@@ -10,7 +10,7 @@ Result !waehrend !aber
 ++epistemic_cause
 ++speech_act
 Comparison
-+parallel
++parallel !aber !waehrend
 +contrast
 Concession !nachdem !waehrend
 +contraexpectation

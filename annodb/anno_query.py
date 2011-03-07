@@ -286,7 +286,7 @@ def save_attributes(request):
         raise Forbidden
     if request.method=='POST':
         stuff=json.load(request.stream)
-        print >>sys.stderr, stuff
+        #print >>sys.stderr, stuff
         try:
             for k,v in stuff.iteritems():
                 anno_key,attr=k.split('-',1)
