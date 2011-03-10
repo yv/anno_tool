@@ -48,6 +48,8 @@ function make_segments() {
 	    }
 	    if (nonedu[i]) {
 		cls='nonedu';
+	    } else if (uedus[i]) {
+		cls='uedu';
 	    } else {
 		cls='edu';
 	    }
@@ -251,6 +253,16 @@ function text_keydown(event) {
 	dirty['nonedu']=nonedu;
 	resetTimeout();
 	redisplay_all();
+    } else if (key == 219) {
+	var pos=edus[find_current_edu()];
+	if (uedus[pos]) {
+	    delete uedus[pos];
+	} else {
+	    uedus[pos]=1;
+	}
+	dirty['uedus']=uedus;
+	resetTimeout();
+	redisplay_all();	
     } else if (key == 119) {
 	// F8 - show text info
 	$info.text("sentence id:"+(sent_id+1+find_current_sentence()))

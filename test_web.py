@@ -127,6 +127,7 @@ def render_discourse(request,disc_no):
                                      indent=json.dumps(doc['indent']),
                                      relations=json.dumps(doc.get('relations','')),
                                      nonedu=json.dumps(doc.get('nonedu',{})),
+                                     uedus=json.dumps(doc.get('uedus',{})),
                                      topics=json.dumps(doc.get('topics',[])))
     request.set_corpus_cookie(response)
     return response
@@ -189,6 +190,7 @@ def render_discourse_printable(request,disc_no):
     sentences=doc['sentences']
     edus=doc['edus']
     nonedu=doc.get('nonedu',{})
+    uedus=doc.get('uedus',{})
     tokens=doc['tokens']
     indent=doc['indent']
     topic_rels,relations_unparsed=parse_relations(doc.get('relations',''))
@@ -231,6 +233,8 @@ def render_discourse_printable(request,disc_no):
             rel=make_rels(topic_rels.get('%d.%d'%(next_sent,sub_edu),None))
             if nonedu.get(unicode(i),None):
                 cls='nonedu'
+            elif uedus.get(unicode(i),None):
+                cls='uedu'
             else:
                 cls='edu'
             out.write('<div class="%s" style="margin-left:%dpx"><span class="edu-label">%d.%d</span>'%(cls,indent[next_edu-1]*INDENT_STEP,next_sent,sub_edu))
