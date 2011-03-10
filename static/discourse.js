@@ -265,7 +265,8 @@ function text_keydown(event) {
 	redisplay_all();	
     } else if (key == 119) {
 	// F8 - show text info
-	$info.text("sentence id:"+(sent_id+1+find_current_sentence()))
+	$info.html("<a href=\"javascript:window.open('/pycwb/sentence/"+(sent_id+1+find_current_sentence())+
+		   "');\">sentence id:"+(sent_id+1+find_current_sentence())+"</a>")
 	    .dialog('open');
     } else if (key == 118) {
 	$rels.dialog('open');
