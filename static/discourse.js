@@ -253,7 +253,7 @@ function text_keydown(event) {
 	dirty['nonedu']=nonedu;
 	resetTimeout();
 	redisplay_all();
-    } else if (key == 219) {
+    } else if (key == 219 || key == 85) {
 	var pos=edus[find_current_edu()];
 	if (uedus[pos]) {
 	    delete uedus[pos];
