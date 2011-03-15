@@ -107,7 +107,7 @@ def read_table(f):
                 result.append(sent)
             sent=[]
         else:
-            sent.append(l.strip().split())
+            sent.append(l.strip().split('\t'))
     if sent!=[]:
         result.append(sent)
     return result
