@@ -112,6 +112,18 @@ def read_table(f):
         result.append(sent)
     return result
 
+def read_table_iter(f):
+    sent=[]
+    for l in f:
+        if l.strip()=='':
+            if sent!=[]:
+                yield sent
+            sent=[]
+        else:
+            sent.append(l.strip().split())
+    if sent!=[]:
+        yield sent
+
 def read_tt_table(f,tab):
     result=[]
     for sent in tab:
@@ -249,9 +261,30 @@ def parse_all(corpus_name):
         write_table(f_out,result)
     f_out.close()
 
+def malt2cqp(corpus_name):
+    f_in=file('/export/local/yannick/malt_all_%s.conll'%(corpus_name))
+    corp=Corpus(corpus_name)
+    words=corp.attribute('word','p')
+    sentences=corp.attribute('s','s')
+    for i,sent in enumerate(read_table_iter(f_in)):
+        s_start,s_end=sentences[i][:2]
+        assert (s_end-s_start+1)==len(sent)
+        for j,line in enumerate(sent):
+            if line[6]=='0':
+                attach='ROOT'
+            else:
+                attach='%+d'%(int(line[6])-j-1)
+            print '\t'.join([line[4],line[5],line[7],attach])
+        
+
 if __name__=='__main__':
-    wanted=simplejson.load(file('parses_wanted.json'))
-    for k,v in wanted.iteritems():
-        print >>sys.stderr, k, len(v)
-        tabs=test(k,v)
-        write_table(file('/export/local/yannick/malt_parses_%s.conll'%(k,),'w'),tabs)
+    if sys.argv[1]=='wanted':
+        wanted=simplejson.load(file('parses_wanted.json'))
+        for k,v in wanted.iteritems():
+            print >>sys.stderr, k, len(v)
+            tabs=test(k,v)
+            write_table(file('/export/local/yannick/malt_parses_%s.conll'%(k,),'w'),tabs)
+    elif sys.argv[1]=='all':
+        parse_all(sys.argv[2])
+    elif sys.argv[1]=='cqp':
+        malt2cqp(sys.argv[2])
