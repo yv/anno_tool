@@ -120,7 +120,7 @@ def read_table_iter(f):
                 yield sent
             sent=[]
         else:
-            sent.append(l.strip().split())
+            sent.append(l.strip().split('\t'))
     if sent!=[]:
         yield sent
 
@@ -129,7 +129,7 @@ def read_tt_table(f,tab):
     for sent in tab:
         sent_out=[]
         for line in sent:
-            line2=f.readline().strip().split()
+            line2=f.readline().strip().split('\t')
             assert line[0]==line2[0]
             sent_out.append(line2)
         result.append(sent_out)
