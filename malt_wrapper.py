@@ -200,16 +200,25 @@ def parseMalt(sentences):
         print >>f_tokens
     f_tokens.flush()
     # 2. run RFTagger and get result
-    rftag_proc=Popen(rftagger_cmd+[f_tokens.name],stdout=PIPE)
-    rftag_result=read_table(rftag_proc.stdout)
-    del f_tokens
+    try:
+        rftag_proc=Popen(rftagger_cmd+[f_tokens.name],stdout=PIPE)
+        rftag_result=read_table(rftag_proc.stdout)
+    except:
+        f_tokens.delete=False
+        raise
+    else:
+        del f_tokens
     # 3. create input for TreeTagger lemmatization
     rftags=map(map_rftags,rftag_result)
     f_tokenpos=NamedTemporaryFile(prefix='rfpos')
-    write_table(f_tokenpos,
-                ([x[:2] for x in sent] for sent in rftags))
-    tt_proc=Popen(treetagger_cmd+[f_tokenpos.name],stdout=PIPE)
-    lemmalines=read_tt_table(tt_proc.stdout,rftags)
+    try:
+        write_table(f_tokenpos,
+                    ([x[:2] for x in sent] for sent in rftags))
+        tt_proc=Popen(treetagger_cmd+[f_tokenpos.name],stdout=PIPE)
+        lemmalines=read_tt_table(tt_proc.stdout,rftags)
+    except:
+        f_tokenpos.delete=False
+        raise
     # 4. write conll_in file
     conll_dir=mkdtemp('malt')
     f_conll=file(os.path.join(conll_dir,'conll_in.conll'),'w')
@@ -242,13 +251,16 @@ def test(corpus_name,sent_nos):
         result+=parseMalt(sents)
     return result
 
-def parse_all(corpus_name):
-    f_out=file('/export/local/yannick/malt_all_%s.conll'%(corpus_name),'w')
+def parse_all(corpus_name,start_sent=0):
+    if start_sent==0:
+        f_out=file('/export/local/yannick/malt_all_%s.conll'%(corpus_name,),'w')
+    else:
+        f_out=file('/export/local/yannick/malt_all_%s-%s.conll'%(corpus_name,start_sent),'w') 
     sents=[]
     corp=Corpus(corpus_name)
     words=corp.attribute('word','p')
     sentences=corp.attribute('s','s')
-    for i in xrange(len(sentences)):
+    for i in xrange(start_sent,len(sentences)):
         assert i<len(sentences),(i,len(sentences))
         s_start,s_end=sentences[i][:2]
         sents.append(words[s_start:s_end+1])
