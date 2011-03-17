@@ -196,7 +196,7 @@ def parseMalt(sentences):
     f_tokens=NamedTemporaryFile(prefix='tokens')
     for sent in sentences:
         for word in sent:
-            print >>f_tokens,word
+            print >>f_tokens,word.replace('\x0c','_')
         print >>f_tokens
     f_tokens.flush()
     # 2. run RFTagger and get result
@@ -265,6 +265,7 @@ def parse_all(corpus_name,start_sent=0):
         s_start,s_end=sentences[i][:2]
         sents.append(words[s_start:s_end+1])
         if len(sents)>=CHUNK_SIZE:
+            print >>sys.stderr, "%s-%s"%(i-len(sents)+1,i)
             result=parseMalt(sents)
             write_table(f_out,result)
             sents=[]

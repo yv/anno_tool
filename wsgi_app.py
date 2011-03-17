@@ -8,6 +8,7 @@ sys.path.append(BASEDIR)
 import annodb.anno_query as anno_query
 import test_web
 import web_stuff
+import get_collocates
 
 urls=[('/login',web_stuff.login_form),
       ('/logout',web_stuff.do_logout),
@@ -29,7 +30,10 @@ urls=[('/login',web_stuff.login_form),
       ('/annoquery',anno_query.display_annoquery),
       ('/tasks',web_stuff.tasks),
       ('/saveTask/([a-zA-Z0-9_]+)',web_stuff.save_task),
-      ('/get_users',web_stuff.get_users)]
+      ('/get_users',web_stuff.get_users),
+      ('/collocates',get_collocates.collocates_page),
+      ('/get_collocates',get_collocates.get_collocates),
+      ('/collocate_examples',get_collocates.collocate_examples)]
 
 mymap=web_stuff.MyMap(urls)
 
