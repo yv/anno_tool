@@ -4,6 +4,7 @@ import os.path
 import simplejson
 from shutil import rmtree
 from CWB.CL import Corpus
+from pytree import tree
 from tempfile import NamedTemporaryFile, mkdtemp
 from subprocess import Popen, PIPE, STDOUT, call
 from pynlp.de.smor_pos import normalize_card
@@ -21,6 +22,54 @@ treetagger_cmd=[os.path.join(TREETAGGER_HOME,'bin/tree-tagger'),
 
 tag_descr={}
 val_map={'cas':{'acc':'a','gen':'g','dat':'d','nom':'n'}}
+
+nn_morph_re=re.compile(r'cas=([a-z\*])\|num=([a-z]+|\*)\|gend=([a-z]+|\*)')
+pper_morph_re=re.compile(r'per=([123])\|cas=([a-z\*])\|num=([a-z]+|\*)\|gend=([a-z]+|\*)')
+vvfin_morph_re=re.compile(r'per=([123])\|num=([a-z]+)\|temp=([a-z]+)\|mood=([a-z]+)')
+nn_like=set(['ART','NN','NE','ADJA','PDAT','PIAT','PIS','PDS',
+             'PPOSAT','PRELS','PRELAT','APPRART'])
+def sent2tree(sent):
+    terminals=[]
+    my_nn_like=nn_like
+    for line in sent:
+        postag=line[4]
+        if postag=='PROAV':
+            postag='PROP'
+        tok=tree.TerminalNode(postag,line[1])
+        if postag in my_nn_like:
+            m=nn_morph_re.match(line[5])
+            if m:
+                tok.morph=''.join([m.group(1),m.group(2)[0],m.group(3)[0]])
+            else:
+                tok.morph='***'
+        elif postag=='VVFIN':
+            m=vvfin_morph_re.match(line[5])
+            if m:
+                tok.morph='%s%s%s%s'%(m.group(1),m.group(2)[0],m.group(4)[0],
+                                      m.group(3)[-1])
+            else:
+                tok.morph='****'
+        elif postag=='PPER':
+            m=pper_morph_re.match(line[5])
+            if m:
+                tok.morph=''.join([m.group(2),m.group(3)[0],m.group(4)[0],m.group(1)])
+        elif postag=='APPR':
+            tok.morph=line[5][-1]
+        else:
+            tok.morph='--'
+        terminals.append(tok)
+    for i,line in enumerate(sent):
+        attach=int(line[6])
+        tok=terminals[i]
+        tok.syn_label=line[7]
+        if attach==0:
+            tok.syn_parent=None
+        else:
+            tok.syn_parent=terminals[attach-1]
+    t=tree.Tree()
+    t.terminals=terminals
+    t.roots=terminals[:]
+    return t
 
 for l in file(os.path.join(RFTAGGER_HOME,'tagmap.txt')):
     line=l.strip().split()
@@ -275,7 +324,10 @@ def parse_all(corpus_name,start_sent=0):
     f_out.close()
 
 def malt2cqp(corpus_name):
-    f_in=file('/export/local/yannick/malt_all_%s.conll'%(corpus_name))
+    try:
+        f_in=file('/export/local/yannick/malt_all_%s-all.conll'%(corpus_name))
+    except IOError:
+        f_in=file('/export/local/yannick/malt_all_%s.conll'%(corpus_name))
     corp=Corpus(corpus_name)
     words=corp.attribute('word','p')
     sentences=corp.attribute('s','s')
