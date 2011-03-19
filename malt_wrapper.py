@@ -2,6 +2,8 @@ import sys
 import re
 import os.path
 import simplejson
+from time import sleep
+from os import kill
 from shutil import rmtree
 from CWB.CL import Corpus
 from pytree import tree
@@ -200,14 +202,36 @@ def map_rftags(lines):
         result.append([word,tag,morph])
     return result
 
-def run_malt(fname_in, fname_out):
+class TimeoutError(Exception):
+    def __init__(self,value):
+        self.value=value
+    def __repr__(self):
+        return repr(self.value)
+
+def call_with_timeout(args,timeout):
+    p=Popen(args,close_fds=True)
+    waited=0
+    while waited<=timeout:
+        ret=p.poll()
+        if ret is not None:
+            return ret
+        sleep(10)
+        waited+=10
+    os.kill(p.pid,SIGINT)
+    raise TimeoutError('%s has not finished after %d seconds'%(args[0],waited))
+        
+
+def run_malt(fname_in, fname_out, timeout=1800):
     old_dir=os.getcwd()
     os.chdir(MALT_HOME)
-    call(['java','-Xmx4G',
-          '-jar','malt.jar','-c','tiger_conf',
-          '-i',fname_in,'-o',fname_out,
-          '-ic','ISO8859-15'])
-    os.chdir(old_dir)
+    try:
+        call_with_timeout(['java','-Xmx4G',
+                           '-jar','malt.jar','-c','tiger_conf',
+                           '-i',fname_in,'-o',fname_out,
+                           '-ic','ISO8859-15'],
+                          timeout)
+    finally:
+        os.chdir(old_dir)
 
 def gold2auto(f_in,f_out):
     conll_orig=read_table(f_in)
