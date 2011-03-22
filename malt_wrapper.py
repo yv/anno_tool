@@ -4,6 +4,7 @@ import os.path
 import simplejson
 from time import sleep
 from os import kill
+from signal import SIGINT
 from shutil import rmtree
 from CWB.CL import Corpus
 from pytree import tree
@@ -16,7 +17,7 @@ RFTAGGER_HOME='/home/yannickv/yannickv/compile/RFTagger'
 TREETAGGER_HOME='/usr/local/TreeTagger'
 MALT_HOME='/home/yannickv/sources/malt-1.4.1'
 
-rftagger_cmd=[os.path.join(RFTAGGER_HOME,'bin/rft-annotate'),
+rftagger_cmd=[os.path.join(RFTAGGER_HOME,'bin/rft-annotate'),'-s',
               os.path.join(RFTAGGER_HOME,'lib/german-pc-32bit.par')]
 treetagger_cmd=[os.path.join(TREETAGGER_HOME,'bin/tree-tagger'),
                 '-token','-lemma',
@@ -59,6 +60,7 @@ def sent2tree(sent):
             tok.morph=line[5][-1]
         else:
             tok.morph='--'
+        tok.lemma=line[2]
         terminals.append(tok)
     for i,line in enumerate(sent):
         attach=int(line[6])
@@ -294,8 +296,8 @@ def parseMalt(sentences):
         raise
     # 4. write conll_in file
     conll_dir=mkdtemp('malt')
-    f_conll=file(os.path.join(conll_dir,'conll_in.conll'),'w')
     conll_lines=mkconll(rftags,lemmalines)
+    f_conll=file(os.path.join(conll_dir,'conll_in.conll'),'w')
     write_table(f_conll,conll_lines)
     f_conll.flush()
     run_malt(f_conll.name,os.path.join(conll_dir,'conll_out.conll'))
