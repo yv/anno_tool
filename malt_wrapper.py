@@ -359,7 +359,9 @@ def malt2cqp(corpus_name):
     sentences=corp.attribute('s','s')
     for i,sent in enumerate(read_table_iter(f_in)):
         s_start,s_end=sentences[i][:2]
-        assert (s_end-s_start+1)==len(sent)
+        assert (s_end-s_start+1)==len(sent), (i,f_in.tell(),
+                                              words[s_start:s_end+1],
+                                              [x[1] for x in sent])
         for j,line in enumerate(sent):
             if line[6]=='0':
                 attach='ROOT'

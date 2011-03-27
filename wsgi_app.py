@@ -33,7 +33,8 @@ urls=[('/login',web_stuff.login_form),
       ('/get_users',web_stuff.get_users),
       ('/collocates',get_collocates.collocates_page),
       ('/get_collocates',get_collocates.get_collocates),
-      ('/collocate_examples',get_collocates.collocate_examples)]
+      ('/collocate_examples',get_collocates.collocate_examples),
+      ('/sentence_graph',get_collocates.sentence_graph)]
 
 mymap=web_stuff.MyMap(urls)
 
