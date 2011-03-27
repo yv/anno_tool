@@ -240,7 +240,7 @@ def dep2json(t):
     return {'nodes':nodes,'edges':edges}
 
 def dep2paths(t,target,feature,result=None):
-    if result=None:
+    if result==None:
         result=[]
     nodes=t.terminals
     for idx_start in target:
