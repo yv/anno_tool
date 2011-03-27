@@ -239,6 +239,49 @@ def dep2json(t):
             edges.append([n_id,'w%d'%(dep.start+1),lab.decode('ISO-8859-15')])
     return {'nodes':nodes,'edges':edges}
 
+def dep2paths(t,target,feature,result=None):
+    if result=None:
+        result=[]
+    nodes=t.terminals
+    for idx_start in target:
+        dep2paths2(nodes,idx_start,feature,[nodes[idx_start].lemma],
+                   set(),result)
+    return result
+
+def dep2paths2(nodes,idx,feature,path,seen,result):
+    n=nodes[idx]
+    for lab, dep in n.sd_dep:
+        idx2=dep.start
+        if idx2 not in seen:
+            path.push(('-',rel,n.lemma))
+            seen.add(idx)
+            if idx2 in feature:
+                result.append(path[:])
+            dep2paths2(nodes,idx2,feature,path,seen,result)
+            seen.remove(idx)
+            path.pop()
+    for lab, dep in n.sd_gov:
+        idx2=dep.start
+        if idx2 not in seen:
+            path.push(('+',rel,n.lemma))
+            seen.add(idx)
+            if idx2 in feature:
+                result.append(path[:])
+            dep2paths2(nodes,idx2,feature,path,seen,result)
+            seen.remove(idx)
+            path.pop()
+
+def dep2paths_all(corpus):
+    dc=DependencyCorpus(Corpus(sys.argv[1]))
+    for i in xrange(len(dc)):
+        result=[]
+        t=dc.get_graph(i)
+        feature=set([j for (j,n) in enumerate(t.terminals)
+                     if n.cat in ['NN']])
+        dep2path(t,feature,feature,result)
+        print result
+                  
+        
 
 if __name__=='__main__':
     #for sent in malt_wrapper.read_table_iter(file(sys.argv[1])):
