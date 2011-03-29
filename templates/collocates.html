@@ -1,0 +1,112 @@
+<html>
+<head>
+<title>Collocates</title>
+<script src="/static/jq/jquery-1.4.2.min.js"></script>
+<script src="/static/jq/jquery.ui.core.min.js"></script>
+<script src="/static/jq/jquery.ui.widget.min.js"></script>
+<script src="/static/jq/jquery.ui.mouse.min.js"></script>
+<script src="/static/jq/jquery.ui.button.min.js"></script>
+<script src="/static/jq/jquery.ui.position.min.js"></script>
+<script src="/static/jq/jquery.ui.draggable.min.js"></script>
+<script src="/static/jq/jquery.ui.position.min.js"></script>
+<script src="/static/jq/jquery.ui.resizable.min.js"></script>
+<script src="/static/jq/jquery.ui.dialog.min.js"></script>
+<script src="/static/jq/jquery.ui.autocomplete.min.js"></script>
+<script src="/static/jq/ui.selectmenu.js"></script>
+<script src="/static/jq/jquery.tagcloud-2.js"></script>
+<script src="/static/dracula/raphael-min.js"></script>
+<script src="/static/dracula/dracula_graffle.js"></script>
+<script src="/static/dracula/dracula_graph.js"></script>
+<script src="/static/dracula/dracula-algorithms.js"></script>
+<link rel="stylesheet" href="/static/drilldown.css" type="text/css">
+<link rel="stylesheet" href="/static/themes/base/jquery.ui.all.css" type="text/css">
+<link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css">
+<link rel="stylesheet" href="/static/ui.selectmenu.css" type="text/css">
+<style>
+#collocates {
+  background-color: #eeeeee;
+  margin-top: 12pt;
+  margin-bottom: 12pt; }
+.tagcloudlink { background-color: #ccddee; }
+</style>
+<script>
+$(function() {
+$('#submit').button();
+graphdiv=$('#graph-div').dialog({title:'Dependency graph',
+                                 height: 400, width: 800,
+                                 autoOpen:false});
+});
+
+function loadCollocates() {
+ var word1=$('#word1').val();
+ var p=$.ajax({url:'/pycwb/get_collocates?word1='+encodeURIComponent(word1),
+success:function(data) {
+ $('#collocates').tagCloud($.parseJSON(data), {click: loadExamples});
+ $('#examples').html('');
+}});
+}
+
+function loadExamples(word2) {
+ var word1=$('#word1').val();
+ $.ajax({url:'/pycwb/collocate_examples?word1='+encodeURIComponent(word1)+'&word2='+encodeURIComponent(word2),
+   success: function(data) {
+    $('#examples').html(data);
+}});
+}
+
+colors={
+'N': '#05f',
+'V': '#f05',
+'A': '#cc5'
+}
+
+function renderNode(r, n) {
+  var color=colors[n.cat.charAt(0)];
+  if (!color) color='#ccc';
+  var txt=r.text(n.point[0], n.point[1] + 5, n.label)
+       .attr({"font-size":"14px"});
+  var w=txt.getBBox().width;
+  var set = r.set().push(
+     r.rect(n.point[0]-w/2-7, n.point[1]-13, txt.getBBox().width+14, 36)
+       .attr({"fill": color, "stroke-width": 2, r : "9px"}))
+       .push(txt);
+  return set;
+}
+
+function loadGraph(sent_id) {
+  $.ajax({url:'/pycwb/sentence_graph?sent_id='+sent_id,
+     success: function(data) {
+      var x=$.parseJSON(data);
+      var nodes=x.nodes;
+      var edges=x.edges;
+      var g=new Graph();
+      for (var i=0; i<nodes.length; i++) {
+        g.addNode(nodes[i][0],{label:nodes[i][1],cat:nodes[i][2],
+                               render: renderNode});
+      }
+      for (var i=0; i<edges.length; i++) {
+        g.addEdge(edges[i][0], edges[i][1],
+                  {directed: true, label: edges[i][2]});
+      }
+      var layouter = new Graph.Layout.Spring(g);
+      layouter.layout();
+      $('#graph-canvas').html('');
+      graphdiv.dialog('open');
+      var renderer = new Graph.Renderer.Raphael('graph-canvas', g, 800, 400);
+      renderer.draw();
+   }});
+}
+</script>
+<body>
+<h1>Collocates for DEWAC02</h1>
+<div id="queryform">
+<input id="word1"> <a id="submit" onclick="loadCollocates()">Get Collocates</a>
+</div>
+<div id="collocates">
+</div>
+<div id="examples">
+</div>
+<div id="graph-div" style="width:800px;height:400px">
+<div id="graph-canvas"></div>
+</div>
+</body>

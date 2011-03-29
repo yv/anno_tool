@@ -5,6 +5,8 @@ import malt_wrapper
 from CWB.CL import Corpus
 from pynlp.de import smor_pos
 from graph_search import dijkstra_search
+from gzip import GzipFile
+import simplejson as json
 import malt_wrapper
 
 class DependencyCorpus(object):
@@ -184,7 +186,7 @@ def fill_sd_gov(t):
             continue
         if n.syn_parent:
             if 'hide' in n.syn_parent.flags:
-                print "dependent of hidden: %s -> %s"%(n,n.syn_parent)
+                print >>sys.stderr, "dependent of hidden: %s -> %s"%(n,n.syn_parent)
             else:
                 n.syn_parent.sd_dep.append((n.syn_label,n))
             
@@ -192,10 +194,11 @@ def fill_sd_gov(t):
 def make_semrels(t):
     # 0. unattach punct, add flags field
     for n in t.terminals:
-        if n.syn_label=='-PUNCT-':
+        n.flags=set()
+        if n.syn_label=='-PUNCT-' or n.cat in ['$.','$,','$(']:
             n.syn_label='-'
             n.syn_parent=None
-        n.flags=set()
+            n.flags.add('hide')
         if n.cat in ['PTKZU','PTKVZ']:
             n.flags.add('hide')
     collapse_aux(t)
@@ -244,16 +247,20 @@ def dep2paths(t,target,feature,result=None):
         result=[]
     nodes=t.terminals
     for idx_start in target:
-        dep2paths2(nodes,idx_start,feature,[nodes[idx_start].lemma],
+        dep2paths2(nodes,idx_start,feature,
+                   [nodes[idx_start].lemma.decode('ISO-8859-15')],
                    set(),result)
     return result
 
 def dep2paths2(nodes,idx,feature,path,seen,result):
     n=nodes[idx]
+    if 'hide' in n.flags:
+        return
     for lab, dep in n.sd_dep:
         idx2=dep.start
         if idx2 not in seen:
-            path.push(('-',rel,n.lemma))
+            path.append(('-',lab.decode('ISO-8859-15'),
+                         dep.lemma.decode('ISO-8859-15')))
             seen.add(idx)
             if idx2 in feature:
                 result.append(path[:])
@@ -263,7 +270,8 @@ def dep2paths2(nodes,idx,feature,path,seen,result):
     for lab, dep in n.sd_gov:
         idx2=dep.start
         if idx2 not in seen:
-            path.push(('+',rel,n.lemma))
+            path.append(('+',lab.decode('ISO-8859-15'),
+                         dep.lemma.decode('ISO-8859-15')))
             seen.add(idx)
             if idx2 in feature:
                 result.append(path[:])
@@ -272,16 +280,20 @@ def dep2paths2(nodes,idx,feature,path,seen,result):
             path.pop()
 
 def dep2paths_all(corpus):
-    dc=DependencyCorpus(Corpus(sys.argv[1]))
+    dc=DependencyCorpus(Corpus(corpus))
+    f_out=GzipFile('/gluster/nufa/yannick/paths_%s.json.gz'%(corpus,),'w')
     for i in xrange(len(dc)):
         result=[]
         t=dc.get_graph(i)
         feature=set([j for (j,n) in enumerate(t.terminals)
                      if n.cat in ['NN']])
-        dep2path(t,feature,feature,result)
-        print result
-                  
-        
+        dep2paths(t,feature,feature,result)
+        #print '#',' '.join([n.word for n in t.terminals])
+        for path in result:
+            print >>f_out, json.dumps(path)
+        if i%1000==0:
+            print >>sys.stderr,"\r%s"%(i,)
+    f_out.close()
 
 if __name__=='__main__':
     #for sent in malt_wrapper.read_table_iter(file(sys.argv[1])):
