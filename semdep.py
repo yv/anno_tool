@@ -106,7 +106,8 @@ def collapse_aux(t):
 def collapse_kon(t):
     has_kon=set()
     for i,n in enumerate(t.terminals):
-        if n.syn_label=='KON' or n.syn_label=='CJ' and n.syn_parent.cat=='KON':
+        if (n.syn_label=='KON' and n.syn_parent is not None or
+            n.syn_label=='CJ' and n.syn_parent.cat=='KON'):
             has_kon.add(n.syn_parent.start)
     for i,n in enumerate(t.terminals):
         if (n.start not in has_kon and (n.syn_label=='KON' or
@@ -155,7 +156,7 @@ def collapse_pn(t):
 
 def relabel_subj(t):
     for n in t.terminals:
-        if n.syn_label=='SUBJ':
+        if n.syn_label=='SUBJ' and n.syn_parent:
             lbl='nsubj'
             if n.syn_parent.flags.intersection('passive:dyn','passive:stat'):
                 lbl='nsubjpass'
