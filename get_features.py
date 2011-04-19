@@ -14,7 +14,7 @@ import sys
 sys.path.append('/home/yannickv/proj/pytree')
 import germanet
 import wordsenses
-import pydeps
+from pynlp.de import pydeps
 from sem_features import classify_adverb, classify_px, semclass_for_node, get_productions
 
 db=annodb.get_corpus('R6PRE1')
@@ -177,8 +177,11 @@ def get_verbs(n):
     else:
         main_v=fin_verbs[0]
         all_v=nfin_verbs
-        flags.add('tense=%s'%(main_v.morph[3]))
-        flags.add('mood=%s'%(main_v.morph[2]))
+        if len(main_v.morph)==4:
+            flags.add('tense=%s'%(main_v.morph[3]))
+            flags.add('mood=%s'%(main_v.morph[2]))
+        else:
+            print >>sys.stderr, "strange morph: %s for %s"%(main_v.morph,main_v)
     print main_v,all_v
     pred=main_v.lemma
     for n in all_v:
@@ -228,14 +231,37 @@ def extend_v(lst,nodes):
                     break
     print lst,nodes
 
+def gather_verbs_fin(chlds,fin_v):
+    for n1 in chlds:
+        if (n1.cat[:2] in ['VV','VA','VM'] and
+            n1.cat[2:] in ['FIN','IMP']):
+            fin_v.append(n1)
+        elif n1.cat=='VXFIN':
+            gather_verbs_fin(n1.children,fin_v)
+            if n1.edge_label=='KONJ':
+                break
+        elif n1.cat in ['TRUNC','KON']:
+            continue
+        else:
+            assert False,n1
+def gather_verbs_nfin(chlds,nfin_v):
+    for n1 in chlds:
+        if n1.isTerminal():
+            nfin_v.append(n1)
+        elif n1.cat=='VXINF':
+            gather_verbs_nfin(n1.children,nfin_v)
+            if n1.edge_label=='KONJ':
+                break
+        else:
+            assert False, n1
 def gather_verbs(nodes,fin_v,nfin_v):
     for n in nodes:
         if n.cat in ['LK','VC']:
             for n1 in n.children:
                 if n1.cat=='VXFIN':
-                    fin_v.extend(n1.children)
+                    gather_verbs_fin(n1.children,fin_v)
                 elif n1.cat=='VXINF':
-                    extend_v(nfin_v,n1.children)
+                    gather_verbs_nfin(n1.children,nfin_v)
                 elif n1.cat=='PTKVZ':
                     nfin_v.append(n1)
                 else:
@@ -607,8 +633,10 @@ if len(sys.argv)>=2:
 
 tasks_n=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
 tasks_w=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,7)]
+tasks_w2=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,11)]
 spans_n=sorted(set([tuple(span) for task in tasks_n for span in task.spans]))
 spans_w=sorted(set([tuple(span) for task in tasks_w for span in task.spans]))
+spans_w2=sorted(set([tuple(span) for task in tasks_w2 for span in task.spans]))
 
 ## 1. prepare necessary data (assoc, productions, wordpairs)
 if 'assoc' in wanted_features:
@@ -630,6 +658,10 @@ f_out.close()
 # TBD: update wanted_productions
 f_out=file('waehrend_1-4.json','w')
 process_spans(spans_w,'melike')
+f_out.close()
+
+f_out=file('waehrend_1-10.json','w')
+process_spans(spans_w2,'melike')
 f_out.close()
 
 # tasks2=[db.get_task('task_aberA_new')]

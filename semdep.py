@@ -158,7 +158,7 @@ def relabel_subj(t):
     for n in t.terminals:
         if n.syn_label=='SUBJ' and n.syn_parent:
             lbl='nsubj'
-            if n.syn_parent.flags.intersection('passive:dyn','passive:stat'):
+            if n.syn_parent.flags.intersection(['passive:dyn','passive:stat']):
                 lbl='nsubjpass'
             n.syn_label=lbl
         if n.syn_label=='prep_von' and n.syn_parent and 'passive:dyn' in n.syn_parent.flags:
@@ -202,6 +202,9 @@ def make_semrels(t):
             n.flags.add('hide')
         if n.cat in ['PTKZU','PTKVZ']:
             n.flags.add('hide')
+        if n.syn_parent is None and n.syn_label not in ['ROOT','-']:
+            print >>sys.stderr, "Renaming root label: %s/%s/%s"%(n.word,n.cat,n.syn_label)
+            n.syn_label='ROOT'
     collapse_aux(t)
     collapse_kon(t)
     collapse_pn(t)
@@ -280,15 +283,28 @@ def dep2paths2(nodes,idx,feature,path,seen,result):
             seen.remove(idx)
             path.pop()
 
-def dep2paths_all(corpus):
+filters={
+    'N':set(['NN']),
+    'A':set(['ADJA','ADJD']),
+    'V':set(['VVFIN','VVINF','VVPP','VVIZU'])
+}
+def dep2paths_all(corpus, kind='NN'):
     dc=DependencyCorpus(Corpus(corpus))
-    f_out=GzipFile('/gluster/nufa/yannick/paths_%s.json.gz'%(corpus,),'w')
+    if kind=='NN':
+        suffix=''
+    else:
+        suffix='_'+kind
+    filt_tgt=filters[kind[0]]
+    filt_feat=filters[kind[1]]
+    f_out=GzipFile('/gluster/nufa/yannick/paths_%s%s.json.gz'%(corpus,suffix),'w')
     for i in xrange(len(dc)):
         result=[]
         t=dc.get_graph(i)
+        target=set([j for (j,n) in enumerate(t.terminals)
+                    if n.cat in filt_tgt])
         feature=set([j for (j,n) in enumerate(t.terminals)
-                     if n.cat in ['NN']])
-        dep2paths(t,feature,feature,result)
+                     if n.cat in filt_feat])
+        dep2paths(t,target,feature,result)
         #print '#',' '.join([n.word for n in t.terminals])
         for path in result:
             print >>f_out, json.dumps(path)
@@ -298,17 +314,19 @@ def dep2paths_all(corpus):
 
 if __name__=='__main__':
     #for sent in malt_wrapper.read_table_iter(file(sys.argv[1])):
-    for sent in DependencyCorpus(Corpus(sys.argv[1])):
-        t=malt_wrapper.sent2tree(sent)
-        for i,n in enumerate(t.terminals):
-            n.start=i
-        make_semrels(t)
-        print '#',' '.join((n.word for n in t.terminals))
-        output_triples(t)
-        # for i,n in enumerate(t.terminals):
-        #     if n.syn_parent is None:
-        #         parent_id='0'
-        #     else:
-        #         parent_id=str(n.syn_parent.start+1)
-        #     print '\t'.join([str(i+1),n.word,n.cat,n.syn_label,parent_id])
-        print
+    cmd=sys.argv[1]
+    if cmd=='triples':
+        for sent in DependencyCorpus(Corpus(sys.argv[2])):
+            t=malt_wrapper.sent2tree(sent)
+            for i,n in enumerate(t.terminals):
+                n.start=i
+            make_semrels(t)
+            print '#',' '.join((n.word for n in t.terminals))
+            output_triples(t)
+            print
+    elif cmd=='paths':
+        if len(sys.argv)>3:
+            kind=sys.argv[3]
+        else:
+            kind='NN'
+        dep2paths_all(sys.argv[2],kind)

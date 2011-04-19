@@ -114,6 +114,8 @@ def classify(dat):
     best_score=-1000
     for label in label_gen.get_labelset(data):
         score=fc(mkdata(data),labels=label_gen.gen_label(label)).dotFull(classifiers[bin_nr])
+        if len(label)>1:
+            score+=opts.bias_multi
         if score > best_score:
             best=label
             best_score=score

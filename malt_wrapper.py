@@ -266,23 +266,10 @@ def get_auto_columns(sentences):
     conll_lines=mkconll(rftags,lemmalines)
     return conll_lines
 
-def parseMalt(sentences):
-    # 1. dump to tokens file
-    f_tokens=NamedTemporaryFile(prefix='tokens')
-    for sent in sentences:
-        for word in sent:
-            print >>f_tokens,word.replace('\x0c','_')
-        print >>f_tokens
-    f_tokens.flush()
+def prepareMalt(tokens_fname):
     # 2. run RFTagger and get result
-    try:
-        rftag_proc=Popen(rftagger_cmd+[f_tokens.name],stdout=PIPE)
-        rftag_result=read_table(rftag_proc.stdout)
-    except:
-        f_tokens.delete=False
-        raise
-    else:
-        del f_tokens
+    rftag_proc=Popen(rftagger_cmd+[tokens_fname],stdout=PIPE)
+    rftag_result=read_table(rftag_proc.stdout)
     # 3. create input for TreeTagger lemmatization
     rftags=map(map_rftags,rftag_result)
     f_tokenpos=NamedTemporaryFile(prefix='rfpos')
@@ -297,6 +284,23 @@ def parseMalt(sentences):
     # 4. write conll_in file
     conll_dir=mkdtemp('malt')
     conll_lines=mkconll(rftags,lemmalines)
+    return conll_lines
+
+def parseMalt(sentences):
+    # 1. dump to tokens file
+    f_tokens=NamedTemporaryFile(prefix='tokens')
+    for sent in sentences:
+        for word in sent:
+            print >>f_tokens,word.replace('\x0c','_')
+        print >>f_tokens
+    f_tokens.flush()
+    try:
+        conll_lines=prepareMalt(f_tokens.name)
+    except:
+        f_tokens.delete=False
+        raise
+    else:
+        del f_tokens
     f_conll=file(os.path.join(conll_dir,'conll_in.conll'),'w')
     write_table(f_conll,conll_lines)
     f_conll.flush()
@@ -307,7 +311,7 @@ def parseMalt(sentences):
     parsed_malt=read_table(iconv_proc.stdout)
     rmtree(conll_dir)
     return parsed_malt
-    
+
 CHUNK_SIZE=20000
 def test(corpus_name,sent_nos):
     sents=[]
@@ -351,9 +355,9 @@ def parse_all(corpus_name,start_sent=0):
 
 def malt2cqp(corpus_name):
     try:
-        f_in=file('/export/local/yannick/malt_all_%s-all.conll'%(corpus_name))
+        f_in=file('/gluster/nufa/yannick/malt_all_%s-all.conll'%(corpus_name))
     except IOError:
-        f_in=file('/export/local/yannick/malt_all_%s.conll'%(corpus_name))
+        f_in=file('/gluster/nufa/yannick/malt_all_%s.conll'%(corpus_name))
     corp=Corpus(corpus_name)
     words=corp.attribute('word','p')
     sentences=corp.attribute('s','s')
@@ -381,3 +385,9 @@ if __name__=='__main__':
         parse_all(sys.argv[2])
     elif sys.argv[1]=='cqp':
         malt2cqp(sys.argv[2])
+    elif sys.argv[1]=='prepare':
+        conll_lines=prepareMalt(sys.argv[2])
+        f_conll=file(sys.argv[2]+'.conll-in','w')
+        write_table(f_conll,conll_lines)
+        f_conll.flush()
+        

@@ -270,6 +270,7 @@ def list_discourse(request):
     doc_lst.sort(key=lambda x: x[1])
     return render_template('discourse_list.html',
                            corpus_name=db.corpus_name,
+                           user=request.user,
                            results=doc_lst)
 
 def isolate_relations(relations):
@@ -285,13 +286,13 @@ def isolate_relations(relations):
             different_relations[rel_label].append(rel_arg1)
     return different_relations
 
-
-def discourse_rels(request):
+def gold_discourse_rels(request):
     db=request.corpus
     words=db.words
     text_ids=db.corpus.attribute(corpus_d_sattr.get(db.corpus_name,'text_id'),'s')
-    results=db.db.discourse.find({'_user':request.user})
+    results=db.db.discourse.find({'_user':'*gold*'})
     docs={}
+    sum_all=0
     rel_counts=defaultdict(int)
     rel_occurrences=defaultdict(list)
     for r in results:
@@ -305,6 +306,7 @@ def discourse_rels(request):
             txt=txt.decode('ISO-8859-15')
             rels=isolate_relations(r['relations'])
             for k in rels:
+                sum_all+=len(rels[k])
                 rel_counts[k]+=len(rels[k])
                 rel_occurrences[k].append((docid,txt,rels[k]))
     result=[]
@@ -312,7 +314,39 @@ def discourse_rels(request):
         result.append((rel,rel_counts[rel],rel_occurrences[rel]))
     return render_template('discourse_rels.html',
                            corpus_name=db.corpus_name,
-                           results=result)
+                           results=result,
+                           sum_all=sum_all)
+
+def discourse_rels(request):
+    db=request.corpus
+    words=db.words
+    text_ids=db.corpus.attribute(corpus_d_sattr.get(db.corpus_name,'text_id'),'s')
+    results=db.db.discourse.find({'_user':request.user})
+    docs={}
+    rel_counts=defaultdict(int)
+    rel_occurrences=defaultdict(list)
+    sum_all=0
+    for r in results:
+        try:
+            docid=int(r['_docno'])
+        except KeyError:
+            pass
+        else:
+            txt0=text_ids[docid]
+            txt="%s: %s"%(txt0[2],' '.join(words[txt0[0]:txt0[0]+5]))
+            txt=txt.decode('ISO-8859-15')
+            rels=isolate_relations(r['relations'])
+            for k in rels:
+                sum_all+=len(rels[k])
+                rel_counts[k]+=len(rels[k])
+                rel_occurrences[k].append((docid,txt,rels[k]))
+    result=[]
+    for rel in sorted(rel_counts.keys(),key=lambda x:-rel_counts[x]):
+        result.append((rel,rel_counts[rel],rel_occurrences[rel]))
+    return render_template('discourse_rels.html',
+                           corpus_name=db.corpus_name,
+                           results=result,
+                           sum_all=sum_all)
 
 
 def save_discourse(request,disc_no):
@@ -335,6 +369,27 @@ def save_discourse(request,disc_no):
             return Response('Ok')
     else:
         raise NotFound("Only POST allowed")
+
+allowed_suffix_re=re.compile('[a-zA-Z0-9_-]+')
+def archive_discourse(request,disc_no):
+    db=request.corpus
+    t_id=int(disc_no)
+    if not request.user:
+        raise Forbidden('must be logged in')
+    doc=db.get_discourse(t_id,request.user)
+    if request.method=='POST':
+        stuff=json.load(request.stream)
+        if 'newsuffix' in stuff and allowed_suffix_re.match(stuff['newsuffix']):
+            newsuffix=stuff['newsuffix']
+            new_user='%s*%s'%(request.user,newsuffix)
+            doc['_id']='%s~%s'%(disc_no,new_user)
+            doc['_user']=new_user
+            db.save_discourse(doc)
+            return Response(json.dumps(doc))
+        else:
+            raise NotFound('Invalid Suffix')
+    else:
+        raise NotFound('Only POST allowed')
 
 
 def render_search(request,word):

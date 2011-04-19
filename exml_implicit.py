@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: iso-8859-15 -*-
 import re
 import sys
 import exml
@@ -152,20 +154,13 @@ class DiscourseReader:
         self.sentences=db.corpus.attribute("s",'s')
         self.words=db.words
         self.postags=db.corpus.attribute("pos",'p')
-    def addNext(self, doc):
-        ctx=self.ctx
-        t_id=int(doc['_docno'])
-        start,end,text_id=self.texts[t_id]
+        self.db=db
+    def add_sentences(self,sentences,start,end):
         sent_id=self.sentences.cpos2struc(start)
-        sentences=doc['sentences']
-        edus=doc['edus']
-        nonedu=doc.get('nonedu',{})
-        tokens=doc['tokens']
-        topics=doc.get('topics',[])
-        #assert tokens==self.words[start:end+1], (tokens[:3],self.words[start:start+3])
+        ctx=self.ctx
+        ctx_start=len(ctx.words)
         terminals=[tree.TerminalNode(pos,w) for (w,pos) in izip(self.words[start:end+1],
                                                                 self.postags[start:end+1])]
-        ctx_start=len(ctx.words)
         for i in xrange(len(sentences)):
             t=tree.Tree()
             t.sent_no=sent_id+i
@@ -173,7 +168,7 @@ class DiscourseReader:
             try:
                 end=sentences[i+1]
             except IndexError:
-                end=len(tokens)
+                end=len(terminals)
             t.terminals=terminals[start:end]
             t.span=(start+ctx_start,end+ctx_start)
             prefix='s%s'%(t.sent_no,)
@@ -182,6 +177,18 @@ class DiscourseReader:
                 t.terminals[j-start].xml_id='%s_%d'%(prefix,j-start+1)
                 ctx.add_terminal(t.terminals[j-start])
             ctx.register_object(t)
+    def addNext(self, doc):
+        ctx=self.ctx
+        ctx_start=len(ctx.words)
+        t_id=int(doc['_docno'])
+        start,end,text_id=self.texts[t_id]
+        sentences=doc['sentences']
+        edus=doc['edus']
+        nonedu=doc.get('nonedu',{})
+        tokens=doc['tokens']
+        topics=doc.get('topics',[])
+        self.add_sentences(sentences,start,end)
+        #assert tokens==self.words[start:end+1], (tokens[:3],self.words[start:start+3])
         text_markable=Text(text_id,t_id)
         text_markable.xml_id='text_%s'%(t_id,)
         text_markable.span=(ctx_start,ctx_start+len(tokens))

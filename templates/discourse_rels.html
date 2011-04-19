@@ -7,7 +7,8 @@
 <h1>Annotated Relations {{corpus_name}}</h1>
 {% for rel_name, count, occurrences in results %}
 <div>
-<h3>{{rel_name}} ({{count}} occurrences)</h3>
+{% set percent = (100.0*count)/sum_all %}
+<h3>{{rel_name}} ({{count}} occurrences, {{"%.2f"|format(percent)}}%)</h3>
 {% for docid,txt,edus in occurrences %}
 <a href="/pycwb/discourse/{{docid}}?force_corpus={{corpus_name}}">{{txt}}</a>
 {% for edu in edus %}{{edu}} {% endfor %}<br>

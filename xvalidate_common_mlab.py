@@ -22,6 +22,8 @@ def add_options_mlab(oparse):
                       choices=['h', 'hc', 'f', 'fc', 'gc'],
                       default='fc')
     oparse.add_option('--filter_feature', dest='filter_feature')
+    oparse.add_option('--bias-multi', dest='bias_multi',
+                      type='float', default=0.0)
 
 def gen_examples_exact(label,labelset):
     labelT=tuple(label)

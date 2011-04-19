@@ -1,16 +1,89 @@
 <html>
 <head>
 <title>[{{corpus_name}}] Discourse Annotator</title>
+<link rel="stylesheet" href="/static/pycwb.css" type="text/css" />
 <link rel="stylesheet" href="/static/discourseEdit.css">
+<link rel="stylesheet" href="/static/token-input.css" type="text/css" /> 
+<link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css">
+<style>
+  input.text { margin-bottom:12px; width:95%; padding: .4em; }
+  fieldset { padding:0; border:0; margin-top:25px; }
+</style>
+<script src="/static/json2.js"></script>
+<script src="/static/jq/jquery-1.4.2.min.js"></script>
+<script src="/static/jq/jquery.ui.core.min.js"></script>
+<script src="/static/jq/jquery.ui.widget.min.js"></script>
+<script src="/static/jq/jquery.ui.button.min.js"></script>
+<script src="/static/jq/jquery.ui.position.min.js"></script>
+<script src="/static/jq/jquery.ui.dialog.min.js"></script>
+<script>
+$(function() {
+  var name = $( "#name" );
+  $('.archive-button').button();
+$( "#dialog-form" ).dialog({
+autoOpen: false,
+height: 220,
+width: 350,
+modal: true,
+buttons: {
+  "Archivieren": function() {
+    var newsuffix=name.val();
+    $.ajax({type:'POST',
+       url:'/pycwb/archiveDiscourse/'+archive_docid+'?force_corpus={{corpus_name}}',
+       data:JSON.stringify({newsuffix:newsuffix}),
+       contentType:'application/json',
+       dataType:'json',
+       success:
+            function() {
+            $('#userlist-'+archive_docid).append(
+     ['[<a href="/pycwb/printDiscourse/',archive_docid,'?who={{user}}*',
+      name.val(),'&force_corpus={{corpus_name}}">{{user}}*',name.val(),'</a>]'].join('')); }});
+    $(this).dialog('close');
+  }}});
+var d=new Date();
+$('#name').val(''+d.getFullYear()+'-'+pad(d.getMonth()+1,2)+'-'+pad(d.getDate(),2));
+});
+
+function pad(val,w) {
+  var s=''+val;
+  while (s.length<w) {
+   s='0'+s;
+  }
+ return s;
+}
+
+function do_archive(docid) {
+archive_docid=docid;
+$('#dialog-form').dialog({'title':'Archive doc#'+docid});
+$('#dialog-form').dialog('open');
+}
+</script>
 </head>
 <body>
 <h1>Discourse annotation for {{corpus_name}}</h1>
+<table class="data_table">
 {% for user, docid, text, all_users in results %}
-<div>
+<tr class="{{loop.cycle('odd_row','even_row')}}">
+<td>
 <a href="/pycwb/discourse/{{docid}}?force_corpus={{corpus_name}}">{{text|escape}}</a>
+</td><td>
+<span id="userlist-{{docid}}">
 {% for user2 in all_users %}
 [<a href="/pycwb/printDiscourse/{{docid}}?who={{user2}}&force_corpus={{corpus_name}}">{{user2}}</a>]
 {% endfor %}
-</div>
+</span>
+</td><td>
+<a class="archive-button" href="#" onclick="do_archive('{{docid}}');">archive</a>
+</td></tr>
 {% endfor %}
+</table>
+
+<div id="dialog-form" title="Archive annotation">
+<form>
+<fieldset>
+<label for="name">Name</label>
+<input type="text" name="name" id="name" class="text ui-widget-content ui-corner-all" />
+</fieldset>
+</form>
+</div>
 </body>
