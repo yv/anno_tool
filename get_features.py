@@ -247,7 +247,8 @@ def gather_verbs_fin(chlds,fin_v):
 def gather_verbs_nfin(chlds,nfin_v):
     for n1 in chlds:
         if n1.isTerminal():
-            nfin_v.append(n1)
+            if n1.cat[0]=='V':
+                nfin_v.append(n1)
         elif n1.cat=='VXINF':
             gather_verbs_nfin(n1.children,nfin_v)
             if n1.edge_label=='KONJ':

@@ -32,7 +32,7 @@ def display_textbox(prefix,value,out):
 <textarea cols="80" id="%s" onkeyup="after_blur('%s')">'''%(
             prefix,prefix))
     if value is not None:
-        out.write(value)
+        out.write(value.encode('ISO-8859-15'))
     out.write('</textarea>')
 
 def make_display_simple(slots,anno,db,out,spans=None):
