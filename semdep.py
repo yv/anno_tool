@@ -2,12 +2,14 @@
 # -*- coding: iso-8859-15 -*-
 import sys
 import malt_wrapper
-from CWB.CL import Corpus
+from CWB.CL import Corpus, IDList
 from pynlp.de import smor_pos
 from graph_search import dijkstra_search
 from gzip import GzipFile
+from codecs import latin_1_decode
 import simplejson as json
 import malt_wrapper
+import promise
 
 class DependencyCorpus(object):
     def __init__(self, corpus, lemma_column='tb_lemma',
@@ -50,6 +52,23 @@ class DependencyCorpus(object):
         make_semrels(t)
         return t
 
+def get_collocate_sents(corpus,
+                        src_lemmas, tgt_lemmas,
+                        src_pos=None, tgt_pos=None,
+                        lemma_column='tb_lemma',
+                        pos_column='rf_pos'):
+    lemmas=corpus.attribute(lemma_column,'p')
+    postags=corpus.attribute(pos_column,'p')
+    sentences=corpus.attribute('s','s')
+    src_ids=lemmas.find_list(src_lemmas)
+    if src_pos is not None:
+        src_ids &= postags.find_list(src_pos)
+    src_sents=sentences.map_idlist(src_ids)
+    tgt_ids=lemmas.find_list(tgt_lemmas)
+    if tgt_pos is not None:
+        tgt_ids &= postags.find_list(tgt_pos)
+    tgt_sents=sentences.map_idlist(tgt_ids)
+    return src_sents & tgt_sents
 
 def collapse_aux(t):
     # 1. collapse aux
@@ -234,6 +253,26 @@ def get_path(t,idx1,idx2,limit=None):
                 yield (1,n.start,'+'+rel)
     return dijkstra_search([idx1],[idx2],neighbours,limit)
 
+lemma_map={
+    'der':'das',
+    'die':'das',
+    'der|die|das':'das',
+    'eine':'ein',
+    'ein|eine':'ein',
+    }
+
+@promise.pure()
+@promise.sensible()
+def lemma_for(n):
+    s=n.lemma
+    if isinstance(s,str):
+        s=latin_1_decode(n.lemma)[0]
+    s=lemma_map.get(s,s)
+    if '|' in s:
+        return s[:s.index('|')]
+    else:
+        return s
+
 def dep2json(t):
     nodes=[]
     edges=[]
@@ -241,7 +280,7 @@ def dep2json(t):
         n_id='w%d'%(n.start+1,)
         if 'hide' in n.flags or n.cat in ['$.','$,','$(']:
             continue
-        nodes.append([n_id,n.lemma.decode('ISO-8859-15'),n.cat])
+        nodes.append([n_id,lemma_for(n),n.cat])
         for lab, dep in n.sd_dep:
             edges.append([n_id,'w%d'%(dep.start+1),lab.decode('ISO-8859-15')])
     return {'nodes':nodes,'edges':edges}
@@ -252,7 +291,7 @@ def dep2paths(t,target,feature,result=None):
     nodes=t.terminals
     for idx_start in target:
         dep2paths2(nodes,idx_start,feature,
-                   [nodes[idx_start].lemma.decode('ISO-8859-15')],
+                   [lemma_for(nodes[idx_start])],
                    set(),result)
     return result
 
@@ -264,7 +303,7 @@ def dep2paths2(nodes,idx,feature,path,seen,result):
         idx2=dep.start
         if idx2 not in seen:
             path.append(('-',lab.decode('ISO-8859-15'),
-                         dep.lemma.decode('ISO-8859-15')))
+                         lemma_for(dep)))
             seen.add(idx)
             if idx2 in feature:
                 result.append(path[:])
@@ -275,11 +314,69 @@ def dep2paths2(nodes,idx,feature,path,seen,result):
         idx2=dep.start
         if idx2 not in seen:
             path.append(('+',lab.decode('ISO-8859-15'),
-                         dep.lemma.decode('ISO-8859-15')))
+                         lemma_for(dep)))
             seen.add(idx)
             if idx2 in feature:
                 result.append(path[:])
             dep2paths2(nodes,idx2,feature,path,seen,result)
+            seen.remove(idx)
+            path.pop()
+
+def get_sat(n,seen):
+    result=[]
+    try:
+        for lab, dep in n.sd_dep:
+            idx2=dep.start
+            if idx2 not in seen:
+                result.append((lab.decode('ISO-8859-15'),
+                               lemma_for(dep)))
+    except AttributeError as x:
+        print >>sys.stderr, "Att: %s (%s)"%(x,n)
+    return result
+
+def dep2paths_sat(t,target,feature,result=None):
+    if result==None:
+        result=[]
+    nodes=t.terminals
+    for idx_start in target:
+        n=nodes[idx_start]
+        dep2paths_sat2(nodes,idx_start,feature,
+                   [n],
+                   set([idx_start]),result)
+    return result
+
+def dep2paths_sat2(nodes,idx,feature,path,seen,result):
+    n=nodes[idx]
+    if 'hide' in n.flags or len(seen)>4:
+        return
+    for lab, dep in n.sd_dep:
+        idx2=dep.start
+        if idx2 not in seen:
+            path.append(('-',lab.decode('ISO-8859-15'),
+                         lemma_for(dep)))
+            seen.add(idx)
+            if idx2 in feature:
+                result.append([lemma_for(path[0]),
+                               lemma_for(dep),
+                               path[1:-1]+[path[-1][:2]],
+                               get_sat(path[0],seen),
+                               get_sat(dep,seen)])
+            dep2paths_sat2(nodes,idx2,feature,path,seen,result)
+            seen.remove(idx)
+            path.pop()
+    for lab, dep in n.sd_gov:
+        idx2=dep.start
+        if idx2 not in seen:
+            path.append(('+',lab.decode('ISO-8859-15'),
+                         lemma_for(dep)))
+            seen.add(idx)
+            if idx2 in feature:
+                result.append([lemma_for(path[0]),
+                               lemma_for(dep),
+                               path[1:-1]+[path[-1][:2]],
+                               get_sat(path[0],seen),
+                               get_sat(dep,seen)])
+            dep2paths_sat2(nodes,idx2,feature,path,seen,result)
             seen.remove(idx)
             path.pop()
 
@@ -288,6 +385,7 @@ filters={
     'A':set(['ADJA','ADJD']),
     'V':set(['VVFIN','VVINF','VVPP','VVIZU'])
 }
+
 def dep2paths_all(corpus, kind='NN'):
     dc=DependencyCorpus(Corpus(corpus))
     if kind=='NN':
@@ -305,6 +403,30 @@ def dep2paths_all(corpus, kind='NN'):
         feature=set([j for (j,n) in enumerate(t.terminals)
                      if n.cat in filt_feat])
         dep2paths(t,target,feature,result)
+        #print '#',' '.join([n.word for n in t.terminals])
+        for path in result:
+            print >>f_out, json.dumps(path)
+        if i%1000==0:
+            print >>sys.stderr,"\r%s"%(i,)
+    f_out.close()
+
+def dep2paths_sat_all(corpus, kind='NN'):
+    dc=DependencyCorpus(Corpus(corpus))
+    if kind=='NN':
+        suffix=''
+    else:
+        suffix='_'+kind
+    filt_tgt=filters[kind[0]]
+    filt_feat=filters[kind[1]]
+    f_out=GzipFile('/gluster/nufa/yannick/paths_sat_%s%s.json.gz'%(corpus,suffix),'w')
+    for i in xrange(len(dc)):
+        result=[]
+        t=dc.get_graph(i)
+        target=set([j for (j,n) in enumerate(t.terminals)
+                    if n.cat in filt_tgt])
+        feature=set([j for (j,n) in enumerate(t.terminals)
+                     if n.cat in filt_feat])
+        dep2paths_sat(t,target,feature,result)
         #print '#',' '.join([n.word for n in t.terminals])
         for path in result:
             print >>f_out, json.dumps(path)
@@ -330,3 +452,9 @@ if __name__=='__main__':
         else:
             kind='NN'
         dep2paths_all(sys.argv[2],kind)
+    elif cmd=='paths_sat':
+        if len(sys.argv)>3:
+            kind=sys.argv[3]
+        else:
+            kind='NN'
+        dep2paths_sat_all(sys.argv[2],kind)

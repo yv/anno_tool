@@ -172,6 +172,7 @@ def make_rels(rels):
         return rels[0].encode('ISO-8859-1','xmlcharrefreplace')
     else:
         return '<br>'+'<br>'.join(rels).encode('ISO-8859-1','xmlcharrefreplace')
+
 def render_discourse_printable(request,disc_no):
     db=request.corpus
     corpus=db.corpus
@@ -390,6 +391,128 @@ def archive_discourse(request,disc_no):
             raise NotFound('Invalid Suffix')
     else:
         raise NotFound('Only POST allowed')
+
+def compare_discourse(request,disc_no):
+    db=request.corpus
+    t_id=int(disc_no)
+    if ('user1' not in request.args and
+        'user2' not in request.args):
+        user1=request.user
+        user2='*gold*'
+    else:
+        if ('user1' not in request.args or
+            'user2' not in request.args):
+            return NotFound('need user1, user2')
+    user1=request.args['user1']
+    user2=request.args['user2']
+    doc1=db.get_discourse(t_id,user1)
+    doc2=db.get_discourse(t_id,user2)
+    tokens=doc1['tokens']
+    sentences=doc1['sentences']
+    sent_gold=sentences[:]
+    sent_gold.append(len(tokens))
+    exclude=set(sent_gold)
+    edus1=doc1['edus']
+    edus2=doc2['edus']
+    interesting1=set(edus1).difference(exclude)
+    interesting2=set(edus2).difference(exclude)
+    common=interesting1.intersection(interesting2)
+    edu_only1=interesting1.difference(interesting2)
+    edu_only2=interesting2.difference(interesting1)
+    edus=sorted(common.union(sent_gold))
+    diffs_seg=[]
+    sent_idx=0
+    for n in sorted(edu_only1.union(edu_only2)):
+        while sent_gold[sent_idx]<n:
+            sent_idx+=1
+        if n in edu_only1:
+            diagnosis="Nur %s"%(user1,)
+        else:
+            diagnosis="Nur %s"%(user2,)
+        diffs_seg.append((diagnosis,"[%d] %s | %s"%(sent_idx,
+                                               ' '.join(tokens[n-2:n]),' '.join(tokens[n:n+2]))))
+    n_common=len(common)
+    n_only1=len(edu_only1)
+    n_only2=len(edu_only2)
+    #for i,(start,end) in enumerate(zip(sent_gold[:-1],sent_gold[1:])):
+    #    sentences.append((i+1,tokens[start:end]))
+    if n_common==0:
+        f_val_seg=0
+    else:
+        f_val_seg=2*n_common/(len(interesting1)+len(interesting2))
+    diffs_topic=[]
+    topics1=dict([x for x in doc1['topics']])
+    topics2=dict([x for x in doc2['topics']])
+    topics=[]
+    sent_idx=0
+    for start,topic_str in doc1['topics']:
+        if start not in topics2:
+            while sent_gold[sent_idx]<start:
+                sent_idx+=1
+            diffs_topic.append(("Nur %s"%(user1,),"[%s] %s"%(sent_idx, topic_str)))
+        else:
+            topics.append((start,'%s / %s'%(topic_str, topics2[start])))
+    for start,topic_str in doc2['topics']:
+        if start not in topics1:
+            while sent_gold[sent_idx]<start:
+                sent_idx+=1
+            diffs_topic.append(("Nur %s"%(user2,),"[%s] %s"%(sent_idx, topic_str)))
+    users=[doc['_user'] for doc in db.db.discourse.find({'_docno':t_id})]
+    # render common view of discourse
+    out=StringIO()
+    next_sent=0
+    next_edu=0
+    next_topic=0
+    sub_edu=0
+    nonedu1=doc1['nonedu']
+    nonedu2=doc2['nonedu']
+    nonedu=dict([x for x in nonedu1.iteritems()
+                 if nonedu2.get(x[0],False)])
+    uedu1=doc1.get('uedus',{})
+    uedu2=doc2.get('uedus',{})
+    uedus=dict([x for x in uedu1.iteritems()
+               if uedu2.get(x[0],False)])
+    rel=''
+    in_div=False
+    for i,tok in enumerate(tokens):
+        if next_topic<len(topics) and topics[next_topic][0]==i:
+            if in_div:
+                out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
+                in_div=False
+            # rel=make_rels(topic_rels.get('T%d'%(next_topic,),None))
+            out.write('<div class="topic"><span class="edu-label">T%d</span>\n'%(next_topic,))
+            out.write(topics[next_topic][1].encode('ISO-8859-1'))
+            out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
+            next_topic +=1
+        if next_edu<len(edus) and edus[next_edu]==i:
+            if in_div:
+                out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
+                in_div=False
+            next_edu+=1
+            sub_edu+=1
+            if next_sent<len(sentences) and sentences[next_sent]==i:
+                sub_edu=0
+                next_sent+=1
+            # rel=make_rels(topic_rels.get('%d.%d'%(next_sent,sub_edu),None))
+            if nonedu.get(unicode(i),None):
+                cls='nonedu'
+            elif uedus.get(unicode(i),None):
+                cls='uedu'
+            else:
+                cls='edu'
+            out.write('<div class="%s"><span class="edu-label">%d.%d</span>'%(cls,next_sent,sub_edu))
+            in_div=True
+        out.write('%s '%(tok.encode('ISO-8859-1'),))
+    if in_div:
+       out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
+    return render_template('discourse_diff.html',
+                           display=out.getvalue().decode('ISO-8859-15'),
+                           all_users=users,
+                           docid=t_id, user1=user1, user2=user2,
+                           sentences=sentences,
+                           f_val_seg=f_val_seg, diffs_seg=diffs_seg,
+                           diffs_topic=diffs_topic)
+
 
 
 def render_search(request,word):

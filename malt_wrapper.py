@@ -287,6 +287,7 @@ def prepareMalt(tokens_fname):
     return conll_lines
 
 def parseMalt(sentences):
+    conll_dir=mkdtemp('malt')
     # 1. dump to tokens file
     f_tokens=NamedTemporaryFile(prefix='tokens')
     for sent in sentences:
@@ -332,9 +333,9 @@ def test(corpus_name,sent_nos):
 
 def parse_all(corpus_name,start_sent=0):
     if start_sent==0:
-        f_out=file('/export/local/yannick/malt_all_%s.conll'%(corpus_name,),'w')
+        f_out=file('/gluster/nufa/yannick/malt_all_%s.conll'%(corpus_name,),'w')
     else:
-        f_out=file('/export/local/yannick/malt_all_%s-%s.conll'%(corpus_name,start_sent),'w') 
+        f_out=file('/gluster/nufa/yannick/malt_all_%s-%s.conll'%(corpus_name,start_sent),'w') 
     sents=[]
     corp=Corpus(corpus_name)
     words=corp.attribute('word','p')
@@ -353,6 +354,17 @@ def parse_all(corpus_name,start_sent=0):
         write_table(f_out,result)
     f_out.close()
 
+def minimized_diff(lst_a,lst_b):
+    xs=lst_a[:]
+    ys=lst_b[:]
+    while xs[0]==ys[0]:
+        del xs[0]
+        del ys[0]
+    while xs[-1]==ys[-1]:
+        del xs[-1]
+        del ys[-1]
+    return (xs,ys)
+
 def malt2cqp(corpus_name):
     try:
         f_in=file('/gluster/nufa/yannick/malt_all_%s-all.conll'%(corpus_name))
@@ -365,7 +377,8 @@ def malt2cqp(corpus_name):
         s_start,s_end=sentences[i][:2]
         assert (s_end-s_start+1)==len(sent), (i,f_in.tell(),
                                               words[s_start:s_end+1],
-                                              [x[1] for x in sent])
+                                              [x[1] for x in sent],
+                                              minimized_diff(words[s_start:s_end+1],[x[1] for x in sent]))
         for j,line in enumerate(sent):
             if line[6]=='0':
                 attach='ROOT'
