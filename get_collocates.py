@@ -5,6 +5,7 @@ from collections import defaultdict
 from cStringIO import StringIO
 from dist_sim import sparsmat
 from annodb.database import get_corpus
+from annodb.corpora import corpus_urls
 from CWB.CL import Corpus
 from cqp_util import use_corpus, query_cqp, escape_cqp
 from web_stuff import Response, render_template
@@ -45,6 +46,13 @@ dewac02_db=get_corpus(corpus_name)
 dewac02_corpus=dewac02_db.corpus
 dewac02_dep=semdep.DependencyCorpus(dewac02_corpus)
 cqp=use_corpus(corpus_name)
+if corpus_name in corpus_urls:
+    url_transform=corpus_urls[corpus_name]
+    def get_url(text_id):
+        return url_transform(text_id,corpus_name)
+else:
+    def get_url(url):
+        return url
 
 def collocates_page(request):
     return render_template('collocates.html', corpus_name=corpus_name)
@@ -102,7 +110,7 @@ def collocate_examples(request):
         url=texts[text_id][2]
         buf.write('<a onclick="loadGraph(%d,%d,%d)">[graph]</a> <a href="%s">%s</a><br>\n'%(
             sent_no, w1_idx, w2_idx,
-            url,url))
+            get_url(url),url))
         dewac02_db.display_spans([(start,start+1,"<b>","</b>"),
                                   (end,end+1,"<b>","</b>")],buf)
         buf.write('</div>\n')

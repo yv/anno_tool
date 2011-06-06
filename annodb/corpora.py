@@ -24,6 +24,8 @@ corpus_d_sattr={'EUROPARL_EN':'SPEAKER_NAME',
 corpus_urls={'TUEBA4':compute_url_tueba,
              'R6PRE1':compute_url_tueba,
              'R6FINAL':compute_url_tueba,
+             'R7PRE1':compute_url_tueba,
+             'TUEPP':compute_url_tueba,
              'EUROPARL_EN':compute_url_europarl,
              'EUROPARL_DE':compute_url_europarl}
 parse_order={'TUEBA4':parser_ordering_de,
