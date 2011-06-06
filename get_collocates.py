@@ -40,10 +40,10 @@ def collocate_vector(corpus, word1, wsize=5, pos_re=None):
     vec/=global_count
     return vec
 
-dewac02_db=get_corpus('DEWAC02')
+dewac02_db=get_corpus('TUEPP')
 dewac02_corpus=dewac02_db.corpus
 dewac02_dep=semdep.DependencyCorpus(dewac02_corpus)
-cqp=use_corpus('DEWAC02')
+cqp=use_corpus('TUEPP')
 
 def collocates_page(request):
     return render_template('collocates.html')
