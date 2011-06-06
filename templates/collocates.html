@@ -42,6 +42,8 @@ function loadCollocates() {
  var p=$.ajax({url:'/pycwb/get_collocates?word1='+encodeURIComponent(word1),
 success:function(data) {
  $('#collocates').tagCloud($.parseJSON(data), {click: loadExamples});
+ $('#collocates').append('<input id="custom_input"><a id="custom_button" onclick="loadExamples($(\'#custom_input\').val())">suchen</a>');
+ $('#custom_button').button();
  $('#examples').html('');
 }});
 }
@@ -98,7 +100,7 @@ function loadGraph(sent_id) {
 }
 </script>
 <body>
-<h1>Collocates for DEWAC02</h1>
+<h1>Collocates for {{corpus_name}}</h1>
 <div id="queryform">
 <input id="word1"> <a id="submit" onclick="loadCollocates()">Get Collocates</a>
 </div>
