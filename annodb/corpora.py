@@ -1,4 +1,4 @@
-allowed_corpora_nologin=['TUEBA4','R6PRE1','R6FINAL','EUROPARL_EN','EUROPARL_DE']
+allowed_corpora_nologin=['TUEBA4','R6PRE1','R6FINAL','R7PRE1','EUROPARL_EN','EUROPARL_DE']
 allowed_corpora=allowed_corpora_nologin+['PTB']
 
 def compute_url_tueba(text_id,unused_corpus):
@@ -30,6 +30,7 @@ corpus_urls={'TUEBA4':compute_url_tueba,
              'EUROPARL_DE':compute_url_europarl}
 parse_order={'TUEBA4':parser_ordering_de,
              'R6PRE1':parser_ordering_de,
+             'R7PRE1':parser_ordering_de,
              'R6FINAL':parser_ordering_de,
              'EUROPARL_DE':parser_ordering_de,
              'PTB':parser_ordering_en,
