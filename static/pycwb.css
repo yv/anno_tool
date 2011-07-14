@@ -26,6 +26,9 @@
     border: solid thin grey;
     background: #eeeeee;
 }
+.mention_unwanted {
+  color: #7799dd;
+}
 .treebox {
    background: #eeeeee;
    position: relative;

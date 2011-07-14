@@ -302,8 +302,10 @@ class AnnoDB(object):
         right_border=max([span[1] for span in spans])
         if right_border-left_border>10000:
             raise ValueError(str(spans))
-        spans=sorted(spans)
-        rspans=reversed(spans)
+        spans=sorted(spans, key=lambda x:(x[0],-x[1]))
+        rspans=sorted(spans, key=lambda x:(x[1],x[0],x[2]),reverse=True)
+        print >>sys.stderr, spans
+        print >>sys.stderr, rspans
         if expand_to is not None:
             left_s=expand_to.cpos2struc(left_border)
             left_border=expand_to[left_s][0]
@@ -311,9 +313,9 @@ class AnnoDB(object):
             right_border=expand_to[right_s][1]+1
         starting_tags=[[] for unused_ in xrange(left_border,right_border)]
         ending_tags=[[] for unused_ in xrange(left_border,right_border)]
-        for s in rspans:
-            starting_tags[s[0]-left_border].append(s[2])
         for s in spans:
+            starting_tags[s[0]-left_border].append(s[2])
+        for s in rspans:
             ending_tags[s[1]-left_border-1].append(s[3])
         for i,offset in enumerate(xrange(left_border,right_border)):
             for s in starting_tags[i]:

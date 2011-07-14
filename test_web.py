@@ -33,7 +33,77 @@ def write_alignment(align,out):
                 print >>out,'<td>.</td>'
         print >>out,'</tr>'
     print >>out,'</table>'
-        
+
+def write_coref(db, anno_info, out, start, end):
+    set_start={}
+    set_members={}
+    sentences=db.sentences
+    for k,v in anno_info.iteritems():
+        try:
+            span=v['span']
+        except KeyError:
+            continue
+        if 'set_id' in v and span[0]>=start and span[-1]<=end:
+            print >>sys.stderr, v
+            set_id=v['set_id']
+            if set_id in set_start:
+                set_start[set_id]=min(span[0],set_start[set_id])
+            else:
+                set_start[set_id]=span[0]
+    print >>sys.stderr, set_start
+    all_chains=[]
+    for k,v in anno_info.iteritems():
+        try:
+            span=v['span']
+        except KeyError:
+            continue
+        if 'set_id' in v:
+            set_id=v['set_id']
+            if set_id in set_start:
+                if set_id in set_members:
+                    set_members[set_id].append([v['span'],v])
+                else:
+                    set_members[set_id]=[[v['span'],v]]
+        elif span[0]>=start and span[-1]<=end:
+            all_chains.append([span[0],None,[v]])
+    print >>sys.stderr, set_members
+    for set_id, members in set_members.iteritems():
+        members.sort()
+        all_chains.append([set_start[set_id],set_id,[x[1] for x in members]])
+    all_chains.sort()
+    def sent_limit(pos):
+        return sentences[sentences.cpos2struc(pos)][1]
+    for _unused_start, set_id, members in all_chains:
+        print >>out, "<h3>%s</h3>"%(set_id,)
+        d_spans=[]
+        for v in members:
+            span=v['span']
+            v_start=span[0]
+            if d_spans and (v_start<=d_start or v_start>d_end):
+                print >>out,'<div class="%s">'%(cls,)
+                db.display_spans(d_spans,out)
+                print >>out,'</div>'
+                d_spans=[]
+            d_start=v_start
+            d_end=sent_limit(v_start)
+            if span[0]>=start and span[-1]<=end:
+                cls='mention_wanted'
+            else:
+                cls='mention_unwanted'
+            start_tag='<b>'
+            end_tag='</b>'
+            if 'en_cls' in v:
+                end_tag +='[%s]'%(v['en_cls'],)
+            if 'rel' in v:
+                end_tag +='[%s]'%(v['rel'][0],)
+            if 'min_ids' in v:
+                min_span=v['min_ids']
+                d_spans.append(v['min_ids']+['<u>','</u>'])
+            d_spans.append(v['span']+['<b>',end_tag])
+        if d_spans:
+            print >>out,'<div class="%s">'%(cls,)
+            db.display_spans(d_spans,out)
+            print >>out,'</div>'
 
 def render_sentence(request,sent_no):
     db=request.corpus
@@ -49,6 +119,7 @@ def render_sentence(request,sent_no):
     for i in xrange(start,end+1):
         tokens.append(words[i].decode('ISO-8859-1'))
     t_id=texts.cpos2struc(end-1)
+    coref=db.db.referential.find_one({'_id':t_id})
     t_id_d=texts_d.cpos2struc(end-1)
     unused_start,unused_end,t_attrs=texts[t_id]
     if db.corpus_name in corpus_urls:
@@ -60,6 +131,10 @@ def render_sentence(request,sent_no):
     trees_out=StringIO()
     names_parses=sorted([k for k in parses.iterkeys() if k!='_id'])
     names_alignments=sorted([k for k in alignments.iterkeys() if k!='_id'])
+    if coref is not None:
+        names_coref=sorted([k for k in coref.iterkeys() if k!='_id'])
+    else:
+        names_coref=[]
     annotations=db.find_annotations([start,end],'*gold*')
     if names_parses or names_alignments or annotations:
         print >>trees_out,'<div id="parses-tabs">'
@@ -68,6 +143,8 @@ def render_sentence(request,sent_no):
             print >>trees_out,'<li><a href="#parses-%s">%s (parse)</a></li>'%(k,k)
         for k in names_alignments:
             print >>trees_out,'<li><a href="#alignments-%s">%s (align)</a></li>'%(k,k)
+        for k in names_coref:
+            print >>trees_out,'<li><a href="#coref-%s">%s (coref)</a></li>'%(k,k)
         levels=defaultdict(StringIO)
         for anno in annotations:
             level=anno['level']
@@ -87,6 +164,11 @@ def render_sentence(request,sent_no):
             v=alignments[k]
             print >>trees_out,'<div id="alignments-%s">'%(k,)
             write_alignment(v,trees_out)
+            print >>trees_out,'</div>'
+        for k in names_coref:
+            v=coref[k]
+            print >>trees_out,'<div id="coref-%s">'%(k,)
+            write_coref(db, v, trees_out, start,end+1)
             print >>trees_out,'</div>'
         for k in names: 
             print >>trees_out,'<div id="level-tabs-%s">'%(k,)
