@@ -44,13 +44,13 @@ def write_coref(db, anno_info, out, start, end):
         except KeyError:
             continue
         if 'set_id' in v and span[0]>=start and span[-1]<=end:
-            print >>sys.stderr, v
+            ## print >>sys.stderr, v
             set_id=v['set_id']
             if set_id in set_start:
                 set_start[set_id]=min(span[0],set_start[set_id])
             else:
                 set_start[set_id]=span[0]
-    print >>sys.stderr, set_start
+    ## print >>sys.stderr, set_start
     all_chains=[]
     for k,v in anno_info.iteritems():
         try:
@@ -66,26 +66,31 @@ def write_coref(db, anno_info, out, start, end):
                     set_members[set_id]=[[v['span'],v]]
         elif span[0]>=start and span[-1]<=end:
             all_chains.append([span[0],None,[v]])
-    print >>sys.stderr, set_members
+    ## print >>sys.stderr, set_members
     for set_id, members in set_members.iteritems():
         members.sort()
         all_chains.append([set_start[set_id],set_id,[x[1] for x in members]])
     all_chains.sort()
     def sent_limit(pos):
-        return sentences[sentences.cpos2struc(pos)][1]
+        sent_id=sentences.cpos2struc(pos)
+        return (sent_id+1, sentences[sent_id][1])
     for _unused_start, set_id, members in all_chains:
         print >>out, "<h3>%s</h3>"%(set_id,)
         d_spans=[]
         for v in members:
             span=v['span']
             v_start=span[0]
-            if d_spans and (v_start<=d_start or v_start>d_end):
+            if d_spans and (v_start<d_start or v_start>d_end):
                 print >>out,'<div class="%s">'%(cls,)
+                if cls=='mention_unwanted':
+                    print >>out, '<a class="bluelink" href="/pycwb/sentence/%d">'%(d_sent,)
                 db.display_spans(d_spans,out)
+                if cls=='mention_unwanted':
+                    print >>out, '</a>'                
                 print >>out,'</div>'
                 d_spans=[]
-            d_start=v_start
-            d_end=sent_limit(v_start)
+            d_start=span[1]
+            (d_sent,d_end)=sent_limit(v_start)
             if span[0]>=start and span[-1]<=end:
                 cls='mention_wanted'
             else:
@@ -102,7 +107,11 @@ def write_coref(db, anno_info, out, start, end):
             d_spans.append(v['span']+['<b>',end_tag])
         if d_spans:
             print >>out,'<div class="%s">'%(cls,)
+            if cls=='mention_unwanted':
+                print >>out, '<a class="bluelink" href="/pycwb/sentence/%d">'%(d_sent,)
             db.display_spans(d_spans,out)
+            if cls=='mention_unwanted':
+                print >>out, '</a>'                
             print >>out,'</div>'
 
 def render_sentence(request,sent_no):
