@@ -47,7 +47,7 @@ def get_maximal_projection(n):
     if n.cat=='EN-ADD' and len(n.children)==1 and n.children[0].cat in ['NX','NCX']:
         return n.children[0]
     if n.cat=='NX' and len(n.children)==2 and n.children[1].cat=='R-SIMPX':
-        return n.children[1]
+        return n.children[0]
     return n
 
 def get_entry(ana_links, node):

@@ -29,6 +29,22 @@
 .mention_unwanted {
   color: #7799dd;
 }
+
+.bluelink:link {
+  color: #7799dd;
+  text-decoration: none;
+}
+
+.bluelink:visited {
+  color: #7799dd;
+  decoration: none;
+}
+
+.bluelink:hover {
+  color: #2244aa;
+  text-decoration: none;
+}
+
 .treebox {
    background: #eeeeee;
    position: relative;

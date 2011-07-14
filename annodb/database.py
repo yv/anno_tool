@@ -304,8 +304,8 @@ class AnnoDB(object):
             raise ValueError(str(spans))
         spans=sorted(spans, key=lambda x:(x[0],-x[1]))
         rspans=sorted(spans, key=lambda x:(x[1],x[0],x[2]),reverse=True)
-        print >>sys.stderr, spans
-        print >>sys.stderr, rspans
+        ## print >>sys.stderr, spans
+        ## print >>sys.stderr, rspans
         if expand_to is not None:
             left_s=expand_to.cpos2struc(left_border)
             left_border=expand_to[left_s][0]
