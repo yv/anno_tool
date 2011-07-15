@@ -11,29 +11,38 @@
 <link rel="stylesheet" href="/static/token-input-facebook.css" type="text/css" /> 
 <link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css" />
 <script type="text/javascript">
-$(document).ready(function() {
-  var cls={
-         tokenList: "token-input-list-facebook",
-         token: "token-input-token-facebook",
-         tokenDelete: "token-input-delete-token-facebook",
-         selectedToken: "token-input-selected-token-facebook",
-         highlightedToken: "token-input-highlighted-token-facebook",
-         dropdown: "token-input-dropdown-facebook",
-         dropdownItem: "token-input-dropdown-item-facebook",
-         dropdownItem2: "token-input-dropdown-item2-facebook",
-         selectedDropdownItem: "token-input-selected-dropdown-item-facebook",
-         inputToken: "token-input-input-token-facebook"};
-  var li_data, inp;
-  {% for task in tasks %}
-  li_data=[];
-  {% for a in task.annotators %}li_data.push({id:'{{a}}',name:'{{a}}'});{% endfor %}
-  inp=$("#input-{{task._id}}");
-  inp.change(function() {$('#save-{{task._id}}').button({disabled:false})});
-  $('#save-{{task._id}}').button({disabled:true});
+var cls={
+tokenList: "token-input-list-facebook",
+token: "token-input-token-facebook",
+tokenDelete: "token-input-delete-token-facebook",
+selectedToken: "token-input-selected-token-facebook",
+highlightedToken: "token-input-highlighted-token-facebook",
+dropdown: "token-input-dropdown-facebook",
+dropdownItem: "token-input-dropdown-item-facebook",
+dropdownItem2: "token-input-dropdown-item2-facebook",
+selectedDropdownItem: "token-input-selected-dropdown-item-facebook",
+inputToken: "token-input-input-token-facebook"};
+
+function insert_actual(taskid) {
+  $('#annolist-'+taskid).html('<input type="text" id="input-'+taskid+'" value="" name="nm:'+taskid+'">');
+  inp=$('#input-'+taskid);
+  $('#save-'+taskid).button({disabled:true});
+  inp.change(function() {$('#save-'+taskid).button({disabled:false})});
   inp.tokenInput("/pycwb/get_users",
-     {hintText: "Annotatoren?!", prePopulate:li_data, classes:cls});
-  {% endfor %}
+     {hintText: "Annotatoren?!", prePopulate:task_annotators[taskid], classes:cls});
+}
+
+$(document).ready(function() {
+var buttons=$('.savebtn');
+buttons.button({disabled:true});
 });
+
+var task_annotators={};
+{% for task in tasks %}
+li_data=[];
+{% for a in task.annotators %}li_data.push({id:'{{a}}',name:'{{a}}'});{% endfor %}
+task_annotators['{{task._id}}']=li_data;
+{%endfor%}
 
 function do_save(item_id) {
   var p=$.ajax({async:false,
@@ -60,10 +69,17 @@ function do_save(item_id) {
 <tr class="{{loop.cycle('odd_row','even_row')}}" id="{{task._id}}">
 <td>{{task._id}}</td>
 <td>{{task.level}}</td>
-<td><input type="text" id="input-{{task._id}}"
-value=""
-name="nm:{{task._id}}"></td>
-<td><a id="save-{{task._id}}"
+<td class="annolist" id="annolist-{{task._id}}" onclick="insert_actual('{{task._id}}')">
+<ul class="token-input-list-facebook">
+{%for a in task.annotators %}
+<li class="token-input-token-facebook">
+<p>{{a}}</p>
+<span class="token-input-delete-token-facebook">x</span>
+</li>
+{%endfor%}
+</ul>
+</td>
+<td><a class="savebtn" id="save-{{task._id}}"
 onclick="do_save('{{task._id}}')">Save</a>
 [<a class="action" href="/pycwb/adjudicate/{{task._id}}?force_corpus={{corpus}}">Adjudicate</a>]
 {% if task.level=='konn2' %}
