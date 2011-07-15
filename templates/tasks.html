@@ -77,7 +77,13 @@ function do_save(item_id) {
 <span class="token-input-delete-token-facebook">x</span>
 </li>
 {%endfor%}
+{%if task.annotators==[] %}
+<li class="token-input-input-token-facebook">
+<input type="text" style="outline-style:none; outline-width: initial; outline-color: initial;">
+</li>
+{%endif%}
 </ul>
+<div style="display:none"></div>
 </td>
 <td><a class="savebtn" id="save-{{task._id}}"
 onclick="do_save('{{task._id}}')">Save</a>
