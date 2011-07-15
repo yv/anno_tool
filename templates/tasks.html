@@ -25,6 +25,7 @@ inputToken: "token-input-input-token-facebook"};
 
 function insert_actual(taskid) {
   $('#annolist-'+taskid).html('<input type="text" id="input-'+taskid+'" value="" name="nm:'+taskid+'">');
+  $('#annolist-'+taskid).attr('onclick',null);
   inp=$('#input-'+taskid);
   $('#save-'+taskid).button({disabled:true});
   inp.change(function() {$('#save-'+taskid).button({disabled:false})});
@@ -33,16 +34,114 @@ function insert_actual(taskid) {
 }
 
 $(document).ready(function() {
+do_initial();
 var buttons=$('.savebtn');
 buttons.button({disabled:true});
 });
 
 var task_annotators={};
+all_tasks=[];
 {% for task in tasks %}
+all_tasks.push(['{{task._id}}','{{task.level}}']);
 li_data=[];
 {% for a in task.annotators %}li_data.push({id:'{{a}}',name:'{{a}}'});{% endfor %}
 task_annotators['{{task._id}}']=li_data;
 {%endfor%}
+
+function create_dummy(task_idx) {
+  var row_class;
+  var task_id=all_tasks[task_idx][0];
+  var task_level=all_tasks[task_idx][1];
+  if (task_idx%2==0) {
+   row_class='even_row';
+ } else {
+   row_class='odd_row';
+ }
+ var annotators=task_annotators[task_id];
+ var parts=['<tr class="',row_class,'" id="',task_id,'">',
+'<td>',task_id,'</td>',
+'<td>',task_level,'</td>',
+'<td class="annolist" id="annolist-',task_id,'" onclick="insert_actual(\'',task_id,'\')">',
+'<ul class="token-input-list-facebook">'];
+if (annotators.length>0) {
+  var i;
+  for (i=0;i<annotators.length;i++) {
+   parts.push('<li class="token-input-token-facebook"><p>');
+   parts.push(annotators[i].name);
+   parts.push('</p><span class="token-input-delete-token-facebook">x</span></li>');
+ }
+} else {
+  parts.push('<li class="token-input-input-token-facebook"><input type="text" style="outline-style:none; outline-width: initial; outline-color: initial;"></li>');
+}
+parts.push('</ul></td>');
+parts.push('<td><a class="savebtn" id="save-'+task_id+'" onclick="do_save(\''+task_id+'\')">Save</a>');
+parts.push('[<a class="action" href="/pycwb/adjudicate/'+task_id+'?force_corpus={{corpus}}">Adjudicate</a>]');
+if (task_level=='konn2') {
+parts.push('[<a class="action" href="/pycwb/annotate2/'+task_id+'?force_corpus={{corpus}}">Annotate</a>]');
+} else {
+parts.push('[<a class="action" href="/pycwb/annotate/'+task_id+'?force_corpus={{corpus}}">Annotate</a>]');
+}
+parts.push('</td></tr>');
+return parts.join('');
+}
+
+var prefix_re=/^(.*)_([0-9]+)$/;
+function num_with_prefix(task_idx, prefix) {
+  var task_id;
+  for (i=task_idx; i<all_tasks.length; i++) {
+    task_id=all_tasks[i][0];
+    res=prefix_re.exec(task_id);
+    if (!(res && res[1]==prefix)) {
+	return i-task_idx;
+    }
+  }
+  return i-task_idx;
+}
+
+function do_initial() {
+ var parts=['<tr class="header_row">',
+'<th>Name</th>',
+'<th>Level</th>',
+'<th>Annotatoren</th>',
+'<th>Aktionen</th>',
+'</tr>'];
+ var idx=0;
+ while (idx<all_tasks.length) {
+   var task_id=all_tasks[idx][0];
+   var res=prefix_re.exec(task_id);
+   var nprefix=0;
+   if (res) {
+    nprefix=num_with_prefix(idx,res[1]);
+   }
+   if (nprefix>=3) {
+    var task_level=all_tasks[idx][1];
+    parts.push('<tr class="header_row" id="placeholder-'+idx+'" onclick="expand_rows('+idx+','+nprefix+')"><td>');
+    parts.push(res[1]);
+    parts.push('_...</td><td>');
+    parts.push(task_level);
+    parts.push('</td><td>');
+    parts.push(''+nprefix+' tasks</td><td></td></tr>');
+    idx+=nprefix;
+  } else {
+    parts.push(create_dummy(idx));
+    idx++;
+  }
+}
+$('.data_table').html(parts.join(''));
+}
+
+function expand_rows(task_idx, nprefix) {
+  var parts=[];
+  var placeholder=$('#placeholder-'+task_idx);
+  for (var i=task_idx; i<task_idx+nprefix; i++) {
+    parts.push(create_dummy(i));
+  }
+  placeholder.after(parts.join(''));
+  placeholder.remove();
+  for (var i=task_idx; i<task_idx+nprefix; i++) {
+   $('#save-'+all_tasks[i][0]).button({'disabled':true});
+ }
+}
 
 function do_save(item_id) {
   var p=$.ajax({async:false,
@@ -65,35 +164,5 @@ function do_save(item_id) {
 <th>Annotatoren</th>
 <th>Aktionen</th>
 </tr>
-{% for task in tasks %}
-<tr class="{{loop.cycle('odd_row','even_row')}}" id="{{task._id}}">
-<td>{{task._id}}</td>
-<td>{{task.level}}</td>
-<td class="annolist" id="annolist-{{task._id}}" onclick="insert_actual('{{task._id}}')">
-<ul class="token-input-list-facebook">
-{%for a in task.annotators %}
-<li class="token-input-token-facebook">
-<p>{{a}}</p>
-<span class="token-input-delete-token-facebook">x</span>
-</li>
-{%endfor%}
-{%if task.annotators==[] %}
-<li class="token-input-input-token-facebook">
-<input type="text" style="outline-style:none; outline-width: initial; outline-color: initial;">
-</li>
-{%endif%}
-</ul>
-<div style="display:none"></div>
-</td>
-<td><a class="savebtn" id="save-{{task._id}}"
-onclick="do_save('{{task._id}}')">Save</a>
-[<a class="action" href="/pycwb/adjudicate/{{task._id}}?force_corpus={{corpus}}">Adjudicate</a>]
-{% if task.level=='konn2' %}
-[<a class="action" href="/pycwb/annotate2/{{task._id}}?force_corpus={{corpus}}">Annotate</a>]
-{% else %}
-[<a class="action" href="/pycwb/annotate/{{task._id}}?force_corpus={{corpus}}">Annotate</a>]
-{% endif %}
-</td></tr>
-{% endfor %}
 </table>
 </body>
