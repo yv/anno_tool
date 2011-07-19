@@ -1,6 +1,7 @@
 from collections import defaultdict
 from itertools import izip
 from lxml import etree
+from mltk import gather_stats, print_stats
 import simplejson as json
 import sys
 
@@ -308,47 +309,3 @@ def make_stats_multi(all_data, system_labels_a,
         f.write(etree.tostring(node_root,pretty_print=True,standalone=True))
         f.close()
     return node_root
-
-def gather_stats(node,ctx,result):
-    if node.tag=='eval-data':
-        pass
-    elif node.tag=='group':
-        ctx+=node.get('name')+'/'
-    elif node.tag=='singleVal':
-        result[ctx+node.get('name')]=float(node.get('score'))
-    elif node.tag=='relCount':
-        tp=int(node.get('tp'))
-        fp=int(node.get('fp'))
-        fn=int(node.get('fn'))
-        if tp==0:
-            p=r=f=0
-        else:
-            p=float(tp)/(tp+fp)
-            r=float(tp)/(tp+fn)
-            f=2*p*r/(p+r)
-        result[ctx+node.get('name')]=f
-    for n in node:
-        gather_stats(n,ctx,result)
-
-def print_stats(node,indent=0):
-    indentS=' '*indent
-    if node.tag=='eval-data':
-        pass
-    elif node.tag=='group':
-        print '%sGROUP: %s'%(indentS,node.get('name'))
-    elif node.tag=='singleVal':
-        print '%-40s %.3f'%(indentS+node.get('name'),float(node.get('score')))
-    elif node.tag=='relCount':
-        tp=int(node.get('tp'))
-        fp=int(node.get('fp'))
-        fn=int(node.get('fn'))
-        if tp==0:
-            p=r=f=0
-        else:
-            p=float(tp)/(tp+fp)
-            r=float(tp)/(tp+fn)
-            f=2*p*r/(p+r)
-        print '%-40s Prec %.3f (%d/%d)\tRecl %.3f (%d/%d)\tF1=%.3f'%(indentS+node.get('name'),
-                                                                   p,tp,tp+fp,r,tp,tp+fn,f)
-    for n in node:
-        print_stats(n,indent+1)

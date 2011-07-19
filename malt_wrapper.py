@@ -375,10 +375,18 @@ def malt2cqp(corpus_name):
     sentences=corp.attribute('s','s')
     for i,sent in enumerate(read_table_iter(f_in)):
         s_start,s_end=sentences[i][:2]
-        assert (s_end-s_start+1)==len(sent), (i,f_in.tell(),
+        if s_end-s_start+1!=len(sent):
+            print >>sys.stderr, "Non-match:", (i,f_in.tell(),
                                               words[s_start:s_end+1],
                                               [x[1] for x in sent],
                                               minimized_diff(words[s_start:s_end+1],[x[1] for x in sent]))
+            if (words[s_start]==sent[0][1] or
+                words[s_end]==sent[-1][1]):
+                sent=[[str(j+1),words[s_start+j],words[s_start+j],
+                      'F','FM','_','0','ROOT']
+                      for j in xrange(s_end-s_start+1)]
+            else:
+                assert False
         for j,line in enumerate(sent):
             if line[6]=='0':
                 attach='ROOT'

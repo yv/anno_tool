@@ -344,7 +344,7 @@ def list_discourse(request):
     db=request.corpus
     words=db.words
     text_ids=db.corpus.attribute(corpus_d_sattr.get(db.corpus_name,'text_id'),'s')
-    results=db.db.discourse.find({'_user':request.user})
+    results=db.db.discourse.find({'_user':{'$in':[request.user,'*gold*']}})
     doc_lst=[]
     for r in results:
         try:
@@ -357,7 +357,9 @@ def list_discourse(request):
             if request.user in ADMINS:
                 users=[doc['_user'] for doc in db.db.discourse.find({'_docno':docid})]
             else:
-                users=[]
+                users=[doc['_user'] for doc in db.db.discourse.find({'_docno':docid})
+                       if (doc['_user'] in ['*gold*',request.user] or
+                       request.user is not None and doc['_user'].startswith(request.user+'*'))]
             doc_lst.append((request.user,r['_docno'],txt.decode('ISO-8859-15'),users))
     doc_lst.sort(key=lambda x: x[1])
     return render_template('discourse_list.html',

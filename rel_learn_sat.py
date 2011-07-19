@@ -3,9 +3,8 @@ from CWB.CL import Corpus
 from itertools import izip, islice
 from collections import defaultdict
 from alphabet import PythonAlphabet, CPPUniAlphabet
-from trie_alph import TrieAlphabet
+from trie_alph import DBAlphabet
 from dist_sim import sparsmat
-from Bio.trie import trie
 import numpy
 from array import array
 from gzip import GzipFile
@@ -150,29 +149,11 @@ def prefilter_relfreq(f):
     hashcounts=numpy.zeros(large_prime,'i')
     line_no=0
     for path in PathReader(f):
-        path=json.loads(l)
         if len(path[2])>4:
             continue
         rel_idx=hash(path2rel(path))%large_prime
         hashcounts[rel_idx]+=1
     return hashcounts
-
-def extract_relfreq_hc(f,f_out,hc):
-    rel_alph=trie()
-    counts=array('i')
-    c_append=counts.append
-    line_no=0
-    for path in PathReader(f, max_len=4):
-        key=path2rel(path)
-        if (key in rel_alph or
-            hc[hash(key)%large_prime]>=min_count):
-            rel_idx=rel_alph[key]
-            while rel_idx>=len(counts):
-                c_append(0)
-            counts[rel_idx]+=1
-    for rel, count in izip(rel_alph,counts):
-        if count>=min_count:
-            print >>f_out, "%d\t%s"%(count,rel)
 
 sat_map={
     'der':'das',
@@ -205,8 +186,11 @@ def prefilter_relfreq_sat(f,hc):
         pass
     return hc2
 
-def extract_typecount(f,f_out,hc,hc2):
-    rel_alph=TrieAlphabet('typecount.tmp',load=False)
+def extract_typecount(f,f_out,hc,hc2, want_db=None):
+    if want_db:
+        rel_alph=DBAlphabet('/gluster/nufa/yannick/dbalph_%s'%(want_db,))
+    else:
+        rel_alph=CPPUniAlphabet()
     w1_alph=PythonAlphabet()
     w2_alph=PythonAlphabet()
     counts=sparsmat.LargeVecI3()
@@ -344,17 +328,22 @@ if __name__=='__main__':
     if cmd=='pairfreq':
         extract_wordpairs(GzipFile(sys.argv[2]),
                           codecs.getwriter('ISO-8859-15')(sys.stdout))
-    if cmd=='pairfreq_all':
+    elif cmd=='pairfreq_all':
         extract_wordpairs(make_dewac_reader(),
                           codecs.getwriter('ISO-8859-15')(sys.stdout))
+    elif cmd=='plassoc':
+        create_plassoc(GzipFile(sys.argv[2]),sys.argv[3])
     elif cmd=='typecount':
         print >>sys.stderr, "Create relation filter"
         hc=prefilter_relfreq(GzipFile(sys.argv[2]))
         print >>sys.stderr, "Create rel+sat filter"
         hc2=prefilter_relfreq_sat(GzipFile(sys.argv[2]),hc)
         print >>sys.stderr, "Count rel+sat types"
+        db_name=None
+        if len(sys.argv)>3:
+            db_name=sys.argv[3]
         extract_typecount(GzipFile(sys.argv[2]),
-                          sys.stdout,hc,hc2)
+                          codecs.getwriter('ISO-8859-15')(sys.stdout),hc,hc2,db_name)
     elif cmd=='make_data':
         if len(sys.argv)>5:
             pos_filter=sys.argv[5]

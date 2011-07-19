@@ -12,7 +12,7 @@ from getopt import getopt
 import optparse
 from dist_sim.fcomb import FCombo, make_multilabel, dump_example
 from alphabet import PythonAlphabet
-from amis_wrapper import AMISLearner
+from mltk.amis_wrapper import AMISLearner
 #import me_opt2 as me_opt
 #import sgd_opt as me_opt
 import random
