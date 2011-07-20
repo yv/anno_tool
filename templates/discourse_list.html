@@ -77,7 +77,7 @@ $('#dialog-form').dialog('open');
 {% endif %}
 {% endfor %}
 {%if hidden_users%}
-<a onclick="$('#hidden-users-{{docid}}').show(); $(this).hide()">...</a>
+<a onclick="$(this).hide(); $('#hidden-users-{{docid}}').show()">...</a>
 <span id="hidden-users-{{docid}}" style="display:none">
 {% for user2 in hidden_users %}
 [<a href="/pycwb/printDiscourse/{{docid}}?who={{user2}}&force_corpus={{corpus_name}}">{{user2}}</a>]
