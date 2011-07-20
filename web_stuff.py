@@ -29,7 +29,8 @@ from annodb.corpora import allowed_corpora_nologin, allowed_corpora
 
 TEMPLATE_PATH=os.path.join(os.path.dirname(__file__),'templates')
 #mylookup=TemplateLookup(directories=[TEMPLATE_PATH])
-mylookup=Environment(loader=FileSystemLoader(TEMPLATE_PATH,encoding='ISO-8859-15'))
+mylookup=Environment(loader=FileSystemLoader(TEMPLATE_PATH,encoding='ISO-8859-15'),
+                     extensions=['jinja2.ext.do'])
 
 def render_template(template, **context):
     return Response(mylookup.get_template(template).render(**context),

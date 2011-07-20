@@ -10,7 +10,7 @@ import pytree.export as export
 import sys
 import re
 from collections import defaultdict
-from annodb.corpora import corpus_sattr, corpus_d_sattr, corpus_urls
+from annodb.corpora import allowed_corpora_nologin, corpus_sattr, corpus_d_sattr, corpus_urls
 
 def escape_uni(s):
     return escape(s).encode('ISO-8859-1','xmlcharrefreplace')
@@ -344,28 +344,35 @@ def list_discourse(request):
     db=request.corpus
     words=db.words
     text_ids=db.corpus.attribute(corpus_d_sattr.get(db.corpus_name,'text_id'),'s')
-    results=db.db.discourse.find({'_user':{'$in':[request.user,'*gold*']}})
+    docids=sorted(set([r['_docno'] for r in db.db.discourse.find({'_user':{'$in':[request.user,'*gold*']}}) if '_docno' in r]))
     doc_lst=[]
-    for r in results:
-        try:
-            docid=int(r['_docno'])
-        except KeyError:
-            pass
+    for docid in docids:
+        txt0=text_ids[docid]
+        txt="%s: %s"%(txt0[2],' '.join(words[txt0[0]:txt0[0]+5]))
+        if request.user in ADMINS:
+            users=[doc['_user'] for doc in db.db.discourse.find({'_docno':docid})]
         else:
-            txt0=text_ids[docid]
-            txt="%s: %s"%(txt0[2],' '.join(words[txt0[0]:txt0[0]+5]))
-            if request.user in ADMINS:
-                users=[doc['_user'] for doc in db.db.discourse.find({'_docno':docid})]
-            else:
-                users=[doc['_user'] for doc in db.db.discourse.find({'_docno':docid})
-                       if (doc['_user'] in ['*gold*',request.user] or
+            users=[doc['_user'] for doc in db.db.discourse.find({'_docno':docid})
+                   if (doc['_user'] in ['*gold*',request.user] or
                        request.user is not None and doc['_user'].startswith(request.user+'*'))]
-            doc_lst.append((request.user,r['_docno'],txt.decode('ISO-8859-15'),users))
-    doc_lst.sort(key=lambda x: x[1])
+        doc_lst.append((request.user,docid,txt.decode('ISO-8859-15'),users))
     return render_template('discourse_list.html',
                            corpus_name=db.corpus_name,
                            user=request.user,
                            results=doc_lst)
+
+def archive_user(user):
+    from annodb.database import get_corpus
+    new_name=user+'*old'
+    for corpus_name in allowed_corpora_nologin:
+        db=get_corpus(corpus_name)
+        coll=db.db.discourse
+        for doc in coll.find({'_user':user}):
+            disc_id=doc['_docno']
+            old_id=doc['_id']
+            doc['_user']=new_name
+            doc['_id']='%s_%s'%(disc_id,new_name)
+            coll.update({'_id':old_id},doc)
 
 def isolate_relations(relations):
     different_relations=defaultdict(list)

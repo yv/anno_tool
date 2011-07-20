@@ -68,10 +68,22 @@ $('#dialog-form').dialog('open');
 <a href="/pycwb/discourse/{{docid}}?force_corpus={{corpus_name}}">{{text|escape}}</a>
 </td><td>
 <span id="userlist-{{docid}}">
+{%set hidden_users=[]%}
 {% for user2 in all_users %}
+{% if user2[0]=='*' or '*' not in user2 %}
+[<a href="/pycwb/printDiscourse/{{docid}}?who={{user2}}&force_corpus={{corpus_name}}">{{user2}}</a>]
+{%else%}
+{%do hidden_users.append(user2)%}
+{% endif %}
+{% endfor %}
+{%if hidden_users%}
+<a onclick="$('#hidden-users-{{docid}}').show(); $(this).hide()">...</a>
+<span id="hidden-users-{{docid}}" style="display:none">
+{% for user2 in hidden_users %}
 [<a href="/pycwb/printDiscourse/{{docid}}?who={{user2}}&force_corpus={{corpus_name}}">{{user2}}</a>]
 {% endfor %}
 </span>
+{%endif%}
 </td><td>
 <a class="archive-button" href="#" onclick="do_archive('{{docid}}');">archive</a>
 </td></tr>
