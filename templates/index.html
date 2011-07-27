@@ -75,7 +75,7 @@ $("#corpus_chooser > option [val="+get_corpus()+"]").attr('selected','selected')
 </div>
 <div id="left_nav">
 {% if user %}
-Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>)
+Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>, <a href="/pycwb/stunden">stunden</a>)
 {% else %}
 <a href="/pycwb/login">Login</a>
 {% endif %}

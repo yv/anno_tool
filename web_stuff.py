@@ -17,6 +17,7 @@ based on:
 import os.path
 import re
 import datetime
+from cStringIO import StringIO
 from werkzeug import Request, Response, cached_property, redirect, escape
 from werkzeug.exceptions import HTTPException, MethodNotAllowed, \
     NotImplemented, NotFound, Forbidden
@@ -24,12 +25,14 @@ from werkzeug.contrib.securecookie import SecureCookie
 from jinja2 import Environment, FileSystemLoader
 import json
 from annodb.database import login_user, get_corpus, \
-     default_database, get_database
+     default_database, get_database, get_times, add_time
 from annodb.corpora import allowed_corpora_nologin, allowed_corpora
+
+SENSIBLE_ENCODING='ISO-8859-15'
 
 TEMPLATE_PATH=os.path.join(os.path.dirname(__file__),'templates')
 #mylookup=TemplateLookup(directories=[TEMPLATE_PATH])
-mylookup=Environment(loader=FileSystemLoader(TEMPLATE_PATH,encoding='ISO-8859-15'),
+mylookup=Environment(loader=FileSystemLoader(TEMPLATE_PATH,encoding=SENSIBLE_ENCODING),
                      extensions=['jinja2.ext.do'])
 
 def render_template(template, **context):
@@ -50,7 +53,7 @@ SECRET_KEY = 'H\xda}\xa3k0\x0c\xdc\x0bY\na\x08}\n\x1f\x13\xc5\x9f\xf1'
 # the cookie name for the session
 COOKIE_NAME = 'session'
 
-ADMINS=['yannick','anna','stefanie','sabrina','janne', 'kathrin', 'heike']
+ADMINS=['yannick','anna','sabrina','janne', 'kathrin', 'heike']
 
 class AppRequest(Request):
     """A request with a secure cookie session."""
@@ -175,6 +178,51 @@ def index(request):
     expire_date=datetime.datetime.now()+datetime.timedelta(30)
     response.set_cookie('corpus',corpus_name,
                         expires=expire_date)
+    return response
+
+monate=['Januar','Februar','März','April','Mai','Juni',
+        'Juli','August','September','Oktober','November']
+def stunden(request):
+    user=request.user
+    if user is None:
+        return redirect('/pycwb/')
+    if request.method=='POST':
+        when=request.form['when']
+        what=request.form['what']
+        hours=int(request.form['hours'])
+        add_time(user, when, what, hours)
+    times=get_times(user)
+    now=datetime.datetime.now()
+    cur_month=now.strftime('%Y-%m')
+    cur_val=now.year*12+now.month
+    buf=StringIO()
+    buf.write('<table class="data_table">\n')
+    buf.write('<tr class="header_row"><th>Wann</th><th width="250">Was</th><th>Stunden</th></tr>\n')
+    for month in sorted(times.iterkeys()):
+        all_entries=times[month]
+        sum_stunden=sum([x['hours'] for x in all_entries])
+        monat_str=monate[int(month[5:])-1]
+        monat_val=int(month[:4])*12+int(month[5:])
+        display_str='%s %s'%(monat_str, month[:4])
+        buf.write('<tr class="header_row">\n')
+        buf.write('<td>&nbsp;</td><td>%s</td><td>%d h</td>\n'%(display_str,sum_stunden))
+        buf.write('</tr>')
+        if cur_val-monat_val<3:
+            for i, entry in enumerate(all_entries):
+                entry_date=datetime.datetime.strptime(entry['when'],'%Y-%m-%d')
+                if i%1:
+                    fmt='odd_row'
+                else:
+                    fmt='even_row'
+                when_str=entry_date.strftime('%d. (%A)')
+                buf.write('<tr class="%s">\n'%(fmt,))
+                buf.write('<td>%s</td><td>%s</td><td align="left">%s</td>\n'%(when_str, entry['what'].encode(SENSIBLE_ENCODING), entry['hours']))
+                buf.write('</tr>')
+    buf.write('</table>')
+    response=render_template('stunden.html',
+                             user=request.user,
+                             main_body=buf.getvalue().decode(SENSIBLE_ENCODING),
+                             today_date=now.strftime('%F'))
     return response
 
 def tasks(request):

@@ -1,0 +1,31 @@
+<html>
+<head>
+<title>{{user}} / Stunden</title>
+<script src="/static/jq/jquery-1.4.2.min.js"></script>
+<script src="/static/jq/jquery.ui.core.min.js"></script>
+<script src="/static/jq/jquery.ui.widget.min.js"></script>
+<script src="/static/jq/jquery.ui.button.min.js"></script>
+<script src="/static/jq/jquery.ui.datepicker.min.js"></script>
+<script src="/static/json2.js"></script>
+<link rel="stylesheet" href="/static/pycwb.css" type="text/css" /> 
+<link rel="stylesheet" href="/static/themes/redmond/jquery.ui.all.css">
+<script>
+$(function() {
+$('#datepicker').datepicker();
+$('#datepicker').datepicker("option","dateFormat",'yy-mm-dd');
+$('#datepicker').val('{{today_date}}');
+});
+</script>
+</head>
+<body>
+<h1>Stunden ({{user}})</h1>
+{{main_body}}
+
+<div>
+<form id="stundenform" method="post" action="/pycwb/stunden">
+Wann: <input type="text" name="when" id="datepicker" value="{{today_date}}">
+Was: <input type="text" name="what" value="Annotation">
+Anz. Stunden: <input type="text" name="hours" value="1">
+<input type="submit" value="Eintragen">
+</form>
+</div>

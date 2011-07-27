@@ -1,6 +1,7 @@
 import sys
 import re
 import os.path
+import datetime
 import CWB.CL as cwb
 import pymongo
 import hashlib
@@ -40,6 +41,39 @@ def login_user(username,passwd):
     if fshp.check(passwd,user['hashed_pw']):
         return user
     return None
+
+def get_times(username):
+    users=get_database().users
+    user=users.find_one({'_id':username})
+    if not user:
+        return None
+    if 'times' not in user:
+        return {}
+    return user['times']
+
+date_re=re.compile(r'\d\d\d\d-\d\d-\d\d')
+def add_time(username, datestr, what, hours):
+    users=get_database().users
+    user=users.find_one({'_id':username})
+    if not user:
+        raise ValueError("Not a valid user")
+    if not date_re.match(datestr):
+        raise ValueError("Not a valid date")
+    date_added=datetime.datetime.now().strftime('%Y-%m-%d')
+    times=get_times(username)
+    when_month=datestr[:7]
+    if when_month in times:
+        times_m=times[when_month]
+    else:
+        times_m=[]
+        times[when_month]=times_m
+    times_m.append({'when':datestr,
+                   'when_added':date_added,
+                   'what':what,
+                   'hours':hours})
+    user['times']=times
+    users.save(user)
+    
 
 class Annotation(object):
     def __init__(self,doc):
