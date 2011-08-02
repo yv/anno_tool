@@ -85,7 +85,7 @@ for bin_nr,data,label in all_data:
     assert unwanted,label
     n1=make_multilabel(label_gen.gen_label(wanted[0]),
                        [label_gen.gen_label(lab) for lab in unwanted],
-                       mkdata(data),fc)
+                       data,fc)
     buf.reset()
     buf.write('line_%s\n1\t'%(lineno,))
     dump_example(n1,buf,fc)
@@ -113,7 +113,7 @@ def classify(dat):
     best=None
     best_score=-1000
     for label in label_gen.get_labelset(data):
-        score=fc(mkdata(data),labels=label_gen.gen_label(label)).dotFull(classifiers[bin_nr])
+        score=fc(data,labels=label_gen.gen_label(label)).dotFull(classifiers[bin_nr])
         if len(label)>1:
             score+=opts.bias_multi
         if score > best_score:

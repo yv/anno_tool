@@ -189,7 +189,7 @@ def stunden(request):
     if request.method=='POST':
         when=request.form['when']
         what=request.form['what']
-        hours=int(request.form['hours'])
+        hours=float(request.form['hours'])
         add_time(user, when, what, hours)
     times=get_times(user)
     now=datetime.datetime.now()

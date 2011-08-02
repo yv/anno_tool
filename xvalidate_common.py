@@ -2,10 +2,11 @@ import sys
 import numpy
 import json
 import codecs
+from dist_sim.fcomb import Multipart
 from alphabet import PythonAlphabet
 from itertools import izip
 
-__all__=['mkdata','shrink_to','load_data','make_stats',
+__all__=['shrink_to','load_data','make_stats',
          'print_weights','print_eval','n_bins','add_options_common']
 
 def add_options_common(oparse):
@@ -27,15 +28,6 @@ def add_options_common(oparse):
     oparse.add_option('--degree',dest='degree', type='int',
                       default=2, help='feature expansion degree')
 
-def mkdata(feats):
-    lst=[]
-    for f in feats:
-        if isinstance(f,basestring):
-            lst.append((f,1.0))
-        else:
-            lst.append(f)
-    return lst
-
 def shrink_to(lbl,d):
     parts=lbl.split('.')
     if len(parts)>d:
@@ -44,6 +36,13 @@ def shrink_to(lbl,d):
 
 n_bins=10
 
+def object_hook(o):
+    if '_type' in o:
+        tp=o['_type']
+        if tp=='multipart':
+            return Multipart(o['parts'])
+    return o
+
 def load_data(fname, opts):
     reassign_folds=opts.reassign_folds
     max_depth=opts.max_depth
@@ -51,7 +50,7 @@ def load_data(fname, opts):
     line_no=0
     labelset=PythonAlphabet()
     for l in file(fname):
-        bin_nr,data,label,unused_span=json.loads(l)
+        bin_nr,data,label,unused_span=json.loads(l, object_hook=object_hook)
         if reassign_folds:
             bin_nr=line_no%n_bins
         new_label=[]
