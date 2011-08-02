@@ -182,6 +182,16 @@ def index(request):
 
 monate=['Januar','Februar','März','April','Mai','Juni',
         'Juli','August','September','Oktober','November']
+def parse_stunden(s):
+    if ':' in s:
+        hh,mm=s.split(':')
+        hh_n=int(hh)
+        return hh_n+numpy.sign(hh_n)*(int(mm)/60.0)
+    return float(s.replace(',','.'))
+
+def fmt_stunden(t):
+    return '%d:%02d'%(t,int(t*60)%60)
+    
 def stunden(request):
     user=request.user
     if user is None:
@@ -189,7 +199,7 @@ def stunden(request):
     if request.method=='POST':
         when=request.form['when']
         what=request.form['what']
-        hours=float(request.form['hours'])
+        hours=parse_stunden(request.form['hours'])
         add_time(user, when, what, hours)
     times=get_times(user)
     now=datetime.datetime.now()
@@ -205,7 +215,7 @@ def stunden(request):
         monat_val=int(month[:4])*12+int(month[5:])
         display_str='%s %s'%(monat_str, month[:4])
         buf.write('<tr class="header_row">\n')
-        buf.write('<td>&nbsp;</td><td>%s</td><td>%d h</td>\n'%(display_str,sum_stunden))
+        buf.write('<td>&nbsp;</td><td>%s</td><td>%2s</td>\n'%(display_str,fmt_stunden(sum_stunden)))
         buf.write('</tr>')
         if cur_val-monat_val<3:
             for i, entry in enumerate(all_entries):
@@ -216,7 +226,8 @@ def stunden(request):
                     fmt='even_row'
                 when_str=entry_date.strftime('%d. (%A)')
                 buf.write('<tr class="%s">\n'%(fmt,))
-                buf.write('<td>%s</td><td>%s</td><td align="left">%s</td>\n'%(when_str, entry['what'].encode(SENSIBLE_ENCODING), entry['hours']))
+                buf.write('<td>%s</td><td>%s</td><td align="right">%s</td>\n'%(when_str, entry['what'].encode(SENSIBLE_ENCODING),
+                                                                              fmt_stunden(entry['hours'])))
                 buf.write('</tr>')
     buf.write('</table>')
     response=render_template('stunden.html',
