@@ -1,9 +1,10 @@
 <html>
 <head>
-<title>Collocates</title>
+<title>Sketch</title>
 <script src="/static/jq/jquery-1.4.2.min.js"></script>
 <script src="/static/jq/jquery.ui.core.min.js"></script>
 <script src="/static/jq/jquery.ui.widget.min.js"></script>
+<script src="/static/jq/jquery.ui.accordion.min.js"></script>
 <script src="/static/jq/jquery.ui.mouse.min.js"></script>
 <script src="/static/jq/jquery.ui.button.min.js"></script>
 <script src="/static/jq/jquery.ui.position.min.js"></script>
@@ -18,7 +19,6 @@
 <script src="/static/dracula/dracula_graffle.js"></script>
 <script src="/static/dracula/dracula_graph.js"></script>
 <script src="/static/dracula/dracula-algorithms.js"></script>
-<link rel="stylesheet" href="/static/pycwb.css" type="text/css">
 <link rel="stylesheet" href="/static/drilldown.css" type="text/css">
 <link rel="stylesheet" href="/static/themes/base/jquery.ui.all.css" type="text/css">
 <link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css">
@@ -38,30 +38,67 @@ graphdiv=$('#graph-div').dialog({title:'Dependency graph',
                                  autoOpen:false});
 });
 
+var matrix_names={{matrix_names}};
+var bg_colors=[[0.01,'#fcffb0'],[0.10,'#a8d9a7'],[0.20,'#59888c'],[0.40,'#223f59'],[0.66,'#081640']];
+var fg_colors=[[0.01,'#000000'],[0.10,'#000000'],[0.20,'#ffffff'],[0.40,'#ffffff'],[0.66,'#ffffff']];
+
+function get_bgcolor(val) {
+  var result='#ffffff';
+  for (var i=0; i<bg_colors.length; i++) {
+    if (bg_colors[i][0]<val) {
+      result=bg_colors[i][1];
+    }
+  }
+  return result;
+}
+
+function get_fgcolor(val) {
+  var result='#000000';
+  for (var i=0; i<fg_colors.length; i++) {
+    if (fg_colors[i][0]<val) {
+      result=fg_colors[i][1];
+    }
+  }
+  return result;
+}
+
+function display_similar(data) {
+    var table_data=$.parseJSON(data);
+    var parts=['<table>']
+    for (var i=0; i<table_data.length; i++)
+    {
+      var row=table_data[i];
+      parts.push('<tr><td>'+row[0]+'</td>');
+      for (var j=1; j<row.length; j++) {
+        var bgcol=get_bgcolor(row[j]);
+        var fgcol=get_fgcolor(row[j]);
+        parts.push('<td style="color: '+fgcol+'; background-color: '+bgcol+';">'+row[j].toFixed(2)+'</td>');
+      }
+      parts.push('</tr>');
+    }
+    parts.push('</table>')
+    $('#examples').html(parts.join(''));
+}
+
 function loadCollocates() {
-  var word1=$('#word1').val();
-  $('#collocates').html('');
-  $('#examples').html('');
-  var p=$.ajax({url:'/pycwb/get_collocates?word1='+encodeURIComponent(word1),
-   success:function(data) {
-     $('#collocates').tagCloud($.parseJSON(data), {click: loadExamples});
-     $('#collocates').append('<input id="custom_input"><a id="custom_button" onclick="loadExamples($(\'#custom_input\').val())">suchen</a>');
-     $('#custom_button').button();
-}});
-}
-
-function loadExamples(word2) {
  var word1=$('#word1').val();
- $.ajax({url:'/pycwb/collocate_examples?word1='+encodeURIComponent(word1)+'&word2='+encodeURIComponent(word2),
-   success: function(data) {
-    $('#examples').html(data);
-}});
-}
-
-colors={
-'N': '#05f',
-'V': '#f05',
-'A': '#cc5'
+ var m_names=matrix_names;
+ $('#collocates').html('');
+ var p=$.ajax({url:'/pycwb/get_sketch?word1='+encodeURIComponent(word1),
+success:function(data,status,xhr) {
+ var wcloud_data;
+ for (var i=0; i<matrix_names.length; i++)
+ {
+   var mat_name=matrix_names[i];
+   wcloud_data=$.map($.parseJSON(data)[mat_name],
+     function(it) { return {tag:it[0], count:it[1]}; });
+       $('#collocates').append('<h3>'+mat_name+'</h3><div id="mat_'+i+'"></div>');
+       $('#mat_'+i).tagCloud(wcloud_data, {'sort':function (a,b) {return b.count-a.count;}});
+ }
+ $('#collocates').accordion();
+ }});
+ var p2=$.ajax({url:'/pycwb/get_similar?word1='+encodeURIComponent(word1),
+  success:display_similar});
 }
 
 function renderNode(r, n) {
@@ -102,7 +139,7 @@ function loadGraph(sent_id) {
 }
 </script>
 <body>
-<h1>Collocates for {{corpus_name}}</h1>
+<h1>Word sketches</h1>
 <div id="queryform">
 <input id="word1"> <a id="submit" onclick="loadCollocates()">Get Collocates</a>
 </div>

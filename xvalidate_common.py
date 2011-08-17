@@ -6,7 +6,7 @@ from dist_sim.fcomb import Multipart
 from alphabet import PythonAlphabet
 from itertools import izip
 
-__all__=['shrink_to','load_data','make_stats',
+__all__=['shrink_to','load_data','load_aux','make_stats',
          'print_weights','print_eval','n_bins','add_options_common']
 
 def add_options_common(oparse):
@@ -54,15 +54,25 @@ def load_data(fname, opts):
         if reassign_folds:
             bin_nr=line_no%n_bins
         new_label=[]
-        for lbl in label:
-            if max_depth is not None:
-                lbl=shrink_to(lbl,max_depth)
-            labelset[lbl]
-            new_label.append(lbl)
+        if label in [None, True, False]:
+            new_label=label
+        else:
+            for lbl in label:
+                if max_depth is not None:
+                    lbl=shrink_to(lbl,max_depth)
+                labelset[lbl]
+                new_label.append(lbl)
         all_data.append((bin_nr,data,new_label))
         line_no+=1
     labelset.growing=False
     return all_data, labelset
+
+def load_aux(fname):
+    all_labels=[]
+    for l in file(fname):
+        bin_nr,data,label,auxlabel=json.loads(l, object_hook=object_hook)
+        all_labels.append(auxlabel)
+    return all_labels
 
 
 def make_stats(data,classifications,
@@ -98,7 +108,7 @@ def make_stats(data,classifications,
 def print_weights(fname,fc,classifiers,epsilon=1e-4):
     f_weights=codecs.open(fname,'w','ISO-8859-15')
     all_feats=[]
-    for feat,ws in izip(fc.dict.words,izip(*classifiers)):
+    for feat,ws in izip(fc.dict,izip(*classifiers)):
         aws=numpy.array(ws)
         if numpy.abs(aws).max()>epsilon:
             all_feats.append((feat,aws.mean(),aws.std()))

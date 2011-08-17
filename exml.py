@@ -162,17 +162,20 @@ class MarkableSchema:
         attr_d['xml:id']=oid
         for att in self.attributes:
             if hasattr(obj,att.prop_name):
-                v=att.map_attr(getattr(obj,att.prop_name),doc)
+                v=getattr(obj,att.prop_name)
                 if v is not None:
-                    attr_d[att.name]=v
+                    v_txt=att.map_attr(v,doc)
+                    if v_txt is not None:
+                        attr_d[att.name]=v_txt
         edges=[]
         for edge_schema in self.edges:
             edgelist=edge_schema.get_edges(obj,doc)
             for edgevals in edgelist:
                 attr_e=OrderedDict()
-                for (att,val) in izip(edge.attributes,edgevals):
-                    attr_e[att.name]=att.map_attr(val,doc)
-                edges.append(attr_e)
+                for (att,val) in izip(edge_schema.attributes,edgevals):
+                    if val is not None:
+                        attr_e[att.name]=att.map_attr(val,doc)
+                edges.append((edge_schema.name,attr_e))
         return (span,self.name,attr_d,edges)
     def get_updown(self,obj,doc,result):
         for att in self.attributes:
@@ -208,12 +211,12 @@ class SecondaryEdges:
         self.attributes=[EnumAttribute('cat'),
                          RefAttribute('parent')]
         self.descriptions={}
-    def put_edges(self,obj,doc,edges):
-        if edges is None:
-            edges=[]
+    def get_edges(self,obj,doc):
+        edges=[]
         if hasattr(obj,'secedge') and obj.secedge is not None:
             for secedge in obj.secedge:
-                edges.append((self.name,[secedge[0],segedge[1]]))
+                edges.append([secedge[0],secedge[1]])
+        return edges
     def get_updown(self,obj,doc,result):
         pass
     def add_item(self,name,description=None):
@@ -246,14 +249,17 @@ class ChildEdges:
 class ReferenceEdges:
     def __init__(self,name):
         self.name=name
-    def put_edges(self,obj,doc,edges):
+        self.attributes=[EnumAttribute('type'),
+                         IDRefAttribute('target')]
+    def get_edges(self,obj,doc):
         info=getattr(obj,'anaphora_info',None)
         if info is not None:
-            attr_d=OrderedDict()
-            attr_d['type']=info[0]
+            tgt=None
             if info[0]!='expletive':
-                attr_d['target']=' '.join(info[1])
-            edges.append((self.name,attr_d))
+                tgt=' '.join(info[1])
+            return [[info[0],tgt]]
+        else:
+            return []
     def get_updown(self,obj,doc,result):
         pass
 
@@ -268,11 +274,22 @@ class TerminalSchema:
         #span=obj.span
         attr_d=OrderedDict()
         attr_d['xml:id']=oid
-        edges=[]
         for att in self.attributes:
-            att.put_property(obj,attr_d,doc)
-        for edge in self.edges:
-            edge.put_edges(obj,doc,edges)
+            if hasattr(obj,att.prop_name):
+                v=getattr(obj,att.prop_name)
+                if v is not None:
+                    v_txt=att.map_attr(v,doc)
+                    if v_txt is not None:
+                        attr_d[att.name]=v_txt
+        edges=[]
+        for edge_schema in self.edges:
+            edgelist=edge_schema.get_edges(obj,doc)
+            for edgevals in edgelist:
+                attr_e=OrderedDict()
+                for (att,val) in izip(edge_schema.attributes,edgevals):
+                    if val is not None:
+                        attr_e[att.name]=att.map_attr(val,doc)
+                edges.append((edge_schema.name,attr_e))
         return (self.name,attr_d,edges)
     def describe_schema(self,f,edges):
         open_tag(f,'tnode',[('name',self.name)],1)

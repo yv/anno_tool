@@ -10,7 +10,82 @@ from CWB.CL import Corpus
 from cqp_util import use_corpus, query_cqp, escape_cqp
 from web_stuff import Response, render_template
 import malt_wrapper
+from dist_sim import sparsmat
+from alphabet import CPPUniAlphabet
+from dist_sim.semkernel import JSDKernel, PolynomialKernel, KPolynomial
 import semdep
+
+matrix_names=['adja_nnpl_1',
+              'adja_nnsg_1',
+              'nnpl_oder_nnpl_0',
+              'nnpl_und_nnpl_0',
+              'nnpl_oder_nnpl_1',
+              'nnpl_und_nnpl_1',
+              'ATTR2', 'OBJA0', 'SUBJ0',
+              'GMOD0', 'GMOD2',
+              'PP_in:P0','PP_in:P2']
+nn_alph=CPPUniAlphabet()
+nn_alph.fromfile(file('/gluster/nufa/yannick/TUEPP_vocab_N.txt'))
+
+matrices={}
+alphabets={}
+for fname in matrix_names:
+    f_in=file('/gluster/nufa/yannick/matrices/N/%s.dat'%(fname,))
+    counts=sparsmat.mmapCSR(f_in)
+    matrices[fname]=counts.transform_ll()
+    alph=CPPUniAlphabet()
+    alph.fromfile(file('/gluster/nufa/yannick/matrices/N/%s.alph'%(fname,)))
+    alphabets[fname]=alph
+
+def make_poly_single(n):
+    result=[]
+    for i in xrange(n):
+        lst=[0]*n
+        lst[i]=1
+        lst.append(1.0/n)
+        result.append(tuple(lst))
+    return result
+
+kernels=[JSDKernel(matrices['ATTR2']),
+         JSDKernel(matrices['OBJA0']),
+         JSDKernel(matrices['SUBJ0']),
+         JSDKernel(matrices['GMOD0']),
+         JSDKernel(matrices['adja_nnpl_1']),
+         PolynomialKernel(matrices['nnpl_oder_nnpl_0'],c=0.1,d=2,normalize=True),
+         PolynomialKernel(matrices['nnpl_oder_nnpl_1'],c=0.1,d=2,normalize=True),
+         PolynomialKernel(matrices['nnpl_und_nnpl_0'],c=0.1,d=2,normalize=True),
+         PolynomialKernel(matrices['nnpl_und_nnpl_1'],c=0.1,d=2,normalize=True)]
+sim_kernel=KPolynomial(kernels, make_poly_single(len(kernels)))
+sim_cache={}
+
+def get_sketch_data(word):
+    w_idx=nn_alph[word]
+    parts={}
+    for (mat_name,matrix) in matrices.iteritems():
+        result=[]
+        row=matrix[w_idx]
+        alphF=alphabets[mat_name]
+        for k0,v in row:
+            k=alphF.get_sym_unicode(k0)
+            result.append((k,v))
+        result.sort(key=lambda x:x[1],reverse=True)
+        parts[mat_name]=result
+    return parts
+
+def sketch_page(request):
+    return render_template('sketch.html', matrix_names=json.dumps(matrix_names))
+
+def get_sketch(request):
+    word1=request.args['word1'].encode('ISO-8859-15')
+    result=get_sketch_data(word1)
+    return Response(json.dumps(result),mimetype='text/javascript')
+
+def get_similar(request):
+    word1=request.args['word1'].encode('ISO-8859-15')
+    result=[]
+    for word2,val in similar_words(word1,20):
+        result.append([word2.decode('ISO-8859-15')]+get_kernel_values(word1,word2))
+    return Response(json.dumps(result),mimetype='text/javascript')
 
 def collocate_vector(corpus, word1, wsize=5, pos_re=None):
     il=sparsmat.VecD1()
@@ -115,7 +190,31 @@ def collocate_examples(request):
                                   (end,end+1,"<b>","</b>")],buf)
         buf.write('</div>\n')
     return Response(buf.getvalue().decode('ISO-8859-15'),mimetype='text/html')
-        
+
+def similar_words(word1,cutoff=250):
+    if cutoff<=250 and word1 in sim_cache:
+        return sim_cache[word1][:cutoff]
+    k1=nn_alph[word1]
+    cands=[]
+    for k2 in xrange(len(nn_alph)):
+        if k1==k2: continue
+        val=sim_kernel.kernel(k1,k2)
+        cands.append((val,k2))
+    cands.sort(reverse=True)
+    cands1=cands[:250]
+    sim_cache[word1]=[(nn_alph.get_sym(k),val) for (val,k) in cands1]
+    if cutoff is not None:
+        cands=cands[:cutoff]
+    return [(nn_alph.get_sym(k),val) for (val,k) in cands]
+
+def get_kernel_values(word1,word2):
+    i1=nn_alph[word1]
+    i2=nn_alph[word2]
+    result=[]
+    for kern in sim_kernel.kernels:
+        result.append(kern.kernel(i1,i2))
+    return result
+
 def sentence_graph(request):
     sent_no=int(request.args['sent_id'])
     sent=dewac02_dep[sent_no]

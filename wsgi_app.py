@@ -38,6 +38,9 @@ urls=[('/login',web_stuff.login_form),
       ('/get_collocates',get_collocates.get_collocates),
       ('/collocate_examples',get_collocates.collocate_examples),
       ('/sentence_graph',get_collocates.sentence_graph),
+      ('/sketch',get_collocates.sketch_page),
+      ('/get_sketch',get_collocates.get_sketch),
+      ('/get_similar',get_collocates.get_similar),
       ('/stunden',web_stuff.stunden)]
 
 mymap=web_stuff.MyMap(urls)
