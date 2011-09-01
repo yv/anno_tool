@@ -6,12 +6,14 @@ Result !waehrend !aber
 +result_d_external
 ++enable
 ++cause
-+result_d_internal *temporal
++result_d_internal *temporal !sobald
 ++epistemic_cause
 ++speech_act
-Comparison
+Comparison !sobald
 +parallel !aber !waehrend
 +contrast
-Concession !nachdem !waehrend
+Concession !nachdem !waehrend !sobald
 +contraexpectation
 +evaluative
+Condition !nachdem !waehrend !aber
+NonFactual !nachdem !waehrend !aber !sobald
