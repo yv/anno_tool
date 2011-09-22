@@ -20,6 +20,7 @@ Concession !nachdem !waehrend !sobald !und
 Condition !nachdem !waehrend !aber !und
 NonFactual !nachdem !waehrend !aber !sobald !und
 RestatementC !nachdem !waehrend !aber !sobald
+Instance !nachdem !waehrend !aber !sobald
 CommentaryC !nachdem !waehrend !aber !sobald
 Continuative
 +continuation !nachdem !waehrend !aber !sobald
