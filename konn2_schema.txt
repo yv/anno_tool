@@ -17,3 +17,8 @@ Concession !nachdem !waehrend !sobald
 +evaluative
 Condition !nachdem !waehrend !aber
 NonFactual !nachdem !waehrend !aber !sobald
+RestatementC !nachdem !waehrend !aber !sobald
+CommentaryC !nachdem !waehrend !aber !sobald
+Continuative
++continuation !nachdem !waehrend !aber !sobald
++conjunction !nachdem !waehrend !aber !sobald
