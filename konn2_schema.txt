@@ -15,8 +15,8 @@ Comparison !sobald
 Concession !nachdem !waehrend !sobald
 +contraexpectation
 +evaluative
-Condition !nachdem !waehrend !aber
-NonFactual !nachdem !waehrend !aber !sobald
+Condition !nachdem !waehrend !aber !und
+NonFactual !nachdem !waehrend !aber !sobald !und
 RestatementC !nachdem !waehrend !aber !sobald
 CommentaryC !nachdem !waehrend !aber !sobald
 Continuative
