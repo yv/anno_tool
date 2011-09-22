@@ -2,6 +2,8 @@
 %% Erste Spalte: Relationsname (mit "+"-Zeichen entsprechend Taxonomie-Tiefe)
 %% weitere Spalten: Flags zum Ausschluﬂ
 Temporal !aber
++narration
++temp_background !sobald !nachdem
 Result !waehrend !aber
 +result_d_external
 ++enable
