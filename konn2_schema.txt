@@ -12,7 +12,7 @@ Result !waehrend !aber
 Comparison !sobald
 +parallel !aber !waehrend
 +contrast
-Concession !nachdem !waehrend !sobald
+Concession !nachdem !waehrend !sobald !und
 +contraexpectation
 +evaluative
 Condition !nachdem !waehrend !aber !und
