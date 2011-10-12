@@ -270,7 +270,7 @@ def render_discourse_printable(request,disc_no):
     t_id=int(disc_no)
     if not request.user:
         raise Forbidden("must be logged in")
-    if request.user and request.user in ADMINS and 'who' in request.args:
+    if request.user and 'who' in request.args and (request.user in ADMINS or request.args['who']=='*gold*'):
         who=request.args['who']
     else:
         who=request.user
@@ -371,7 +371,7 @@ def archive_user(user):
             disc_id=doc['_docno']
             old_id=doc['_id']
             doc['_user']=new_name
-            doc['_id']='%s_%s'%(disc_id,new_name)
+            doc['_id']='%s~%s'%(disc_id,new_name)
             coll.update({'_id':old_id},doc)
 
 def isolate_relations(relations):
