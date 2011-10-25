@@ -1,4 +1,5 @@
 import re
+from itertools import izip
 from pynlp.mmax_tools import *
 import simplejson as json
 import os.path
@@ -166,6 +167,7 @@ def annotate2(request,taskname):
     for anno in annotations:
         scheme.make_widgets(anno,db,out,jscode)
     return render_template('annodummy2.html',
+                           task=taskname,
                            corpus_name=db.corpus_name,
                            jscode=jscode.getvalue())
 
@@ -225,6 +227,56 @@ def adjudicate(request,taskname):
                            js_code=out_js.getvalue().decode('ISO-8859-15'),
                            corpus_name=db.corpus_name,
                            output=out.getvalue().decode('ISO-8859-15'))
+
+hier_map={}
+def make_schema(entries,prefix):
+    for x in entries:
+        hier_map[x[0]]=prefix+x[0]
+        make_schema(x[2],'%s%s.'%(prefix,x[0]))
+make_schema(schemas['konn2'].schema,'')
+
+def agreement(request,taskname):
+    db=request.corpus
+    task=db.get_task(taskname)
+    level=task.level
+    schema=schemas[task.level]
+    if task is None:
+        raise NotFound("no such task")
+    user=request.user
+    if user is None:
+        return redirect('/pycwb/login')
+    mode=request.args.get('mode','wanted')
+    annotations=task.retrieve_annotations(user)
+    ms=annotation_join(db,task)
+    columns=task.annotators
+    predictions=[[] for col in columns]
+    snippets=[]
+    def deepen_tag(tag):
+        return hier_map.get(tag,tag)
+    def get_label(anno):
+        lbl=[deepen_tag(anno.get('rel1','NULL'))]
+        if 'rel2' in anno and anno['rel2']!='NULL':
+            lbl.append(deepen_tag(anno['rel2']))
+        return lbl
+    for part in ms:
+        span=part[0].span
+        anno_a=db.get_annotation(user,level,span)
+        if '##' in anno_a.get('comment',''):
+            continue
+        out=StringIO()
+        print >>out, '<div class="srctext">'
+        db.display_span(span,1,0,out)
+        print >>out, "</div>"
+        snippets.append(out.getvalue().decode('ISO-8859-15'))
+        for (anno,labels) in izip(part,predictions):
+            labels.append(get_label(anno))
+    out_js=StringIO()
+    print >>out_js, "columns=%s;"%(json.dumps(columns),)
+    print >>out_js, "snippets=%s;"%(json.dumps(snippets),)
+    print >>out_js, "predictions=%s;"%(json.dumps(predictions),)
+    return render_template('agreement.html',task=task,
+                           js_code=out_js.getvalue().decode('ISO-8859-15'),
+                           corpus_name=db.corpus_name)
 
 class ForAll(object):
     __slots__=['f']

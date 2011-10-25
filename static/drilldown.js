@@ -202,6 +202,7 @@ function make_rel_table(counters) {
     return segments.join('');
 }
 
+
 function set_filter(key,val) {
     if (display_filter[key]==val) {
 	delete display_filter[key];
@@ -281,7 +282,7 @@ function drilldown(key) {
 	    wanted.push('</div>');
 	}
     }
-    $('#display').html('<h2>'+key+'</h2>'+make_rel_table(counters)+wanted.join(''));
+    $('#display').html('<h2>'+key+'</h2>'+make_rel1_table(counters)+wanted.join(''));
 }
 
 function render_float(f) {
@@ -375,4 +376,94 @@ function reset_display() {
 			      ps);
 	make_table(split_data,basic_header,header);
     }
+}
+
+
+//
+// agreement-related functions
+//
+
+function make_agr_table(counters) {
+    var segments=['<table class="confusion">',
+		  '<tr><th>relation</th><th>F1</th>'];
+    segments.push('</tr>');
+    for (rel in counters) {
+	var counter0=counters[rel][0];
+	var count=counter0.basic_stats()[0];
+	var vals=counter0.compute_stats();
+	segments.push('<tr><th align="left"><a href="javascript:show_by_rel(');
+	segments.push("'"+rel+"')\">")
+	segments.push(rel+'</a> ('+count);
+	segments.push(')</th><td>');
+	segments.push(render_float(vals[2]));
+	segments.push('</td>');
+	segments.push('</tr>');
+    }
+    segments.push('</table>');
+    return segments.join('');
+}
+
+function shorten_rels(all_rels,depth) {
+  var retval=[];
+  for (var i=0;i<all_rels.length; i++) {
+    var lbl=all_rels[i];
+    var lbl_new=[];
+    for (var j=0;j<lbl.length;j++) {
+      lbl_new.push(lbl[j].split('.').slice(0,depth).join('.'));
+    }
+    retval.push(lbl_new);
+  }
+  return retval;
+}
+
+function agreement_refresh()
+{
+  anno1_idx=$('#anno1_chooser').selectmenu('value');
+  anno2_idx=$('#anno2_chooser').selectmenu('value');
+  taxo_depth=1+$('#taxo_depth').selectmenu('value');
+  pred1=shorten_rels(predictions[anno1_idx],taxo_depth);
+  pred2=shorten_rels(predictions[anno2_idx],taxo_depth);
+  //alert('anno1:'+anno1_idx+' anno2:'+anno2_idx+' depth:'+taxo_depth);
+  var counter=new CounterMLab();
+  var rel_counters={}
+  for (var i=0;i<pred1.length;i++) {
+    counter.addVals(pred1[i],pred2[i]);
+    rels=rels_mlab(pred1[i],pred2[i]);
+    for (var rel in rels) {
+     if (rel_counters[rel]==undefined) {
+       rel_counters[rel]=[new CounterBin()];
+     }
+     rel_counters[rel][0].count(rels[rel]);
+    }
+  }
+  stats=counter.compute_stats();
+  $('#display').html('dice: '+render_float(stats[0])+' eq: '+render_float(stats[1])+make_agr_table(rel_counters));
+  $('#examples').html('');
+}
+
+function contains_rel(lbl,rel)
+{
+  for (var i=0;i<lbl.length;i++)
+  {
+    if (lbl[i]==rel) return true;
+  }
+  return false;
+}
+
+function show_by_rel(rel)
+{
+  anno1_idx=$('#anno1_chooser').selectmenu('value');
+  anno2_idx=$('#anno2_chooser').selectmenu('value');
+  display_snippets=[];
+  for (var i=0;i<pred1.length;i++) {
+    var wanted=(contains_rel(pred1[i],rel)||contains_rel(pred2[i],rel));
+    if (wanted) {
+      display_snippets.push(snippets[i]);
+      display_snippets.push('<table>');
+      display_snippets.push('<tr><td><b>'+columns[anno1_idx]+'</b>:</td><td>'+pred1[i].join(', ')+'</td></tr>');
+      display_snippets.push('<tr><td><b>'+columns[anno2_idx]+'</b>:</td><td>'+pred2[i].join(', ')+'</td></tr>');
+      display_snippets.push('</table>');
+    }
+  }
+  $('#examples').html(display_snippets.join(''));
 }

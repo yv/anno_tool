@@ -69,7 +69,11 @@ def sent2tree(sent):
         if attach==0:
             tok.syn_parent=None
         else:
-            tok.syn_parent=terminals[attach-1]
+            try:
+                tok.syn_parent=terminals[attach-1]
+            except IndexError:
+                print >>sys.stderr, "Cannot find head for %s"%(line,)
+                tok.syn_parent=None
     t=tree.Tree()
     t.terminals=terminals
     t.roots=terminals[:]
@@ -376,7 +380,7 @@ def malt2cqp(corpus_name):
     for i,sent in enumerate(read_table_iter(f_in)):
         s_start,s_end=sentences[i][:2]
         if s_end-s_start+1!=len(sent):
-            print >>sys.stderr, "Non-match:", (i,f_in.tell(),
+            print >>sys.stderr, "Non-match @s%d / %s byte %s:\nlen %d vs %d\n%s\n%s\n%s"%(i,f_in.name,f_in.tell(),s_end-s_start+1,len(sent),
                                               words[s_start:s_end+1],
                                               [x[1] for x in sent],
                                               minimized_diff(words[s_start:s_end+1],[x[1] for x in sent]))
@@ -386,7 +390,30 @@ def malt2cqp(corpus_name):
                       'F','FM','_','0','ROOT']
                       for j in xrange(s_end-s_start+1)]
             else:
-                assert False
+                cont=True
+                w_right=0
+                while cont:
+                    cont=False
+                    if (words[s_end].endswith(sent[-1][1])
+                        and words[s_end] != sent[-1][1]):
+                        print >>sys.stderr, "Merged parts@s%d:%s"%(i,len(sent)-1)
+                        s_m2=sent[-2]
+                        s_m1=sent[-1]
+                        if len(s_m2)>=8:
+                            sent[-2:]=[[s_m2[0],s_m2[1]+s_m2[1]]+s_m2[2:]]
+                        else:
+                            print >>sys.stderr, "weird table..."
+                            sent[-2:]=[[s_m2[0],s_m2[1]+s_m2[1],
+                                       'F','FM','_',0,'ROOT']]
+                        cont=True
+                if s_end-s_start+1!=len(sent):
+                    pass
+                elif words[s_end]==sent[-1][1]:
+                    sent=[[str(j+1),words[s_start+j],words[s_start+j],
+                           'F','FM','_','0','ROOT']
+                          for j in xrange(s_end-s_start+1)]
+                else:
+                    assert False, (f_in.tell(), s_start)
         for j,line in enumerate(sent):
             if line[6]=='0':
                 attach='ROOT'

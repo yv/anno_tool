@@ -191,6 +191,11 @@ class MarkableSchema:
         for att in self.attributes:
             att.describe_schema(f)
         f.write(' </node>\n')
+        for edge_schema in self.edges:
+            if edge_schema.name not in edges:
+                edges[edge_schema.name]=[edge_schema,[self.name]]
+            else:
+                edges[edge_schema.name][1].append(self.name)
     def describe_table(self, metadata):
         cols=[Column(self.name+'_id', Integer, primary_key=True),
               Column('start', Integer),
@@ -297,6 +302,11 @@ class TerminalSchema:
         for att in self.attributes:
             att.describe_schema(f)
         f.write(' </tnode>\n')
+        for edge_schema in self.edges:
+            if edge_schema.name not in edges:
+                edges[edge_schema.name]=[edge_schema,[self.name]]
+            else:
+                edges[edge_schema.name][1].append(self.name)
     def attribute_by_name(self,att_name):
         for att in self.attributes:
             if att.name==att_name:
@@ -484,13 +494,17 @@ class Document:
                 del mbs[i]
             self.w_objs[i]=None
     def describe_schema(self,f):
-        edge_descrs=[]
+        edge_descrs={}
         f.write("<schema>\n")
         self.t_schema.describe_schema(f,edge_descrs)
         for schema in self.schemas:
             schema.describe_schema(f,edge_descrs)
-        for schema in edge_descrs:
-            schema.describe_schema(f)
+        for (name,(schema,parents)) in edge_descrs.iteritems():
+            open_tag(f,"edge", [('name',name),('parent','|'.join(parents))])
+            f.write('>\n')
+            for att in schema.attributes:
+                att.describe_schema(f)
+            f.write('</edge>\n')
         f.write("</schema>\n")
     def make_metadata(self):
         meta=MetaData()
@@ -617,8 +631,12 @@ class ExportCorpusReader:
             'MORPHTAG':t_schema.attribute_by_name('morph'),
             'NODETAG':nt_schema.attribute_by_name('cat'),
             'EDGETAG':nt_schema.attribute_by_name('func'),
-            'SECEDGETAG':nt_schema.edges[0]
+            'SECEDGETAG':nt_schema.edges[0].attributes[0]
         }
+        reftypes=nt_schema.edges[1].attributes[0]
+        reftypes.add_item('anaphoric','Anaphorisches Pronomen')
+        reftypes.add_item('cataphoric','Kataphorisches Pronomen')
+        reftypes.add_item('coreferential','Diskurs-altes nicht-Pronomen')
         self.origins={}
         where=None
         self.fmt=3

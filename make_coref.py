@@ -79,7 +79,7 @@ def get_min(n):
 num_tr=string.maketrans('123456789','999999999')
 def get_heads(n, result, is_pl=False):
     if hasattr(n,'en_info'):
-        result.append(('NE',str(n.en_info)))
+        result.append(('NE',str(n.en_info),is_pl))
         return
     if n.isTerminal():
         if n.cat=='NN':
@@ -100,7 +100,12 @@ def get_heads(n, result, is_pl=False):
             if n1.edge_label in ['HD','APP']:
                 get_heads(n1,result,is_pl)
             elif n1.edge_label=='KONJ':
-                get_heads(n1,result,True)
+                if (n1.parent.edge_label=='HD' and
+                    n1.parent.parent.children[0].cat in ['ART','PPOSAT']):
+                    # die Gewerkschaftsmitarbeiterin und Industriekauffrau
+                    get_heads(n1,result,is_pl)
+                else:
+                    get_heads(n1,result,True)
     elif n.cat in ['EN-ADD']:
         for n1 in n.children:
             get_heads(n1,result,is_pl)
@@ -112,14 +117,20 @@ def print_appos(hds, f_out):
         if hd1[0]!='NN': continue
         for hd2 in hds:
             if hd2[0]!='NE': continue
-            print >>f_out, "Name_Appos_%s\t%s\t%s"%(hd1[2],hd1[1],hd2[1])
+            v=hd1[2]
+            if hd2[2]:
+                v='s'
+            print >>f_out, "Name_Appos_%s\t%s\t%s"%(v,hd1[1],hd2[1])
 
 def print_coref(hds, f_out):
     for hd1 in hds:
         if hd1[0]!='NN': continue
         for hd2 in hds:
             if hd2[0]=='NE':
-                print >>f_out, "Name_Coref_%s\t%s\t%s"%(hd1[2],hd1[1],hd2[1])
+                v=hd1[2]
+                if hd2[2]:
+                    v='s'
+                print >>f_out, "Name_Coref_%s\t%s\t%s"%(v,hd1[1],hd2[1])
             else:
                 if hd1[2]==hd2[2] and hd1[1]!=hd2[1]:
                     print >>f_out, "Noun_Coref\t%s\t%s"%(hd1[1],hd2[1])
@@ -142,7 +153,7 @@ def extract_semlinks(fname, corpus_db, f_out):
         texts=doc.get_objects_by_class(exml.Text, old_stop,new_stop)
         ana_links={}
         for txt in texts:
-            print txt.origin
+            print >>sys.stderr, txt.origin
             trees=doc.get_objects_by_class(tree.Tree,txt.span[0],txt.span[-1])
             for t in trees:
                 for n in t.topdown_enumeration():
@@ -238,6 +249,14 @@ def main(fname, corpus_db):
         old_stop=new_stop
 
 if __name__=='__main__':
-    main(sys.argv[1], get_corpus(sys.argv[2]))
+    cmd=sys.argv[1]
+    if cmd=='import':
+        main(sys.argv[2], get_corpus(sys.argv[3]))
+    elif cmd=='semlinks':
+        if len(sys.argv)>4:
+            f_out=file(sys.argv[4],'w')
+        else:
+            f_out=sys.stdout
+        extract_semlinks(sys.argv[2], get_corpus(sys.argv[3]), f_out)
         
         

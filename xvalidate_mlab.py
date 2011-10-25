@@ -12,7 +12,8 @@ from dist_sim.fcomb import FCombo
 from alphabet import PythonAlphabet
 #import me_opt2 as me_opt
 #import sgd_opt as me_opt
-import me_opt_new as me_opt
+#import me_opt_new as me_opt
+from dist_sim import sgd
 
 from lxml import etree
 
@@ -59,9 +60,22 @@ label_gen=LabelGenerator(opts,all_data)
 
 print >>sys.stderr, "preparing feature vectors..."
 
+level_weights=[1.0,1.0,1.0]
+def multilevel_dice(lab,lab2):
+    """loss function that is based on dice scores at multiple levels"""
+    total=0.0
+    Z=0.0
+    for d in xrange(1,4):
+        short=set([shrink_to(x,d) for x in lab])
+        short2=set([shrink_to(x,d) for x in lab2])
+        total+=level_weights[d-1]*2.0*len(short.intersection
+                                          (short2))/(len(short)+len(short2))
+        Z+=level_weights[d-1]
+    return 1.0-total/Z
+
 left_out=0
 data_bins=[[] for unused_ in xrange(n_bins)]
-fc=FCombo(2)
+fc=FCombo(opts.degree)
 for bin_nr,data,label in all_data:
     if random.random() >= opts.subsample:
         left_out+=1
@@ -72,13 +86,15 @@ for bin_nr,data,label in all_data:
         continue
     correct=[]
     incorrect=[]
+    loss_vals=[]
     for lbl in wanted:
-        vec=fc(mkdata(data),labels=label_gen.gen_label(lbl))
+        vec=fc(data,labels=label_gen.gen_label(lbl))
         correct.append(vec)
     for lbl in unwanted:
-        vec=fc(mkdata(data),labels=label_gen.gen_label(lbl))
+        vec=fc(data,labels=label_gen.gen_label(lbl))
         incorrect.append(vec)
-    data_bins[bin_nr].append((correct,incorrect))
+        loss_vals.append(3.0*multilevel_dice(label,lbl))
+    data_bins[bin_nr].append((correct,incorrect,loss_vals))
 fc.dict.growing=False
 
 def make_fold_classifier(fold_no):
@@ -86,7 +102,10 @@ def make_fold_classifier(fold_no):
     for (i,exs) in enumerate(data_bins):
         if i!=fold_no:
             fold_train += data_bins[i]
-    x=me_opt.train_me_sparse(fold_train,fc.dict)
+    p=sgd.make_problem(fold_train, 'ranking_hinge', fc)
+    p.C=10.0
+    x=sgd.run_optimize(p, 'sgd')
+    #x=me_opt.train_me_sparse(fold_train,fc.dict)
     return x
 
 classifiers=make_mapper()(make_fold_classifier,xrange(n_bins))
@@ -100,7 +119,7 @@ def classify(dat):
     best=None
     best_score=-1000
     for label in label_gen.get_labelset(data):
-        score=fc(mkdata(data),labels=label_gen.gen_label(label)).dotFull(classifiers[bin_nr])
+        score=fc(data,labels=label_gen.gen_label(label)).dotFull(classifiers[bin_nr])
         if score > best_score:
             best=label
             best_score=score

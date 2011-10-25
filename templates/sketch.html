@@ -15,34 +15,45 @@
 <script src="/static/jq/jquery.ui.autocomplete.min.js"></script>
 <script src="/static/jq/ui.selectmenu.js"></script>
 <script src="/static/jq/jquery.tagcloud-2.js"></script>
-<script src="/static/dracula/raphael-min.js"></script>
-<script src="/static/dracula/dracula_graffle.js"></script>
-<script src="/static/dracula/dracula_graph.js"></script>
-<script src="/static/dracula/dracula-algorithms.js"></script>
+<script src="/static/d3/d3.js"></script>
+<script src="/static/d3/d3.layout.js"></script>
+<script src="/static/d3/d3.geom.js"></script>
+<link rel="stylesheet" href="/static/pycwb.css" type="text/css">
 <link rel="stylesheet" href="/static/drilldown.css" type="text/css">
 <link rel="stylesheet" href="/static/themes/base/jquery.ui.all.css" type="text/css">
 <link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css">
 <link rel="stylesheet" href="/static/ui.selectmenu.css" type="text/css">
 <style>
-#collocates {
+  #collocates {
   background-color: #eeeeee;
   margin-top: 12pt;
   margin-bottom: 12pt; }
-.tagcloudlink { background-color: #ccddee; }
+  .tagcloudlink { background-color: #ccddee; }
+circle.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+line.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+
+text.label {
+  font-family:Helvetica,Arial,sans-serif;
+  font-size: 10px;
+}
 </style>
-<script>
-$(function() {
-$('#submit').button();
-graphdiv=$('#graph-div').dialog({title:'Dependency graph',
-                                 height: 400, width: 800,
-                                 autoOpen:false});
-});
+<script type="text/javascript">
+  $(function() {
+  $('#submit').button();
+  });
+  
+  var matrix_names={{matrix_names}};
+  var bg_colors=[[0.01,'#fcffb0'],[0.10,'#a8d9a7'],[0.20,'#59888c'],[0.40,'#223f59'],[0.66,'#081640']];
+  var fg_colors=[[0.01,'#000000'],[0.10,'#000000'],[0.20,'#ffffff'],[0.40,'#ffffff'],[0.66,'#ffffff']];
 
-var matrix_names={{matrix_names}};
-var bg_colors=[[0.01,'#fcffb0'],[0.10,'#a8d9a7'],[0.20,'#59888c'],[0.40,'#223f59'],[0.66,'#081640']];
-var fg_colors=[[0.01,'#000000'],[0.10,'#000000'],[0.20,'#ffffff'],[0.40,'#ffffff'],[0.66,'#ffffff']];
-
-function get_bgcolor(val) {
+  function get_bgcolor(val) {
   var result='#ffffff';
   for (var i=0; i<bg_colors.length; i++) {
     if (bg_colors[i][0]<val) {
@@ -63,12 +74,13 @@ function get_fgcolor(val) {
 }
 
 function display_similar(data) {
+    var word1=$('#word1').val();
     var table_data=$.parseJSON(data);
     var parts=['<table>']
     for (var i=0; i<table_data.length; i++)
     {
       var row=table_data[i];
-      parts.push('<tr><td>'+row[0]+'</td>');
+      parts.push('<tr><td><a onclick="$(\'#word1\').val(\''+row[0]+'\');loadCollocates();">'+row[0]+'</a></td>');
       for (var j=1; j<row.length; j++) {
         var bgcol=get_bgcolor(row[j]);
         var fgcol=get_fgcolor(row[j]);
@@ -77,26 +89,110 @@ function display_similar(data) {
       parts.push('</tr>');
     }
     parts.push('</table>')
-    $('#examples').html(parts.join(''));
+    $('#similar').html(parts.join(''));
+    var w=960, h=500;
+    var fill= d3.scale.category20();
+    var vis=d3.select('#graph-div')
+     .append("svg:svg")
+     .attr("width",960)
+     .attr("height",500);
+    d3.json('/pycwb/get_neighbour_graph?word1='+encodeURIComponent(word1)+'&cutoff=20', function(json) {
+      var force = d3.layout.force()
+        .charge(-400)
+        .linkDistance(70)
+        .nodes(json.nodes)
+        .links(json.edges)
+        .size([w,h])
+        .start();
+      var link=vis.selectAll("line.link")
+        .data(json.edges)
+        .enter().append("svg:line")
+        .attr("class", "link")
+        .style("stroke-width", function(d) { return 7*Math.sqrt(d.value); })
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+     var node_labels=vis.selectAll("text.label")
+       .data(json.nodes.filter(function(d){ return d.want_label==true; }))
+       .enter()
+       .append("svg:text")
+       .attr("class", "label")
+       .attr("dy", -8)
+       .text(function(d) {return d.name; })
+       .attr("text-anchor", "middle");
+
+    var node=vis.selectAll("circle.node")
+       .data(json.nodes)
+       .enter()
+       .append("svg:circle")
+       .attr("class", "node")
+       .attr("cx", function(d) { return d.x; })
+       .attr("cy", function(d) { return d.y; })
+       .attr("r", 6)
+       .style("fill", function(d) { return fill(d.group); })
+       .call(force.drag);
+
+
+     node.append("svg:title")
+       .text(function(d) {
+          if (d.common) {
+           return d.name+'\n'+d.common.join('\n');
+          } else {
+           return d.name;
+        }});
+
+    force.on("tick", function() {
+      link.attr("x1", function(d) { return d.source.x})
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+      node.attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
+      node_labels.attr("x", function(d) { return d.x; })
+        .attr("y", function(d) { return d.y; });
+    });
+   });
 }
 
 function loadCollocates() {
  var word1=$('#word1').val();
  var m_names=matrix_names;
- $('#collocates').html('');
+ $('#collocates').html('(loading...)');
+ $('#similar').html('(loading...)');
+ $('#graph-div').html('');
  var p=$.ajax({url:'/pycwb/get_sketch?word1='+encodeURIComponent(word1),
 success:function(data,status,xhr) {
- var wcloud_data;
+ var wcloud_data=$.parseJSON(data);
+ var parts=['<table class="data_table">','<tr class="header_row"><th width="250px" >Relation</th><th>Attribute</th></tr>'];
+ var evenodd=0;
  for (var i=0; i<matrix_names.length; i++)
  {
    var mat_name=matrix_names[i];
-   wcloud_data=$.map($.parseJSON(data)[mat_name],
-     function(it) { return {tag:it[0], count:it[1]}; });
-       $('#collocates').append('<h3>'+mat_name+'</h3><div id="mat_'+i+'"></div>');
-       $('#mat_'+i).tagCloud(wcloud_data, {'sort':function (a,b) {return b.count-a.count;}});
- }
- $('#collocates').accordion();
- }});
+   var local_data=wcloud_data[mat_name];
+    if (local_data.length>0) {
+      var style=evenodd?'even_row':'odd_row';
+      evenodd=1-evenodd;
+      local_data.sort(function (a,b) {return b[1]-a[1];});
+      max_count=local_data[0][1];
+      parts.push('<tr class="'+style+'"><td valign="top"><b>'+mat_name+'</b> ('+local_data.length+')</td><td><div id="mat_'+i+'">');
+      for (var j=0; j<local_data.length; j++) {
+        var val=local_data[j][1]/max_count;
+        var bgcol=get_bgcolor(val);
+        var fgcol=get_fgcolor(val);
+	if (j>50) {
+	  parts.push('...');
+	  break;
+	}
+        parts.push('<span class="collocate" style="color:'+fgcol+'; background-color:'+bgcol+';">'+local_data[j][0]
+                    +'</span>');
+      }
+      parts.push('</div></td></tr>');
+   }
+  }
+  parts.push('</table>');
+  $('#collocates').html(parts.join(' '));
+}});
  var p2=$.ajax({url:'/pycwb/get_similar?word1='+encodeURIComponent(word1),
   success:display_similar});
 }
@@ -145,9 +241,8 @@ function loadGraph(sent_id) {
 </div>
 <div id="collocates">
 </div>
-<div id="examples">
+<div id="similar">
 </div>
-<div id="graph-div" style="width:800px;height:400px">
-<div id="graph-canvas"></div>
+<div id="graph-div" style="width:960px;height:500px">
 </div>
 </body>

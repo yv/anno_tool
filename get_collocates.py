@@ -1,6 +1,7 @@
 import sys
 import simplejson as json
 import codecs
+from itertools import izip, islice
 from collections import defaultdict
 from cStringIO import StringIO
 from dist_sim import sparsmat
@@ -16,7 +17,7 @@ from dist_sim.semkernel import JSDKernel, PolynomialKernel, KPolynomial
 import semdep
 
 matrix_names=['adja_nnpl_1',
-              'adja_nnsg_1',
+              #'adja_nnsg_1',
               'nnpl_oder_nnpl_0',
               'nnpl_und_nnpl_0',
               'nnpl_oder_nnpl_1',
@@ -46,15 +47,24 @@ def make_poly_single(n):
         result.append(tuple(lst))
     return result
 
-kernels=[JSDKernel(matrices['ATTR2']),
-         JSDKernel(matrices['OBJA0']),
-         JSDKernel(matrices['SUBJ0']),
-         JSDKernel(matrices['GMOD0']),
-         JSDKernel(matrices['adja_nnpl_1']),
-         PolynomialKernel(matrices['nnpl_oder_nnpl_0'],c=0.1,d=2,normalize=True),
-         PolynomialKernel(matrices['nnpl_oder_nnpl_1'],c=0.1,d=2,normalize=True),
-         PolynomialKernel(matrices['nnpl_und_nnpl_0'],c=0.1,d=2,normalize=True),
-         PolynomialKernel(matrices['nnpl_und_nnpl_1'],c=0.1,d=2,normalize=True)]
+def make_poly_cross(n):
+    result=[]
+    for i in xrange(n):
+        for j in xrange(n):
+            lst=[0]*n
+            lst[i]=1
+            lst[j]=1
+            lst.append(1.0/(n*n))
+            result.append(tuple(lst))
+    for i in xrange(n):
+        lst=[0]*n
+        lst[i]=1
+        lst.append(1.0/n)
+        result.append(tuple(lst))
+    return result
+    
+
+kernels=[JSDKernel(matrices[x]) for x in matrix_names]
 sim_kernel=KPolynomial(kernels, make_poly_single(len(kernels)))
 sim_cache={}
 
@@ -71,6 +81,17 @@ def get_sketch_data(word):
         result.sort(key=lambda x:x[1],reverse=True)
         parts[mat_name]=result
     return parts
+
+def get_common_features(idx1, idx2):
+    result=[]
+    for (mat_name, matrix) in matrices.iteritems():
+        row=matrix[idx1].min_vals(matrix[idx2])
+        alphF=alphabets[mat_name]
+        for k0,v in row:
+            k=alphF.get_sym_unicode(k0)
+            result.append(('%s:%s'%(mat_name,k),v))
+    result.sort(key=lambda x:x[1], reverse=True)
+    return result
 
 def sketch_page(request):
     return render_template('sketch.html', matrix_names=json.dumps(matrix_names))
@@ -207,6 +228,137 @@ def similar_words(word1,cutoff=250):
         cands=cands[:cutoff]
     return [(nn_alph.get_sym(k),val) for (val,k) in cands]
 
+def all_neighbours(word1,cutoff=10,max_hops=1,result=None):
+    if result==None:
+        result=defaultdict(lambda:-1)
+        result[word1]=max_hops
+    for w2,val in similar_words(word1,cutoff):
+        if result[w2]<max_hops:
+            result[w2]=max_hops
+            if max_hops>0:
+                print >>sys.stderr, w2, max_hops
+                all_neighbours(w2,cutoff,max_hops-1,result)
+    return result
+
+def get_neighbours_simple(word1, sim_cutoff=0.10):
+    return [word1]+[w2 for (w2,val) in similar_words(word1) if val>=sim_cutoff]
+
+def get_neighbours_2(word1, cutoff=10):
+    cands=similar_words(word1)
+    return (cands[cutoff][1], [word1]+[w2 for (w2,val) in cands[:cutoff]])
+
+def colorize(idxs,edge_thr,a=0.9,b=0.0):
+    k_vals={}
+    neighbours=defaultdict(set)
+    for i1,idx1 in enumerate(idxs):
+        for i2,idx2 in islice(enumerate(idxs),i1+1,None):
+            val=sim_kernel.kernel(idx1,idx2)
+            k_vals[(i1,i2)]=val
+            if val>edge_thr:
+                neighbours[i1].add(i2)
+                neighbours[i2].add(i1)
+    # helper functions for finding the initial committees
+    def score_centrality(i):
+        """figure of merit for choosing one node as cluster seed"""
+        result=0.0
+        for i1 in neighbours[i]:
+            for i2 in neighbours[i]:
+                if i2>i1:
+                    result+=k_vals[(i1,i2)]
+            if i<i1:
+                result+=k_vals[(i,i1)]
+            else:
+                result+=k_vals[(i1,i)]
+        return result
+    def most_central():
+        best_idx=None
+        best_val=0.0
+        for i in neighbours.iterkeys():
+            val=score_centrality(i)
+            if val>best_val:
+                best_val=val
+                best_idx=i
+        return best_idx
+    def get_cluster(i):
+        scores=[(k_vals[(i,j)],j) for j in neighbours if i<j]
+        scores+=[(k_vals[(j,i)],j) for j in neighbours if j<i]
+        scores.sort(reverse=True)
+        threshold=scores[0][0]*a+b
+        return [i]+[j for (val,j) in scores if val>=threshold]
+    def remove_neighbours(newclust):
+        for i in newclust:
+            del neighbours[i]
+        for i in neighbours.keys():
+            ns=neighbours[i]
+            ns.difference_update(newclust)
+            if len(ns)<1:
+                del neighbours[i]
+    clusters=[]
+    centroids=[]
+    while neighbours:
+        i_new=most_central()
+        assert i_new is not None, neighbours
+        clust=get_cluster(i_new)
+        clusters.append(clust)
+        centroids.append(i_new)
+        remove_neighbours(clust)
+    # helper functions for creating the actual coloring
+    def score_cluster(i,clust):
+        if i in clust:
+            return 1.0
+        result=0.0
+        for j in clust:
+            if i<j:
+                result+=k_vals[(i,j)]
+            else:
+                result+=k_vals[(j,i)]
+        return result/len(clust)
+    def best_cluster(i):
+        best_k=-1
+        best_val=0.0
+        for (k,clust) in enumerate(clusters):
+            val=score_cluster(i,clust)
+            if val>best_val:
+                best_k=k
+                best_val=val
+        return best_k
+    print >>sys.stderr, clusters
+    return ([best_cluster(i) for i in xrange(len(idxs))],centroids)
+                 
+
+def make_similarity_graph(words,sim_cutoff=0.10):
+    nodes=[]
+    edges=[]
+    idxs=[]
+    for w in words:
+        idxs.append(nn_alph[w])
+        nodes.append({'name':w.decode('ISO-8859-15'),'common':[],'want_label':False})
+    idx0=idxs[0]
+    for (i,idx) in islice(enumerate(idxs),1,None):
+        nodes[i]['common']=[x[0] for x in get_common_features(idx0, idx)[:3]]
+    (clusters0,centroids0)=colorize(idxs[1:],sim_cutoff,0.6,0.3*sim_cutoff)
+    clusters=[1]+[(k+2) for k in clusters0]
+    nodes[0]['want_label']=True
+    for (n,c) in izip(nodes,clusters):
+        n['group']=c
+    for i in centroids0:
+          nodes[i+1]['want_label']=True
+    for i1,idx1 in enumerate(idxs):
+        for i2,idx2 in enumerate(idxs):
+            if idx1>idx2:
+                val=sim_kernel.kernel(idx1,idx2)
+                if val>sim_cutoff:
+                    edges.append({'source':i1,'target':i2,
+                                  'value':val})
+    return {'nodes':nodes,'edges':edges}
+
+def get_neighbour_graph(request):
+    word1=request.args['word1'].encode('ISO-8859-15')
+    cutoff=int(request.args.get('cutoff',10))
+    (sim_cutoff,all_words)=get_neighbours_2(word1, cutoff)
+    result=make_similarity_graph(all_words,sim_cutoff=sim_cutoff)
+    return Response(json.dumps(result),mimetype='text/javascript')
+
 def get_kernel_values(word1,word2):
     i1=nn_alph[word1]
     i2=nn_alph[word2]
@@ -262,16 +414,33 @@ def dump_paths(word1,word2):
             counts['_'.join(path[3])]+=1
     return counts
 
+def eval_invr(syns, invr_scores):
+    score=0.0
+    for k in syns:
+        score += invr_scores.get(k,0.0)
+    return score
+
 if __name__=='__main__':
-    corpus=Corpus(sys.argv[1])
-    lemma_dict=corpus.attribute('tb_lemma','p').getDictionary()
-    for l in file(sys.argv[2]):
-        word1=l.strip().split()[0]
-        vec=collocate_vector(corpus, word1, pos_re='VV.*|N.|ADJ.')
-        collocates=[]
-        for (k_id,v) in vec:
-            k=lemma_dict.get_word(k_id)
-            collocates.append((k,v))
-        collocates.sort(key=lambda x:-x[1])
-        for k,v in collocates[:20]:
-            print "%s\t%s\t%s"%(word1,k,v)
+    if sys.argv[1]=='collocates':
+        corpus=Corpus(sys.argv[2])
+        lemma_dict=corpus.attribute('tb_lemma','p').getDictionary()
+        for l in file(sys.argv[3]):
+            word1=l.strip().split()[0]
+            vec=collocate_vector(corpus, word1, pos_re='VV.*|N.|ADJ.')
+            collocates=[]
+            for (k_id,v) in vec:
+                k=lemma_dict.get_word(k_id)
+                collocates.append((k,v))
+            collocates.sort(key=lambda x:-x[1])
+            for k,v in collocates[:20]:
+                print "%s\t%s\t%s"%(word1,k,v)
+    elif sys.argv[1]=='eval':
+        for l in file(sys.argv[2]):
+            line=l.strip().split('\t')
+            word1=line[0]
+            invr_scores={}
+            for i,(w2,val) in enumerate(similar_words(word1)):
+                invr_scores[w2]=1.0/(1.0+i)
+            for i in xrange(6,len(line)):
+                line[i]=str(eval_invr(line[i].split(','),invr_scores))
+            print '\t'.join(line)

@@ -17,6 +17,7 @@ matrix_names=['adja_nnpl_1',
               'nnpl_oder_nnpl_1',
               'nnpl_und_nnpl_1',
               'ATTR2', 'OBJA0', 'SUBJ0']
+              #'dewiki_esa']
               #'GMOD0', 'GMOD2',
               #'PP_in:P0','PP_in:P2']
           
@@ -65,7 +66,12 @@ def cluster_features(word):
         if word_u not in vals:
             result.append('cl_%s_NULL'%(cl,))
         else:
-            result.append('cl_%s_%s'%(cl,vals[word_u]))
+            entry=vals[word_u]
+            if isinstance(entry,basestring) or isinstance(entry,int):
+                result.append('cl_%s_%s'%(cl,vals[word_u]))
+            else:
+                for k in entry:
+                    result.append('cl_%s_%s'%(cl,k))                    
     return result
 
 def gwn_features(word, no_xxx=True):

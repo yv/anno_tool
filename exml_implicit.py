@@ -42,15 +42,14 @@ class DiscRel(exml.GenericMarkable):
 class DiscRelEdges(object):
     def __init__(self,name):
         self.name=name
-    def put_edges(self,obj,doc,edges):
-        if edges is None:
-            edges=[]
+        self.attributes=[exml.EnumAttribute('relation'),
+                         exml.RefAttribute('arg2')]
+    def get_edges(self,obj,doc):
+        edges=[]
         if hasattr(obj,'rels') and obj.rels is not None:
             for rel in obj.rels:
-                attr_d=OrderedDict()
-                attr_d['relation']=rel.label
-                attr_d['arg2']=doc.get_obj_id(rel.target)
-                edges.append((self.name,attr_d))
+                edges.append((rel.label,rel.target))
+        return edges
     def get_updown(self,obj,doc,result):
         pass
 
@@ -110,6 +109,7 @@ class Text(object):
                     x=EduRange()
                     x.span=(self.edus[start_edu].span[0],
                             self.edus[end_edu].span[1])
+                    x.xml_id='edus%s_%s-%s'%(self.xml_id.split('_')[-1],start_edu.replace('.','_'),end_edu.replace('.','_'))
                     ctx.register_object(x)
                     self.edu_ranges[(start_edu,end_edu)]=x
                 return x

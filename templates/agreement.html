@@ -1,0 +1,71 @@
+<html>
+<head>
+<title>{{task._id}}: Annotator Agrement</title>
+<style type="text/css" title="currentStyle"> 
+  @import "/static/demo_page.css";
+  @import "/static/demo_table.css";
+  @import "/static/drilldown.css";
+  @import "/static/pycwb.css";
+</style> 
+<script src="/static/jq/jquery-1.4.2.min.js"></script>
+<script src="/static/jq/jquery.dataTables.min.js"></script>
+<script src="/static/jq/jquery.ui.core.min.js"></script>
+<script src="/static/jq/jquery.ui.widget.min.js"></script>
+<script src="/static/jq/jquery.ui.button.min.js"></script>
+<script src="/static/jq/jquery.ui.position.min.js"></script>
+<script src="/static/jq/ui.selectmenu.js"></script>
+<script src="/static/drilldown.js"></script>
+<link rel="stylesheet" href="/static/themes/base/jquery.ui.all.css" type="text/css">
+<link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css">
+<link rel="stylesheet" href="/static/ui.selectmenu.css" type="text/css">
+<script>
+<!--
+{{js_code}}
+
+$(function() {
+ anno1_idx=0; anno2_idx=1;
+ option_fragments=[];
+ for (var i=0; i<columns.length; i++) {
+  var s=columns[i];
+  option_fragments.push('<option value="'+s+'">'+s+'</option>');
+ }
+ var s=option_fragments.join('');
+ $('#anno1_chooser').html(s);
+ $('#anno2_chooser').html(s);
+ $('#anno1_chooser').selectmenu({style:'dropdown',width:200}).bind('change',agreement_refresh);
+ $('#anno2_chooser').selectmenu({style:'dropdown',width:200}).bind('change',agreement_refresh);
+ $('#anno2_chooser').selectmenu('value',1);
+ $('#taxo_depth').selectmenu({style:'dropdown',width:50}).bind('change',agreement_refresh);
+ agreement_refresh();
+});
+
+// -->
+</script>
+</head>
+<body>
+<div id="navigation">
+<table>
+<tr>
+<td>
+<select id="anno1_chooser">
+<option value="foo">dummy</option>
+</select>
+</td><td>
+<select id="anno2_chooser">
+<option value="foo">dummy</option>
+</select>
+</td><td>
+<select id="taxo_depth">
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3" selected>3</option>
+</select>
+</td>
+</tr>
+</table>
+</div>
+<div id="display">
+</div>
+<div id="examples">
+</div>
+</body>

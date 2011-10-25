@@ -7,7 +7,8 @@ from alphabet import PythonAlphabet
 from itertools import izip
 
 __all__=['shrink_to','load_data','load_aux','make_stats',
-         'print_weights','print_eval','n_bins','add_options_common']
+         'print_weights','print_eval','n_bins','add_options_common',
+         'object_hook']
 
 def add_options_common(oparse):
     oparse.add_option('-w', dest='weights_fname')

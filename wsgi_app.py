@@ -26,6 +26,7 @@ urls=[('/login',web_stuff.login_form),
       ('/annotate2/([a-zA-Z0-9_]+)',anno_query.annotate2),
       ('/mark_ready/([a-zA-Z0-9_]+)',anno_query.mark_ready),
       ('/adjudicate/([a-zA-Z0-9_]+)',anno_query.adjudicate),
+      ('/agreement/([a-zA-Z0-9_]+)',anno_query.agreement),
       ('/saveAttributes',anno_query.save_attributes),
       ('/find_sent',test_web.find_sent),
       ('/find_word',test_web.find_word),
@@ -41,6 +42,7 @@ urls=[('/login',web_stuff.login_form),
       ('/sketch',get_collocates.sketch_page),
       ('/get_sketch',get_collocates.get_sketch),
       ('/get_similar',get_collocates.get_similar),
+      ('/get_neighbour_graph',get_collocates.get_neighbour_graph),
       ('/stunden',web_stuff.stunden)]
 
 mymap=web_stuff.MyMap(urls)
