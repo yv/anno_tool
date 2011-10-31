@@ -72,7 +72,7 @@ def sent2tree(sent):
             try:
                 tok.syn_parent=terminals[attach-1]
             except IndexError:
-                print >>sys.stderr, "Cannot find head for %s"%(line,)
+                print >>sys.stderr, "Cannot find head %s for %s"%(attach,line,)
                 tok.syn_parent=None
     t=tree.Tree()
     t.terminals=terminals
@@ -253,6 +253,8 @@ def get_auto_columns(sentences):
     f_tokens=NamedTemporaryFile(prefix='tokens')
     for sent in sentences:
         for word in sent:
+            if len(word)>512:
+                word=word[:512]
             print >>f_tokens,word
         print >>f_tokens
     f_tokens.flush()
@@ -296,7 +298,7 @@ def parseMalt(sentences):
     f_tokens=NamedTemporaryFile(prefix='tokens')
     for sent in sentences:
         for word in sent:
-            print >>f_tokens,word.replace('\x0c','_')
+            print >>f_tokens,word.replace('\x0c','_')[:512]
         print >>f_tokens
     f_tokens.flush()
     try:

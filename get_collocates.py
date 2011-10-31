@@ -23,20 +23,37 @@ matrix_names=['adja_nnpl_1',
               'nnpl_oder_nnpl_1',
               'nnpl_und_nnpl_1',
               'ATTR2', 'OBJA0', 'SUBJ0',
-              'GMOD0', 'GMOD2',
-              'PP_in:P0','PP_in:P2']
+              'GMOD0', 'GMOD2']#,
+              #'PP_in:P0','PP_in:P2']
 nn_alph=CPPUniAlphabet()
 nn_alph.fromfile(file('/gluster/nufa/yannick/TUEPP_vocab_N.txt'))
 
-matrices={}
-alphabets={}
-for fname in matrix_names:
-    f_in=file('/gluster/nufa/yannick/matrices/N/%s.dat'%(fname,))
-    counts=sparsmat.mmapCSR(f_in)
-    matrices[fname]=counts.transform_ll()
-    alph=CPPUniAlphabet()
-    alph.fromfile(file('/gluster/nufa/yannick/matrices/N/%s.alph'%(fname,)))
-    alphabets[fname]=alph
+matrices=None
+alphabets=None
+sim_kernel=None
+
+def get_matrices():
+    global matrices
+    global alphabets
+    global sim_kernel
+    if matrices is None:
+        matrices={}
+        alphabets={}
+        for fname in matrix_names:
+            f_in=file('/gluster/nufa/yannick/matrices/N/%s.dat'%(fname,))
+            counts=sparsmat.mmapCSR(f_in)
+            matrices[fname]=counts.transform_ll()
+            alph=CPPUniAlphabet()
+            alph.fromfile(file('/gluster/nufa/yannick/matrices/N/%s.alph'%(fname,)))
+            alphabets[fname]=alph
+        kernels=[JSDKernel(matrices[x]) for x in matrix_names]
+        sim_kernel=KPolynomial(kernels, make_poly_single(len(kernels)))
+    return matrices
+
+def get_sim_kernel():
+    if matrices is None:
+        get_matrices()
+    return sim_kernel
 
 def make_poly_single(n):
     result=[]
@@ -64,14 +81,12 @@ def make_poly_cross(n):
     return result
     
 
-kernels=[JSDKernel(matrices[x]) for x in matrix_names]
-sim_kernel=KPolynomial(kernels, make_poly_single(len(kernels)))
 sim_cache={}
 
 def get_sketch_data(word):
     w_idx=nn_alph[word]
     parts={}
-    for (mat_name,matrix) in matrices.iteritems():
+    for (mat_name,matrix) in get_matrices().iteritems():
         result=[]
         row=matrix[w_idx]
         alphF=alphabets[mat_name]
@@ -84,7 +99,7 @@ def get_sketch_data(word):
 
 def get_common_features(idx1, idx2):
     result=[]
-    for (mat_name, matrix) in matrices.iteritems():
+    for (mat_name, matrix) in get_matrices().iteritems():
         row=matrix[idx1].min_vals(matrix[idx2])
         alphF=alphabets[mat_name]
         for k0,v in row:
@@ -217,9 +232,11 @@ def similar_words(word1,cutoff=250):
         return sim_cache[word1][:cutoff]
     k1=nn_alph[word1]
     cands=[]
-    for k2 in xrange(len(nn_alph)):
+    #for k2 in xrange(len(nn_alph)):
+    kern=get_sim_kernel().kernel
+    for k2 in xrange(7000):
         if k1==k2: continue
-        val=sim_kernel.kernel(k1,k2)
+        val=kern(k1,k2)
         cands.append((val,k2))
     cands.sort(reverse=True)
     cands1=cands[:250]
@@ -236,7 +253,7 @@ def all_neighbours(word1,cutoff=10,max_hops=1,result=None):
         if result[w2]<max_hops:
             result[w2]=max_hops
             if max_hops>0:
-                print >>sys.stderr, w2, max_hops
+                #print >>sys.stderr, w2, max_hops
                 all_neighbours(w2,cutoff,max_hops-1,result)
     return result
 
@@ -250,9 +267,10 @@ def get_neighbours_2(word1, cutoff=10):
 def colorize(idxs,edge_thr,a=0.9,b=0.0):
     k_vals={}
     neighbours=defaultdict(set)
+    kern=get_sim_kernel().kernel
     for i1,idx1 in enumerate(idxs):
         for i2,idx2 in islice(enumerate(idxs),i1+1,None):
-            val=sim_kernel.kernel(idx1,idx2)
+            val=kern(idx1,idx2)
             k_vals[(i1,i2)]=val
             if val>edge_thr:
                 neighbours[i1].add(i2)
@@ -322,7 +340,7 @@ def colorize(idxs,edge_thr,a=0.9,b=0.0):
                 best_k=k
                 best_val=val
         return best_k
-    print >>sys.stderr, clusters
+    #print >>sys.stderr, clusters
     return ([best_cluster(i) for i in xrange(len(idxs))],centroids)
                  
 
@@ -343,10 +361,11 @@ def make_similarity_graph(words,sim_cutoff=0.10):
         n['group']=c
     for i in centroids0:
           nodes[i+1]['want_label']=True
+    kern=get_sim_kernel().kernel
     for i1,idx1 in enumerate(idxs):
         for i2,idx2 in enumerate(idxs):
             if idx1>idx2:
-                val=sim_kernel.kernel(idx1,idx2)
+                val=kern(idx1,idx2)
                 if val>sim_cutoff:
                     edges.append({'source':i1,'target':i2,
                                   'value':val})
@@ -363,7 +382,7 @@ def get_kernel_values(word1,word2):
     i1=nn_alph[word1]
     i2=nn_alph[word2]
     result=[]
-    for kern in sim_kernel.kernels:
+    for kern in get_sim_kernel().kernels:
         result.append(kern.kernel(i1,i2))
     return result
 
