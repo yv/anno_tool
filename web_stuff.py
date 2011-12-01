@@ -53,7 +53,7 @@ SECRET_KEY = 'H\xda}\xa3k0\x0c\xdc\x0bY\na\x08}\n\x1f\x13\xc5\x9f\xf1'
 # the cookie name for the session
 COOKIE_NAME = 'session'
 
-ADMINS=['yannick','anna','sabrina','janne', 'kathrin', 'heike']
+ADMINS=['yannick','anna','anne','janne', 'kathrin', 'heike']
 
 class AppRequest(Request):
     """A request with a secure cookie session."""
@@ -181,7 +181,7 @@ def index(request):
     return response
 
 monate=['Januar','Februar','März','April','Mai','Juni',
-        'Juli','August','September','Oktober','November']
+        'Juli','August','September','Oktober','November','Dezember']
 def parse_stunden(s):
     if ':' in s:
         hh,mm=s.split(':')
@@ -211,8 +211,12 @@ def stunden(request):
     for month in sorted(times.iterkeys()):
         all_entries=times[month]
         sum_stunden=sum([x['hours'] for x in all_entries])
-        monat_str=monate[int(month[5:])-1]
-        monat_val=int(month[:4])*12+int(month[5:])
+        try:
+            monat_str=monate[int(month[5:])-1]
+            monat_val=int(month[:4])*12+int(month[5:])
+        except IndexError:
+            monat_str="Invalid:"+month[5:]
+            monat_val=-1
         display_str='%s %s'%(monat_str, month[:4])
         buf.write('<tr class="header_row">\n')
         buf.write('<td>&nbsp;</td><td>%s</td><td>%2s</td>\n'%(display_str,fmt_stunden(sum_stunden)))
