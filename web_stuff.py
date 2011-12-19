@@ -222,7 +222,11 @@ def stunden(request):
         buf.write('<td>&nbsp;</td><td>%s</td><td>%2s</td>\n'%(display_str,fmt_stunden(sum_stunden)))
         buf.write('</tr>')
         if cur_val-monat_val<3:
-            for i, entry in enumerate(all_entries):
+            if request.args.get('order','default')=='entered':
+                entries_list=all_entries
+            else:
+                entries_list=sorted(all_entries,key=lambda x:x['when'])
+            for i, entry in enumerate(entries_list):
                 entry_date=datetime.datetime.strptime(entry['when'],'%Y-%m-%d')
                 if i%1:
                     fmt='odd_row'
