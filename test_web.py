@@ -503,8 +503,8 @@ def compare_discourse(request,disc_no):
         if ('user1' not in request.args or
             'user2' not in request.args):
             return NotFound('need user1, user2')
-    user1=request.args['user1']
-    user2=request.args['user2']
+        user1=request.args['user1']
+        user2=request.args['user2']
     doc1=db.get_discourse(t_id,user1)
     doc2=db.get_discourse(t_id,user2)
     tokens=doc1['tokens']
@@ -541,18 +541,19 @@ def compare_discourse(request,disc_no):
     else:
         f_val_seg=2*n_common/(len(interesting1)+len(interesting2))
     diffs_topic=[]
-    topics1=dict([x for x in doc1['topics']])
-    topics2=dict([x for x in doc2['topics']])
+    topics1=dict([x for x in doc1.get('topics',[])])
+    topics2=dict([x for x in doc2.get('topics',[])])
+    print >>sys.stderr, topics2
     topics=[]
     sent_idx=0
-    for start,topic_str in doc1['topics']:
+    for start,topic_str in sorted(topics1.iteritems()):
         if start not in topics2:
             while sent_gold[sent_idx]<start:
                 sent_idx+=1
             diffs_topic.append(("Nur %s"%(user1,),"[%s] %s"%(sent_idx, topic_str)))
         else:
             topics.append((start,'%s / %s'%(topic_str, topics2[start])))
-    for start,topic_str in doc2['topics']:
+    for start,topic_str in sorted(topics2.iteritems()):
         if start not in topics1:
             while sent_gold[sent_idx]<start:
                 sent_idx+=1
@@ -564,8 +565,8 @@ def compare_discourse(request,disc_no):
     next_edu=0
     next_topic=0
     sub_edu=0
-    nonedu1=doc1['nonedu']
-    nonedu2=doc2['nonedu']
+    nonedu1=doc1.get('nonedu',{})
+    nonedu2=doc2.get('nonedu',{})
     nonedu=dict([x for x in nonedu1.iteritems()
                  if nonedu2.get(x[0],False)])
     uedu1=doc1.get('uedus',{})
