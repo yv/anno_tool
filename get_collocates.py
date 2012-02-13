@@ -23,7 +23,8 @@ matrix_names=['adja_nnpl_1',
               'nnpl_oder_nnpl_1',
               'nnpl_und_nnpl_1',
               'ATTR2', 'OBJA0', 'SUBJ0',
-              'GMOD0', 'GMOD2']#,
+              'GMOD0', 'GMOD2',
+              'TUEPP_plassoc']#,
               #'PP_in:P0','PP_in:P2']
 nn_alph=CPPUniAlphabet()
 nn_alph.fromfile(file('/gluster/nufa/yannick/TUEPP_vocab_N.txt'))
@@ -42,7 +43,8 @@ def get_matrices():
         for fname in matrix_names:
             f_in=file('/gluster/nufa/yannick/matrices/N/%s.dat'%(fname,))
             counts=sparsmat.mmapCSR(f_in)
-            matrices[fname]=counts.transform_ll()
+            #matrices[fname]=counts.transform_ll()
+            m#atrices[fname]=counts.transform_mi_discount()
             alph=CPPUniAlphabet()
             alph.fromfile(file('/gluster/nufa/yannick/matrices/N/%s.alph'%(fname,)))
             alphabets[fname]=alph

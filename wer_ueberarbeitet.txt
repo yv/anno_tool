@@ -15,7 +15,7 @@
 367	sabrina	
 392	sabrina	
 398	anna	
-416	sabrina	
+416	anna
 417	sabrina	
 425	sabrina	
 435	anna	
@@ -25,4 +25,4 @@
 623	sabrina	
 851	anna	
 987	sabrina	
-1472	anna2*old	
+1471	anna2*old	

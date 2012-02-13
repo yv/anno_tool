@@ -84,3 +84,15 @@
 .drel-unknown {
  background-color: #ffdddd;
 }
+
+.marker1 { 
+    font-size: 10px;
+    background-color: #90011f;
+    color: #ffffff;
+ }
+
+.marker2 { 
+    font-size: 10px;
+    background-color: #0d4276;
+    color: #ffffff;    
+ }

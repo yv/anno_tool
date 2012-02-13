@@ -23,6 +23,7 @@ f=file(args[0])
 parses=db.db.parses
 for t in export.read_trees(f):
     sent_no=int(t.sent_no)-1
+    print >>sys.stderr, sent_no
     span=db.sentences[sent_no]
     words=db.words[span[0]:span[1]+1]
     words2=[n.word for n in t.terminals]

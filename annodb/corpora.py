@@ -1,4 +1,4 @@
-allowed_corpora_nologin=['TUEBA4','R6PRE1','R6FINAL','R7PRE1','EUROPARL_EN','EUROPARL_DE']
+allowed_corpora_nologin=['TUEBA4','R6PRE1','R6FINAL','R7PRE1','R7PRE2','EUROPARL_EN','EUROPARL_DE']
 allowed_corpora=allowed_corpora_nologin+['PTB']
 
 def compute_url_tueba(text_id,unused_corpus):

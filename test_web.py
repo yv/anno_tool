@@ -11,6 +11,7 @@ import sys
 import re
 from collections import defaultdict
 from annodb.corpora import allowed_corpora_nologin, corpus_sattr, corpus_d_sattr, corpus_urls
+from discourse_agreement import render_document_html
 
 def escape_uni(s):
     return escape(s).encode('ISO-8859-1','xmlcharrefreplace')
@@ -256,14 +257,6 @@ def parse_relations(relations):
             relations_parsed[rel_arg1].append(l_orig)
     return relations_parsed,relations_unparsed
         
-def make_rels(rels):
-    if rels is None or len(rels)==0:
-        return ''
-    elif len(rels)==1:
-        return rels[0].encode('ISO-8859-1','xmlcharrefreplace')
-    else:
-        return '<br>'+'<br>'.join(rels).encode('ISO-8859-1','xmlcharrefreplace')
-
 def render_discourse_printable(request,disc_no):
     db=request.corpus
     corpus=db.corpus
@@ -275,18 +268,7 @@ def render_discourse_printable(request,disc_no):
     else:
         who=request.user
     doc=db.get_discourse(t_id,who)
-    texts=corpus.attribute(corpus_d_sattr.get(db.corpus_name,'text_id'),'s')
-    sents=corpus.attribute("s",'s')
-    start,end,text_attrs=texts[t_id]
-    sent_id=sents.cpos2struc(start)
-    sentences=doc['sentences']
-    edus=doc['edus']
-    nonedu=doc.get('nonedu',{})
-    uedus=doc.get('uedus',{})
-    tokens=doc['tokens']
-    indent=doc['indent']
     topic_rels,relations_unparsed=parse_relations(doc.get('relations',''))
-    topics=doc.get('topics',[])
     # go through words, creating discourse
     out=StringIO()
     out.write('''<html><head><title>Discourse %d:%s</title>
@@ -296,44 +278,7 @@ def render_discourse_printable(request,disc_no):
     <body>
     <h1>Discourse %d:%s</h1>
     '''%(t_id,who,t_id,who))
-    next_sent=0
-    next_edu=0
-    next_topic=0
-    sub_edu=0
-    INDENT_STEP=20
-    in_div=False
-    rel=''
-    for i,tok in enumerate(tokens):
-        if next_topic<len(topics) and topics[next_topic][0]==i:
-            if in_div:
-                out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
-                in_div=False
-            rel=make_rels(topic_rels.get('T%d'%(next_topic,),None))
-            out.write('<div class="topic"><span class="edu-label">T%d</span>\n'%(next_topic,))
-            out.write(topics[next_topic][1].encode('ISO-8859-1'))
-            out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
-            next_topic +=1
-        if next_edu<len(edus) and edus[next_edu]==i:
-            if in_div:
-                out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
-                in_div=False
-            next_edu+=1
-            sub_edu+=1
-            if next_sent<len(sentences) and sentences[next_sent]==i:
-                sub_edu=0
-                next_sent+=1
-            rel=make_rels(topic_rels.get('%d.%d'%(next_sent,sub_edu),None))
-            if nonedu.get(unicode(i),None):
-                cls='nonedu'
-            elif uedus.get(unicode(i),None):
-                cls='uedu'
-            else:
-                cls='edu'
-            out.write('<div class="%s" style="margin-left:%dpx"><span class="edu-label">%d.%d</span>'%(cls,indent[next_edu-1]*INDENT_STEP,next_sent,sub_edu))
-            in_div=True
-        out.write('%s '%(tok.encode('ISO-8859-1'),))
-    if in_div:
-        out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
+    out.write(render_document_html(doc, topic_rels))
     if relations_unparsed:
         out.write('<h2>unparsed relations:</h2>')
         out.write('<br>'.join(relations_unparsed).encode('ISO-8859-1'))
@@ -521,14 +466,17 @@ def compare_discourse(request,disc_no):
     edu_only2=interesting2.difference(interesting1)
     edus=sorted(common.union(sent_gold))
     diffs_seg=[]
+    markers=[]
     sent_idx=0
     for n in sorted(edu_only1.union(edu_only2)):
         while sent_gold[sent_idx]<n:
             sent_idx+=1
         if n in edu_only1:
             diagnosis="Nur %s"%(user1,)
+            markers.append((n,'1','edu'))
         else:
             diagnosis="Nur %s"%(user2,)
+            markers.append((n,'2','edu'))
         diffs_seg.append((diagnosis,"[%d] %s | %s"%(sent_idx,
                                                ' '.join(tokens[n-2:n]),' '.join(tokens[n:n+2]))))
     n_common=len(common)
@@ -551,6 +499,7 @@ def compare_discourse(request,disc_no):
             while sent_gold[sent_idx]<start:
                 sent_idx+=1
             diffs_topic.append(("Nur %s"%(user1,),"[%s] %s"%(sent_idx, topic_str)))
+            topics.append((start,'<span class="marker1">[%s]</span> %s'%(user1, topic_str)))
         else:
             topics.append((start,'%s / %s'%(topic_str, topics2[start])))
     for start,topic_str in sorted(topics2.iteritems()):
@@ -558,56 +507,13 @@ def compare_discourse(request,disc_no):
             while sent_gold[sent_idx]<start:
                 sent_idx+=1
             diffs_topic.append(("Nur %s"%(user2,),"[%s] %s"%(sent_idx, topic_str)))
+            topics.append((start,'<span class="marker2">[%s]</span> %s'%(user2, topic_str)))
+    topics.sort()
     users=[doc['_user'] for doc in db.db.discourse.find({'_docno':t_id})]
     # render common view of discourse
-    out=StringIO()
-    next_sent=0
-    next_edu=0
-    next_topic=0
-    sub_edu=0
-    nonedu1=doc1.get('nonedu',{})
-    nonedu2=doc2.get('nonedu',{})
-    nonedu=dict([x for x in nonedu1.iteritems()
-                 if nonedu2.get(x[0],False)])
-    uedu1=doc1.get('uedus',{})
-    uedu2=doc2.get('uedus',{})
-    uedus=dict([x for x in uedu1.iteritems()
-               if uedu2.get(x[0],False)])
-    rel=''
-    in_div=False
-    for i,tok in enumerate(tokens):
-        if next_topic<len(topics) and topics[next_topic][0]==i:
-            if in_div:
-                out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
-                in_div=False
-            # rel=make_rels(topic_rels.get('T%d'%(next_topic,),None))
-            out.write('<div class="topic"><span class="edu-label">T%d</span>\n'%(next_topic,))
-            out.write(topics[next_topic][1].encode('ISO-8859-1'))
-            out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
-            next_topic +=1
-        if next_edu<len(edus) and edus[next_edu]==i:
-            if in_div:
-                out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
-                in_div=False
-            next_edu+=1
-            sub_edu+=1
-            if next_sent<len(sentences) and sentences[next_sent]==i:
-                sub_edu=0
-                next_sent+=1
-            # rel=make_rels(topic_rels.get('%d.%d'%(next_sent,sub_edu),None))
-            if nonedu.get(unicode(i),None):
-                cls='nonedu'
-            elif uedus.get(unicode(i),None):
-                cls='uedu'
-            else:
-                cls='edu'
-            out.write('<div class="%s"><span class="edu-label">%d.%d</span>'%(cls,next_sent,sub_edu))
-            in_div=True
-        out.write('%s '%(tok.encode('ISO-8859-1'),))
-    if in_div:
-       out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
+    display=render_document_html(doc,{},markers, replacement_topics=topics)
     return render_template('discourse_diff.html',
-                           display=out.getvalue().decode('ISO-8859-15'),
+                           display=display.decode('ISO-8859-15'),
                            all_users=users,
                            docid=t_id, user1=user1, user2=user2,
                            sentences=sentences,

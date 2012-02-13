@@ -44,6 +44,12 @@ class DependencyCorpus(object):
                            postags[posn], morphs[posn],
                            str(parent_id),deprel[posn]])
         return result
+    def get_deptree(self,idx):
+        sent=self[idx]
+        t=malt_wrapper.sent2tree(sent)
+        for i,n in enumerate(t.terminals):
+            n.start=i
+        return t
     def get_graph(self,idx):
         sent=self[idx]
         t=malt_wrapper.sent2tree(sent)
@@ -206,7 +212,8 @@ def fill_sd_gov(t):
             continue
         if n.syn_parent:
             if 'hide' in n.syn_parent.flags:
-                print >>sys.stderr, "dependent of hidden: %s -> %s"%(n,n.syn_parent)
+                pass
+                #print >>sys.stderr, "dependent of hidden: %s -> %s"%(n,n.syn_parent)
             else:
                 n.syn_parent.sd_dep.append((n.syn_label,n))
             
@@ -261,17 +268,29 @@ lemma_map={
     'ein|eine':'ein',
     }
 
+number2_trans={ord('0'):u'0'}
+for i in xrange(ord('1'),ord('9')+1):
+    number2_trans[i]=u'9'
+
 @promise.pure()
 @promise.sensible()
 def lemma_for(n):
     s=n.lemma
+    s=lemma_map.get(s,s)
     if isinstance(s,str):
         s=latin_1_decode(n.lemma)[0]
-    s=lemma_map.get(s,s)
     if '|' in s:
-        return s[:s.index('|')]
-    else:
-        return s
+        s=s[:s.index('|')]
+    if n.cat[0]=='N' and '-' in s:
+        idx=s.rindex('-')
+        if idx+2<len(s):
+            s=s[idx+1].upper()+s[idx+2:]
+        if s[0]==')':
+            s=s[1:]
+    if s.endswith('??'):
+        s=s[:-2]
+    s=s.translate(number2_trans)
+    return s
 
 def dep2json(t):
     nodes=[]

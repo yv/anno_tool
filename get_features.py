@@ -11,11 +11,12 @@ from pytree import deps
 import simplejson as json
 
 import sys
-sys.path.append('/home/yannickv/proj/pytree')
-import germanet
-import wordsenses
 from pynlp.de import pydeps
-from sem_features import classify_adverb, classify_px, semclass_for_node, get_productions
+from gwn_old import wordsenses
+from gwn_old.semclass import semclass_for_node
+from gwn_old.gwn_word_features import get_verb_features
+
+from sem_features import classify_adverb, classify_px, get_productions
 
 db=annodb.get_corpus('R6PRE1')
 lemmas=db.corpus.attribute('lemma','p')
@@ -141,16 +142,6 @@ def add_hypernyms(synsets,result):
             result.append(syn.getWords()[0].word)
         else:
             add_hypernyms(hyper,result)
-
-def get_verb_features(vlemma):
-    vlemma=vlemma.replace('#','')
-    synsets=germanet.synsets_for_word(vlemma)
-    result=[]
-    add_hypernyms(synsets,result)
-    result2=set()
-    for syn in synsets:
-        result2.add(syn.lexGroup.name)
-    return sorted(set(result)),sorted(result2)
 
 def get_verbs(n):
     fin_verbs=[]

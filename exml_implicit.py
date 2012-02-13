@@ -35,20 +35,22 @@ class Topic(exml.GenericMarkable):
         self.rels=[]
 
 class DiscRel(exml.GenericMarkable):
-    def __init__(self,label,target):
+    def __init__(self,label,target,marking=None):
         self.label=label
+        self.marking=marking
         self.target=target
 
 class DiscRelEdges(object):
     def __init__(self,name):
         self.name=name
         self.attributes=[exml.EnumAttribute('relation'),
+                         exml.EnumAttribute('marking'),
                          exml.RefAttribute('arg2')]
     def get_edges(self,obj,doc):
         edges=[]
         if hasattr(obj,'rels') and obj.rels is not None:
             for rel in obj.rels:
-                edges.append((rel.label,rel.target))
+                edges.append((rel.label,rel.marking,rel.target))
         return edges
     def get_updown(self,obj,doc,result):
         pass
@@ -71,7 +73,10 @@ def make_implicit_doc():
     edu_schema.edges=[discrel_edge]
     t_schema=exml.TerminalSchema('word',tree.TerminalNode)
     t_schema.attributes=[exml.TextAttribute('form',prop_name='word'),
-                         exml.EnumAttribute('pos',prop_name='cat')]
+                         exml.EnumAttribute('pos',prop_name='cat'),
+                         exml.EnumAttribute('lemma',prop_name='lemma'),
+                         exml.RefAttribute('dephead',prop_name='syn_parent'),
+                         exml.EnumAttribute('deprel',prop_name='syn_label')]
     return exml.Document(t_schema,[text_schema,s_schema,
                                    edu_schema,topic_schema,edu_range_schema])
 
@@ -79,7 +84,7 @@ edu_re="[0-9]+(?:\\.[0-9]+)?"
 topic_s="T[0-9]+"
 topic_re=re.compile(topic_s)
 span_re="(?:"+edu_re+"(?:-"+edu_re+")?|"+topic_s+")"
-relation_re=re.compile("(\\w+(?:[- ]\\w+)*|\\?)\\s*\\(\\s*("+span_re+")\\s*,\\s*("+span_re+")\\s*\\)\\s*")
+relation_re=re.compile("(\\w+(?:[- ]\\w+)*|\\?)\\s*\\(\\s*("+span_re+")\\s*,\\s*("+span_re+")\\s*\\)\\s*(%[^/]*)?\\s*")
 comment_re=re.compile("//.*$");
 class Text(object):
     def __init__(self,origin,doc_no):
@@ -130,10 +135,14 @@ def parse_relations(relations,text,ctx):
             try:
                 rel_arg1=text.get_segment(m.group(2),ctx)
                 rel_arg2=text.get_segment(m.group(3),ctx)
+                rel_marking=m.group(4)
+                if rel_marking is not None:
+                    rel_marking=rel_marking.lstrip('%')
+                    rel_marking=rel_marking.encode('ISO-8859-15')
             except KeyError:
                 relations_unparsed.append(l_orig)
             else:
-                rel_arg1.rels.append(DiscRel(rel_label,rel_arg2))
+                rel_arg1.rels.append(DiscRel(rel_label,rel_arg2,marking=rel_marking))
 
 class DBReader:
     def __init__(self,ctx,db):
@@ -146,6 +155,28 @@ class DBReader:
         ctx=self.ctx
         ctx_start=len(ctx.words)
 
+def check_words(words_c,words_db):
+    idx=0
+    while True:
+        if idx==len(words_c):
+            if idx==len(words_db):
+                return True
+            else:
+                print >>sys.stderr, "Remaining bits [1]:",words_db[idx:]
+                return False
+        elif idx==len(words_db):
+            print >>sys.stderr, "Remaining bits [2]:",words_c[idx:]
+            return False
+        w_c=words_c[idx]
+        w_db=words_db[idx]
+        if not isinstance(w_c,unicode):
+            w_c=w_c.decode('ISO-8859-15')
+        if not isinstance(w_db,unicode):
+            w_db=w_db.decode('ISO-8859-15')
+        if w_c!=w_db:
+            return False
+        idx+=1
+
 class DiscourseReader:
     """Liest Diskursannotation und erzeugt passende Markables"""
     def __init__(self,ctx,db):
@@ -154,13 +185,29 @@ class DiscourseReader:
         self.sentences=db.corpus.attribute("s",'s')
         self.words=db.words
         self.postags=db.corpus.attribute("pos",'p')
+        self.deprel=db.corpus.attribute("deprel","p")
+        self.attach=db.corpus.attribute("attach","p")
+        self.lemma=db.corpus.attribute("lemma","p")
         self.db=db
-    def add_sentences(self,sentences,start,end):
+    def add_sentences(self,sentences,start,tokens):
         sent_id=self.sentences.cpos2struc(start)
         ctx=self.ctx
         ctx_start=len(ctx.words)
-        terminals=[tree.TerminalNode(pos,w) for (w,pos) in izip(self.words[start:end+1],
-                                                                self.postags[start:end+1])]
+        end=start+len(tokens)
+        terminals=[tree.TerminalNode(pos,w) for (w,pos) in izip(self.words[start:end],
+                                                                self.postags[start:end])]
+        assert check_words(self.words[start:end],tokens), (self.words[start:end][:3],tokens[:3])
+        for i,n in enumerate(terminals):
+            cpos=start+i
+            n.syn_label=self.deprel[cpos]
+            n.lemma=self.lemma[cpos]
+            tok_attach=self.attach[cpos]
+            if tok_attach!='ROOT':
+                try:
+                    n.syn_parent=terminals[i+int(tok_attach)]
+                except IndexError,e:
+                    print n.word,tok_attach,i,len(terminals)
+                    print e
         for i in xrange(len(sentences)):
             t=tree.Tree()
             t.sent_no=sent_id+i
@@ -168,12 +215,18 @@ class DiscourseReader:
             try:
                 end=sentences[i+1]
             except IndexError:
-                end=len(terminals)
+                end=len(tokens)
+            corpus_start,corpus_end=self.sentences[sent_id+i][:2]
             t.terminals=terminals[start:end]
             t.span=(start+ctx_start,end+ctx_start)
             prefix='s%s'%(t.sent_no,)
             t.xml_id=prefix
+            if end-start!=corpus_end-corpus_start+1:
+                print >>sys.stderr, "Length mismatch: (%d vs %d)"%(end-start, corpus_end-corpus_start+1)
+                print >>sys.stderr, start,end,tokens[start:end]
+                print >>sys.stderr, corpus_start,corpus_end,self.words[corpus_start:corpus_end+1]
             for j in xrange(start,end):
+                #print start,end,j,len(t.terminals)
                 t.terminals[j-start].xml_id='%s_%d'%(prefix,j-start+1)
                 ctx.add_terminal(t.terminals[j-start])
             ctx.register_object(t)
@@ -187,8 +240,9 @@ class DiscourseReader:
         nonedu=doc.get('nonedu',{})
         tokens=doc['tokens']
         topics=doc.get('topics',[])
-        self.add_sentences(sentences,start,end)
+        self.add_sentences(sentences,start,tokens)
         #assert tokens==self.words[start:end+1], (tokens[:3],self.words[start:start+3])
+        assert check_words(self.words[start:end+1], tokens), (t_id, self.words[start:start+3], tokens[:3])
         text_markable=Text(text_id,t_id)
         text_markable.xml_id='text_%s'%(t_id,)
         text_markable.span=(ctx_start,ctx_start+len(tokens))

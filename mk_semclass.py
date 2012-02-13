@@ -6,9 +6,7 @@ from dist_sim import sparsmat
 import optparse
 import simplejson as json
 
-sys.path.append('/home/yannickv/proj/pytree')
-import wordsenses
-import germanet
+from gwn_old import wordsenses,germanet,gwn_word_features
 
 matrix_names=['adja_nnpl_1',
               'adja_nnsg_1',
@@ -49,11 +47,11 @@ def make_features(word,opts):
     result0=[]
     result=[result0]
     if opts.gwn_type=='hyper':
-        result0+=gwn_features2(word,opts)
+        result0+=gwn_word_features.gwn_features2(word,opts.want_supervised)
     elif opts.gwn_type=='beginners':
-        result0+=gwn_features(word, False)
+        result0+=gwn_word_features.gwn_features(word, False)
     elif opts.gwn_type=='beginners2':
-        result0+=gwn_features(word, True)
+        result0+=gwn_word_features.gwn_features(word, True)
     result0+=cluster_features(word)
     if opts.dist_type!='none':
         result += matrix_features(word,opts)
@@ -74,46 +72,6 @@ def cluster_features(word):
                     result.append('cl_%s_%s'%(cl,k))                    
     return result
 
-def gwn_features(word, no_xxx=True):
-    result=[]
-    synsets=germanet.synsets_for_word(word)
-    # if word.endswith('In'):
-    #     word2=word[:-2]+'in'
-    #     result.append('binnenI')
-    #     synsets += germanet.synsets_for_word(word2)
-    if not synsets:
-        result.append('noGWN')
-        return result
-    # version A: interesting beginners
-    features=set()
-    for syn in synsets:
-        features.update(germanet.classify_synset(syn))
-    result=['GWN_%s'%(feat,) for feat in features]
-    if no_xxx:
-        for feat in ['person','gruppe','ort','artefakt','tier','ereignis']:
-            if feat not in features:
-                result.append('GWN_no_%s'%(feat,))
-    return result
-
-gwn_feat_names={}
-def gwn_feature_name(synset):
-    synId=synset.synsetId
-    if synId in gwn_feat_names:
-        return gwn_feat_names[synId]
-    else:
-        val='GWN_%s_%s'%(synId,sorted(synset.getWords())[0].word)
-        gwn_feat_names[synId]=val
-        return val
-
-def gwn_features2(word,opts):
-    synsets=germanet.synsets_for_word(word)
-    if not synsets and opts.want_supervised:
-        return ['noGWN']
-    hyper=set()
-    for syn in synsets:
-        for syn2 in syn.ancestors():
-            hyper.add(gwn_feature_name(syn2))
-    return list(hyper)
 
 def matrix_features(word,opts):
     def discretize(basename,val,thresholds,result):

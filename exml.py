@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: iso-8859-15 -*-
 import sys
 import re
 from topsort import topsort
@@ -21,7 +23,7 @@ Aufruf:
 python exml.py tueba_datei.export > tueba_datei_exml.xml
 """
 
-__version__="2011-03-03"
+__version__="2011-12-11"
 __author__= "Yannick Versley / Univ. Tuebingen"
 
 def create_id(prefix,alphabet):
@@ -233,6 +235,8 @@ def open_tag(f,name,items,indent=0):
     f.write(' '*indent)
     f.write('<%s'%(name,))
     for k,v in items:
+        if v is None:
+            continue
         f.write(' %s=%s'%(k,quoteattr(v)))
 
 
@@ -390,6 +394,7 @@ class Document:
     def register_object(self,obj):
         mlevel=self.mlevel_for_class(type(obj))
         if mlevel is None:
+            print self.schema_by_class
             raise ValueError("No markable level for %s (type %s)"%(obj,type(obj)))
         self.markables_by_start[obj.span[0]].append((mlevel,obj))
     def make_span(self,span):
@@ -455,6 +460,8 @@ class Document:
                 endpoint=m[0][-1]
                 if len(m[0])>2:
                     need_span=True
+                    if stack and m[0][-1]>stack[-1][1]:
+                        endpoint=stack[-1][1]
                 elif stack and m[0][-1]>stack[-1][1]:
                     need_span=True
                     endpoint=stack[-1][1]
@@ -529,6 +536,11 @@ class GenericMarkable(object):
 class Text(GenericMarkable):
     pass
 
+class NamedEntity(object):
+    def __init__(self,kind,**kw):
+        self.kind=kind
+        self.__dict__.update(kw)
+
 def make_syntax_doc():
     text_schema=MarkableSchema('text',Text)
     text_schema.attributes=[TextAttribute('origin')]
@@ -546,6 +558,14 @@ def make_syntax_doc():
                           TextAttribute('comment')]
     nt_schema.edges=[secedge_edge,
                      relation_edge]
+    ne_schema=MarkableSchema('ne',NamedEntity)
+    ne_schema.locality='sentence'
+    ne_schema.attributes=[EnumAttribute('type',prop_name='kind')]
+    ne_schema.attributes[0].add_item('PER','Person')
+    ne_schema.attributes[0].add_item('ORG','Organisation')
+    ne_schema.attributes[0].add_item('GPE','Gebietskörperschaft')
+    ne_schema.attributes[0].add_item('LOC','Ort')
+    ne_schema.attributes[0].add_item('OTH','andere Eigennamen')
     t_schema=TerminalSchema('word',tree.TerminalNode)
     t_schema.attributes=[TextAttribute('form',prop_name='word'),
                          EnumAttribute('pos',prop_name='cat'),
@@ -557,7 +577,7 @@ def make_syntax_doc():
                          TextAttribute('comment')]
     t_schema.edges=[secedge_edge,
                     relation_edge]
-    return Document(t_schema,[s_schema,nt_schema,text_schema])
+    return Document(t_schema,[s_schema,nt_schema,text_schema,ne_schema])
 
 def make_noderef(x):
     sentid,nodeid=x.split(':')
@@ -600,11 +620,64 @@ def lemmas_from_comments(t):
                 n.comment=export.attrs2comment(attrs)
             else:
                 n.comment=None
+def make_parts(xs,offset=0):
+    spans=[]
+    current=None
+    for x in xs:
+        if current:
+            if current[1]==x:
+                current[1]=x+1
+            else:
+                spans.append(current[0]+offset)
+                spans.append(current[1]+offset)
+                current=[x,x+1]
+        else:
+            current=[x,x+1]
+    if current:
+        spans.append(current[0]+offset)
+        spans.append(current[1]+offset)
+    return spans
 
+def remove_ne_holes(nodes,spanset,is_head):
+    for n in nodes:
+        n_head = (is_head and n.edge_label=='HD')
+        if '-NE' in n.edge_label:
+            spanset.difference_update(xrange(n.start,n.end))
+        if '=' in n.cat and not n_head:
+            continue
+        if not n.isTerminal():
+            remove_ne_holes(n.children,spanset,n_head)
+
+def nodes_to_ne(t):
+    all_nes=[]
+    # extract NE information
+    for n in t.topdown_enumeration():
+        if '=' in n.cat:
+            idx=n.cat.index('=')
+            kind=n.cat[idx+1:]
+            ne_span=set(xrange(n.start,n.end))
+            remove_ne_holes(n.children,ne_span,True)
+            for n_punct in t.terminals:
+                if (n_punct.cat in ['$(','$,','$.'] and
+                    n_punct.start in ne_span and
+                    (n_punct.start-1 not in ne_span or
+                     n_punct.start+1 not in ne_span)):
+                    ne_span.discard(n_punct.start)
+            all_nes.append((kind,make_parts(sorted(ne_span))))
+    t.all_nes=all_nes
+    # remove all NE stuff from labels and edges
+    for n in t.topdown_enumeration():
+        if '=' in n.cat:
+            idx=n.cat.index('=')
+            n.cat=n.cat[:idx]
+        if n.edge_label=='-NE':
+            n.edge_label='-'
+        
 def add_tree_to_doc(t,ctx):
     sent_start=len(ctx.words)
     comments_to_relations(t)
     lemmas_from_comments(t)
+    nodes_to_ne(t)
     if hasattr(t,'sent_no'):
         prefix='s%s'%(t.sent_no,)
         t.xml_id=prefix
@@ -612,6 +685,17 @@ def add_tree_to_doc(t,ctx):
             n.xml_id='%s_%d'%(prefix,i+1)
         for n in t.roots:
             assign_node_ids(n,prefix,sent_start)
+    if hasattr(t,'all_nes'):
+        last_num=defaultdict(int)
+        suffixes=['','a','b','c','d']
+        for kind, local_span in t.all_nes:
+            ne=NamedEntity(kind)
+            ne.span=[k+sent_start for k in local_span]
+            ne_start=ne.span[0]
+            suff=suffixes[last_num[ne_start]]
+            last_num[ne_start]+=1
+            ne.xml_id='ne_%s%s'%(ne_start,suff)
+            ctx.register_object(ne)
     for n in t.terminals:
         ctx.add_terminal(n)
     t.span=[sent_start,sent_start+len(t.terminals)]
@@ -653,7 +737,11 @@ class ExportCorpusReader:
                 where=None
             elif where and where in tables:
                 line=l.strip().split(None,2)
-                tables[where].add_item(line[1],line[2])
+                if len(line)<3:
+                    comment=''
+                else:
+                    comment=line[2]
+                tables[where].add_item(line[1],comment)
             elif where=='ORIGIN':
                 line=l.strip().split(None,2)
                 self.origins[line[0]]=line[1]
