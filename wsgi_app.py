@@ -5,6 +5,9 @@ import os.path
 BASEDIR=os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASEDIR)
 
+if 'PYNLP' not in os.environ:
+      os.environ['PYNLP']='/export/common/yannick/pynlp'
+
 import annodb.anno_query as anno_query
 import test_web
 import web_stuff
