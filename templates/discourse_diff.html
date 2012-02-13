@@ -1,0 +1,40 @@
+<html>
+<head>
+<title>{{docid}}: {{user1}} / {{user2}} annotation comparison</title>
+<link rel="stylesheet" href="/static/discourseEdit.css" type="text/css">
+</head>
+<body>
+<h1>{{docid}}: {{user1}} / {{user2}}</h1>
+<form method="GET" action="/pycwb/compareDiscourse/{{docid}}">
+<select name="user1" size="1">
+{% for user in all_users %}
+<option{%- if user==user1 %} selected{%- endif -%}>{{user}}</option>
+{% endfor %}
+</select>
+<select name="user2" size="1">
+{% for user in all_users %}
+<option{%- if user==user2 %} selected{%- endif -%}>{{user}}</option>
+{% endfor %}
+</select>
+<BUTTON name="submit" value="submit" type="submit">Compare</BUTTON>
+</form>
+{{display}}
+<h3>Segmentierung</h3>
+F-Wert: {{f_val_seg}}
+<p>
+Unterschiede:<br>
+<table>
+{% for diag, txt in diffs_seg %}
+<tr>
+<td>{{diag}}</td><td>{{txt}}</td>
+</tr>
+{% endfor %}
+</table>
+<h3>Topics</h3>
+<table>
+{% for diag, txt in diffs_topic %}
+<tr>
+<td>{{diag}}</td><td>{{txt}}</td>
+</tr>
+{% endfor %}
+</html>
