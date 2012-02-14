@@ -76,6 +76,8 @@ class ComparedRelations:
     def name_for_args(self, args):
         return '%s > %s'%(self.name_for_range(args[0]),
                           self.name_for_range(args[1]))
+    def edu_for_args(self,args):
+        return self.edumap1.best_match(args[0])
     def print_out(self):
         print "Common:"
         for r,rels in self.common:
@@ -106,6 +108,35 @@ class ComparedRelations:
         for r,rels in self.only2:
             stats.marginals2[','.join(rels)]+=1
             stats.unaligned[','.join(rels)]+=1
+    def make_display_rels(self):
+        rels_map=defaultdict(list)
+        for r,rels in self.common:
+            k=self.edu_for_args(r)
+            txt2='(%s,%s)'%(self.name_for_range(r[0]),
+                            self.name_for_range(r[1]))
+            for relname in rels:
+                rels_map[k].append(relname+txt2)
+        for r,rels in self.differing:
+            k=self.edu_for_args(r)
+            txt2='(%s,%s)'%(self.name_for_range(r[0]),
+                            self.name_for_range(r[1]))
+            for relname in rels[0]:
+                rels_map[k].append('<span class="marker1">%s</span>%s'%(relname,txt2))
+            for relname in rels[1]:
+                rels_map[k].append('<span class="marker2">%s</span>%s'%(relname,txt2))
+        for r,rels in self.only1:
+            k=self.edu_for_args(r)
+            txt2='(%s,%s)'%(self.name_for_range(r[0]),
+                            self.name_for_range(r[1]))
+            for relname in rels:
+                rels_map[k].append('<span class="marker1">%s%s</span>'%(relname,txt2))
+        for r,rels in self.only2:
+            k=self.edu_for_args(r)
+            txt2='(%s,%s)'%(self.name_for_range(r[0]),
+                            self.name_for_range(r[1]))
+            for relname in rels:
+                rels_map[k].append('<span class="marker2">%s%s</span>'%(relname,txt2))
+        return rels_map
 
 class RelationStatistics:
     def __init__(self):
@@ -225,51 +256,6 @@ class ComparisonResult:
             self.rels_compare.print_out()
     def add_to_stats(self,stats):
         self.rels_compare.add_to_stats(stats)
-    def render_html(self, name1, name2, doc):
-        tokens=self.tokens
-        sentences=self.sentences
-        nonedu=doc.get('nonedu',{})
-        uedu=doc.get('uedus',{})
-        next_sent=0
-        next_edu=0
-        next_topic=0
-        sub_edu=0
-        out=StringIO()
-        rel=''
-        in_div=False
-        for i,tok in enumerate(tokens):
-            if next_topic<len(topics) and topics[next_topic][0]==i:
-                if in_div:
-                    out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
-                    in_div=False
-                # rel=make_rels(topic_rels.get('T%d'%(next_topic,),None))
-                out.write('<div class="topic"><span class="edu-label">T%d</span>\n'%(next_topic,))
-                out.write(topics[next_topic][1].encode('ISO-8859-1'))
-                out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
-                next_topic +=1
-            if next_edu<len(edus) and edus[next_edu]==i:
-                if in_div:
-                    out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
-                    in_div=False
-                next_edu+=1
-                sub_edu+=1
-                if next_sent<len(sentences) and sentences[next_sent]==i:
-                    sub_edu=0
-                    next_sent+=1
-                # rel=make_rels(topic_rels.get('%d.%d'%(next_sent,sub_edu),None))
-                if nonedu.get(unicode(i),None):
-                    cls='nonedu'
-                elif uedus.get(unicode(i),None):
-                    cls='uedu'
-                else:
-                    cls='edu'
-                out.write('<div class="%s"><span class="edu-label">%d.%d</span>'%(cls,next_sent,sub_edu))
-                in_div=True
-            out.write('%s '%(tok.encode('ISO-8859-15'),))
-        if in_div:
-            out.write('<span class="edu-rel">%s</span></div>\n'%(rel,))
-        return out.getvalue().decode('ISO-8859-15')
-        
 
 def compare_edus(doc1,doc2,prefix=''):
     tokens=doc1['tokens']
@@ -479,6 +465,15 @@ class EduMap:
             return start_edu
         else:
             return '%s-%s'%(start_edu,end_edu)
+    def best_match(self,(start,end)):
+        try:
+            return self.by_minroot[start]
+        except KeyError:
+            last_matching=None
+            for k,v in sorted(self.by_minroot.iteritems()):
+                if k<=start:
+                    last_matching=v
+            return last_matching
 
 class EduMapSpan:
     def __init__(self, edu_list):
@@ -512,6 +507,14 @@ class EduMapSpan:
             return start_edu
         else:
             return '%s-%s'%(start_edu,end_edu)
+    def best_match(self,(start,end)):
+        try:
+            return self.by_minroot[start]
+        except KeyError:
+            last_matching=None
+            for k,v in sorted(by_minroot.iteritems()):
+                if k<=start:
+                    return v
 
 def compare_relations(rels1, rels2):
     rel_map=defaultdict(lambda: ([],[],[],[]))

@@ -11,7 +11,7 @@ import sys
 import re
 from collections import defaultdict
 from annodb.corpora import allowed_corpora_nologin, corpus_sattr, corpus_d_sattr, corpus_urls
-from discourse_agreement import render_document_html
+from discourse_agreement import render_document_html, make_comparison
 
 def escape_uni(s):
     return escape(s).encode('ISO-8859-1','xmlcharrefreplace')
@@ -491,7 +491,7 @@ def compare_discourse(request,disc_no):
     diffs_topic=[]
     topics1=dict([x for x in doc1.get('topics',[])])
     topics2=dict([x for x in doc2.get('topics',[])])
-    print >>sys.stderr, topics2
+    #print >>sys.stderr, topics2
     topics=[]
     sent_idx=0
     for start,topic_str in sorted(topics1.iteritems()):
@@ -510,8 +510,10 @@ def compare_discourse(request,disc_no):
             topics.append((start,'<span class="marker2">[%s]</span> %s'%(user2, topic_str)))
     topics.sort()
     users=[doc['_user'] for doc in db.db.discourse.find({'_docno':t_id})]
+    comp_result=make_comparison(db, t_id, user1, user2)
+    rels=comp_result.rels_compare.make_display_rels()
     # render common view of discourse
-    display=render_document_html(doc,{},markers, replacement_topics=topics)
+    display=render_document_html(doc, rels, markers, replacement_topics=topics)
     return render_template('discourse_diff.html',
                            display=display.decode('ISO-8859-15'),
                            all_users=users,
