@@ -6,14 +6,14 @@
 <body>
 <h1>{{docid}}: {{user1}} / {{user2}}</h1>
 <form method="GET" action="/pycwb/compareDiscourse/{{docid}}">
-<select name="user1" size="1">
+<select name="user1" style="background-color: #90011f;color: #ffffff" size="1">
 {% for user in all_users %}
-<option{%- if user==user1 %} selected{%- endif -%}>{{user}}</option>
+<option style="color:#000000"{%- if user==user1 %} selected{%- endif -%}>{{user}}</option>
 {% endfor %}
 </select>
-<select name="user2" size="1">
+<select name="user2" style="background-color: #0d4276;color: #ffffff" size="1">
 {% for user in all_users %}
-<option{%- if user==user2 %} selected{%- endif -%}>{{user}}</option>
+<option style="color:#000000"{%- if user==user2 %} selected{%- endif -%}>{{user}}</option>
 {% endfor %}
 </select>
 <BUTTON name="submit" value="submit" type="submit">Compare</BUTTON>
