@@ -282,7 +282,7 @@ function drilldown(key) {
 	    wanted.push('</div>');
 	}
     }
-    $('#display').html('<h2>'+key+'</h2>'+make_rel1_table(counters)+wanted.join(''));
+    $('#display').html('<h2>'+key+'</h2>'+make_rel_table(counters)+wanted.join(''));
 }
 
 function render_float(f) {
