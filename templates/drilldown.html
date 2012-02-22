@@ -1,0 +1,33 @@
+<html>
+<head>
+<title>Drilldown</title>
+<style type="text/css" title="currentStyle"> 
+  @import "static/demo_page.css";
+  @import "static/demo_table.css";
+  @import "static/drilldown.css";
+</style> 
+<script src="static/jq/jquery-1.4.2.min.js"></script>
+<script src="static/jq/jquery.dataTables.min.js"></script>
+<script src="static/drilldown.js"></script>
+<script>
+<!--
+{{jscode}}
+
+$(function() {
+   do_setup(type);
+   reset_display();
+});
+// -->
+</script>
+</head>
+<body>
+<div id="navigation">
+[<a href="javascript:reset_display()">Home</a>]<br>
+<form>
+Feature prefix: <input id="feat_re" name="feat_re">
+<a href="javascript:reset_display()">recompute</a>
+</form>
+</div>
+<div id="display">
+</div>
+</body>
