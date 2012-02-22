@@ -356,7 +356,7 @@ class Document:
             return k
     def add_terminal(self,w_obj):
         val=self.word_ids[self.get_obj_id(w_obj)]
-        assert val==len(self.words)
+        assert val==len(self.words),(val,w_obj.xml_id,len(self.words),self.words[val-2:val+2],self.words[-2:])
         self.words.append(getattr(w_obj,self.word_attr))
         self.w_objs.append(w_obj)
     def mlevel_for_class(self,cls):

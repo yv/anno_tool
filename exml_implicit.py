@@ -74,6 +74,7 @@ def make_implicit_doc():
     t_schema=exml.TerminalSchema('word',tree.TerminalNode)
     t_schema.attributes=[exml.TextAttribute('form',prop_name='word'),
                          exml.EnumAttribute('pos',prop_name='cat'),
+                         exml.EnumAttribute('morph',prop_name='morph'),
                          exml.EnumAttribute('lemma',prop_name='lemma'),
                          exml.RefAttribute('dephead',prop_name='syn_parent'),
                          exml.EnumAttribute('deprel',prop_name='syn_label')]
@@ -185,6 +186,7 @@ class DiscourseReader:
         self.sentences=db.corpus.attribute("s",'s')
         self.words=db.words
         self.postags=db.corpus.attribute("pos",'p')
+        self.morph=db.corpus.attribute("morph",'p')
         self.deprel=db.corpus.attribute("deprel","p")
         self.attach=db.corpus.attribute("attach","p")
         self.lemma=db.corpus.attribute("lemma","p")
@@ -201,6 +203,7 @@ class DiscourseReader:
             cpos=start+i
             n.syn_label=self.deprel[cpos]
             n.lemma=self.lemma[cpos]
+            n.morph=self.morph[cpos]
             tok_attach=self.attach[cpos]
             if tok_attach!='ROOT':
                 try:
@@ -227,7 +230,8 @@ class DiscourseReader:
                 print >>sys.stderr, corpus_start,corpus_end,self.words[corpus_start:corpus_end+1]
             for j in xrange(start,end):
                 #print start,end,j,len(t.terminals)
-                t.terminals[j-start].xml_id='%s_%d'%(prefix,j-start+1)
+                #t.terminals[j-start].xml_id='%s_%d'%(prefix,j-start+1)
+                t.terminals[j-start].xml_id='t%s'%(corpus_start+j-start,)
                 ctx.add_terminal(t.terminals[j-start])
             ctx.register_object(t)
     def addNext(self, doc):
