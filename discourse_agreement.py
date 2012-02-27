@@ -58,7 +58,7 @@ class ComparedRelations:
                 only2.append((k,v[1]))
             elif not v[1]:
                 only1.append((k,v[0]))
-            elif v[0]==v[1]:
+            elif sorted(v[0])==sorted(v[1]):
                 common.append((k,v[0]))
             else:
                 differing.append((k,v))
@@ -573,10 +573,12 @@ def make_comparison(db, t_id, user1, user2, prefix=''):
 
 vorvergleich_docs=[
     [270,'janne','anna'],
-    [271,'janne','anna'],
+    #[271,'janne','anna'],
     [55,'anna2*old','sabrina2*old'],
     [69,'sabrina*Version1Sa','anna*Anna-Version1'],
     [143,'anna2*old','sabrina2*old'],
+    [144,'anna*Version1','janne*Version1'],
+    [1685,'anna*Version1','janne*Version1'],
     [1471,'anna2*old','sabrina2*old']]
 
 if __name__=='__main__':
