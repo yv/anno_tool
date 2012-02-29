@@ -37,13 +37,13 @@ class ComparedItem:
         positionKey=self.positionKey
         print "Common:"
         for s in self.common:
-            print '\t%s %s'%(positionKey[s[0]],s[1])
+            print '\t%s %s'%(positionKey[s[0]],s[1].encode('ISO-8859-15'))
         print "Only 1:"
         for s in self.only1:
-            print '\t%s %s'%(positionKey[s[0]],s[1])
+            print '\t%s %s'%(positionKey[s[0]],s[1].encode('ISO-8859-15'))
         print "Only 2:"
         for s in self.only2:
-            print '\t%s %s'%(positionKey[s[0]],s[1])
+            print '\t%s %s'%(positionKey[s[0]],s[1].encode('ISO-8859-15'))
         print "F-val=%.3f"%(self.f_measure())
         print "K_w  =%.3f"%(self.kappa_w())
 
@@ -101,7 +101,9 @@ class ComparedRelations:
             stats.marginals2[','.join(rels[0])]+=1
             stats.disagreed[','.join(rels[0])]+=1
             stats.disagreed[','.join(rels[1])]+=1
-            stats.disagreed_as['%s/%s'%(','.join(rels[0]),','.join(rels[1]))]+=1
+            lst=[','.join(sorted(rels[0])),','.join(sorted(rels[1]))]
+            lst.sort()
+            stats.disagreed_as['%s/%s'%(lst[0],lst[1])]+=1
         for r,rels in self.only1:
             stats.marginals1[','.join(rels)]+=1
             stats.unaligned[','.join(rels)]+=1
@@ -396,7 +398,7 @@ def print_edus(edu_list, tokens):
                 lst.append('[%s]'%(tokens[i],))
             else:
                 lst.append(tokens[i])
-        print edu_id, ' '.join(lst)
+        print edu_id, u' '.join(lst).encode('ISO-8859-15')
 
 edu_re="[0-9]+(?:\\.[0-9]+)?"
 topic_s="T[0-9]+"
@@ -421,6 +423,8 @@ def parse_relations(relations,edu_map):
             relations_unparsed.append(l_orig)
         else:
             rel_label=m.group(1)
+            if rel_label=='Elaboration':
+                rel_label='Restatement'
             try:
                 rel_arg1=edu_map.parse_range(m.group(2))
                 rel_arg2=edu_map.parse_range(m.group(3))
@@ -572,11 +576,14 @@ def make_comparison(db, t_id, user1, user2, prefix=''):
     return result
 
 vorvergleich_docs=[
+    [9,'yannick','anna'],
     [270,'janne','anna'],
     #[271,'janne','anna'],
     [55,'anna2*old','sabrina2*old'],
-    [69,'sabrina*Version1Sa','anna*Anna-Version1'],
-    [143,'anna2*old','sabrina2*old'],
+    #[69,'sabrina*Version1Sa','anna*Anna-Version1'],
+    [69,'yannick','anna*Anna-Version1'],
+    #[143,'anna2*old','sabrina2*old'],
+    [143,'yannick','anna'],
     [144,'anna*Version1','janne*Version1'],
     [1685,'anna*Version1','janne*Version1'],
     [1471,'anna2*old','sabrina2*old']]

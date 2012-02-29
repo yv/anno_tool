@@ -127,6 +127,33 @@ schemas['konn']=SimpleSchema(konn_scheme)
 schemas['mod']=SimpleSchema(mod_scheme)
 schemas['ne']=SimpleSchema(ne_scheme)
 
+for name, senses in [('bank',
+                      ['6399_Sitzmoebel','9650_Bankgebaeude','2545_Geldinstitut']),
+                     ('beispiel',
+                      ['27407_Modell','29263_Fallbeispiel']),
+                     ('druck',
+                      ['23044_Kunstdruck','13904_Erfolgsdruck','20952_Beruehrung','41003_Luftdruck']),
+                     ('fall',
+                      ['17117_Niedergang','17533_Sturz','29261_Angelegenheit','32328_Kasus']),
+                     ('form',
+                      ['12198_Gefaess','13288_Art_und_Weise','15612_Gestalt','26504_Fitness','28743_Verhalten']),
+                     ('geschichte',
+                        ['17036_Entstehungsgeschichte_Verlauf','17090_Angelegenheit_Affaere',
+                         '27238_Geschichtswissenschaft','28172_Story_Erfolgsgeschichte',
+                         '32441_Erzaehlung','51052_Vergangenheit','73395_Unterrichtsfach']),
+                     ('kopf',
+                      ['11972_Anfangsteil_Musikstueck','26042_Koerperteil','32339_Silbenteil',
+                       '33613_Laengeneinheit_einen_Kopf_groesser','38648_Leiter',
+                       '47085_Bauteil_Zylinderkopf']),
+                     ('sache',
+                      ['27464_Angelegenheit', '50999_Gegenstand']),
+                     ('sinn',
+                      ['16427_Verstaendnis_Geschaeftssinn','27485_Bedeutung','27486_Hoersinn']),
+                     ('welt',
+                      ['22902_Menschheit','22919_soziale_Gruppe_Fachwelt','42095_Bereich_Amateurbereich',
+                       '42842_Weltall','42860_Erde'])]:
+    schemas['wsd_'+name]=SimpleSchema([('tag',senses)])
+
 def load_schema(f):
     stack=[]
     toplevel=[]
