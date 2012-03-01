@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -*- coding: iso-8859-15 -*-
 """
 templates, authentication and stuff
 
@@ -180,7 +180,7 @@ def index(request):
                         expires=expire_date)
     return response
 
-monate=['Januar','Februar','MÃ¤rz','April','Mai','Juni',
+monate=['Januar','Februar','März','April','Mai','Juni',
         'Juli','August','September','Oktober','November','Dezember']
 def parse_stunden(s):
     if ':' in s:
@@ -217,7 +217,7 @@ def stunden(request):
         except IndexError:
             monat_str="Invalid:"+month[5:]
             monat_val=-1
-        display_str='%s %s'%(monat_str, month[:4])
+        display_str='%s %s'%(monat_str, month[:4].encode(SENSIBLE_ENCODING))
         buf.write('<tr class="header_row">\n')
         buf.write('<td>&nbsp;</td><td>%s</td><td>%2s</td>\n'%(display_str,fmt_stunden(sum_stunden)))
         buf.write('</tr>')
