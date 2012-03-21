@@ -588,10 +588,20 @@ vorvergleich_docs=[
     [1685,'anna*Version1','janne*Version1'],
     [1471,'anna2*old','sabrina2*old']]
 
+anno_agree_docs=[
+    [1691, 'janne*2012-03-01', 'anna*Version1'],
+    [1685, 'janne*Version1', 'anna*Version1'],
+    [144,  'janne*Version1', 'anna*Version1']]
+
+anno_adjudicate_docs=[
+    [1691, 'janne*Version 2', 'anna*Version2'],
+    [1685, 'janne*Version 2', 'anna*Version2'],
+    [144,  'janne*Version2', 'anna*Version2']]
+
 if __name__=='__main__':
     db=get_corpus('TUEBA4')
     stats=RelationStatistics()
-    for t_id, user1, user2 in vorvergleich_docs:
+    for t_id, user1, user2 in anno_adjudicate_docs: #vorvergleich_docs:
         print "**** DOC: %s (%s/%s)****"%(t_id,user1,user2)
         result=make_comparison(db,t_id,user1,user2)
         result.add_to_stats(stats)

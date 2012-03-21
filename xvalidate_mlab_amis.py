@@ -62,7 +62,7 @@ label_gen=LabelGenerator(opts,all_data)
 
 print >>sys.stderr, "preparing training file..."
 
-learners=[AMISLearner('/export/local/yannick/konn-cls/fold-%d'%(i,)) for i in xrange(n_bins)]
+learners=[AMISLearner('/export2/local/yannick/konn-cls/fold-%d'%(i,)) for i in xrange(n_bins)]
 if opts.cutoff>1:
     for lrn in learners:
         lrn.count_threshold=opts.cutoff

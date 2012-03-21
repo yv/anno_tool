@@ -80,20 +80,22 @@ class SVMLearner:
     def read_weights(self,fc=None):
         return read_weights(os.path.join(self.basedir,self.prefix+'train.model'),fc)
 
-def classify_greedy_mlab(stuff,vec_cl):
+def classify_greedy_mlab(stuff,vec_cl, num_labels=2):
     vecs,cont=stuff
     result=[]
     for label,bias,vec in vecs:
         score=vec_cl.dotFull(vec)-bias
         result.append((score,label))
     result.sort(reverse=True)
-    if len(result)>=2 and result[1][0]>0:
-        rel1=classify_greedy(cont[result[0][1]],vec_cl)
-        rel2=classify_greedy(cont[result[1][1]],vec_cl)
-        return [rel1,rel2]
-    else:
-        rel1=classify_greedy(cont[result[0][1]],vec_cl)
-        return [rel1]
+    rels=[]
+    for i,res in enumerate(result):
+        if i>0 and res[0]<0:
+            break
+        if i>=num_labels:
+            break
+        rel=classify_greedy(cont[res[1]],vec_cl)
+        rels.append(rel)
+    return rels
 
 def classify_greedy(stuff,vec_cl):
     vecs,cont=stuff

@@ -29,6 +29,8 @@ add_options_mlab(oparse)
 oparse.add_option('--method',dest='method',
                   choices=['F','acc'],
                   default='F')
+oparse.add_option('--maxlabels',dest='max_labels',
+                  type='int', default=2)
 oparse.set_defaults(reassign_folds=True,max_depth=3)
 
 opts,args=oparse.parse_args(sys.argv[1:])
@@ -84,14 +86,14 @@ classifiers=[]
 for i,data_bin in enumerate(data_bins):
     labels=[x[1] for x in data_bin]
     examples=[x[0] for x in data_bin]
-    basedir='/export/local/yannick/konn-cls/fold-%d'%(i,)
+    basedir='/export2/local/yannick/konn-cls/fold-%d'%(i,)
     cl_greedy=train_greedy(examples,labels,basedir,fc)
     classifiers.append(cl_greedy)
 
 # for i,data_bin in enumerate(test_bins):
 #     labels=[x[1] for x in data_bin]
 #     examples=[x[0] for x in data_bin]
-#     basedir='/export/local/yannick/konn-cls/fold-%d'%(i,)
+#     basedir='/export2/local/yannick/konn-cls/fold-%d'%(i,)
 #     convert_onevsall(examples,labels,basedir,'test_')
 
 if opts.weights_fname is not None:
@@ -99,7 +101,7 @@ if opts.weights_fname is not None:
 
 def classify(dat):
     bin_nr,data,label=dat
-    best=classify_greedy_mlab(classifiers[bin_nr],fc(data))
+    best=classify_greedy_mlab(classifiers[bin_nr],fc(data),opts.max_labels)
     return best
 
 

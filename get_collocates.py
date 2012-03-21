@@ -44,7 +44,7 @@ def get_matrices():
             f_in=file('/gluster/nufa/yannick/matrices/N/%s.dat'%(fname,))
             counts=sparsmat.mmapCSR(f_in)
             #matrices[fname]=counts.transform_ll()
-            m#atrices[fname]=counts.transform_mi_discount()
+            matrices[fname]=counts.transform_mi_discount()
             alph=CPPUniAlphabet()
             alph.fromfile(file('/gluster/nufa/yannick/matrices/N/%s.alph'%(fname,)))
             alphabets[fname]=alph
