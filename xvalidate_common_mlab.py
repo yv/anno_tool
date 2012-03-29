@@ -269,6 +269,16 @@ def extract_fm_stats(lbl,lblS,stats):
         if k2 not in foundS:
             stats[k2][2]+=1
 
+def computeMicroF(fm_vals):
+    f_vals=[]
+    for k,v in fm_vals.iteritems():
+        if v[0]==0:
+            f_vals.append(0.0)
+        else:
+            val=2*float(v[0])/float(2*v[0]+v[1]+v[2])
+            f_vals.append(val)
+    return sum(f_vals)/len(f_vals)
+
 def make_stats_multi(all_data, system_labels_a,
                      opts):
     max_depth=opts.max_depth
@@ -294,6 +304,8 @@ def make_stats_multi(all_data, system_labels_a,
             extract_fm_stats(labelC,sys_labelC,fm_vals)
         for k in sorted(single_vals.iterkeys()):
             etree.SubElement(node_depth,'singleVal',name=k,score=str(single_vals[k]/num_examples))
+        etree.SubElement(node_depth,'singleVal',name='micro-F',
+                         score=str(computeMicroF(fm_vals)))
         for k,v in sorted(fm_vals.iteritems()):
             etree.SubElement(node_depth,'relCount',name=k,
                              tp=str(v[0]),

@@ -34,6 +34,7 @@ def run_labelprop(graph, ys, loss, opts):
         else:
             old_dist[i,:]=(1.0/m)
     marginals_lab=old_dist[lab,:].sum(0)
+    marginals_lab[marginals_lab==0]=1.0
     maxdiff=None
     for k in xrange(k_max):
         print >>sys.stderr, "\rIteration %d/%d eta=%.2f maxdiff=%s"%(k+1,k_max,eta,maxdiff),
@@ -60,6 +61,8 @@ def run_labelprop(graph, ys, loss, opts):
                         print >>sys.stderr, "node %d has no neighbours with indegree %d?"%(i,len(graph[i]))
                         print >>sys.stderr, ndist
                         print >>sys.stderr, graph[i]
+                        for (j,val) in edges:
+                            print >>sys.stderr, old_dist[j]
                         sys.exit(1)
         # re-normalize by label counts
         if opts.renorm!=0.0:
@@ -77,6 +80,14 @@ def run_labelprop(graph, ys, loss, opts):
         maxdiff=numpy.abs(new_dist-old_dist).max()
         if maxdiff<1e-5:
             break
+        if numpy.isnan(numpy.sum(new_dist)):
+            for i,y in enumerate(ys):
+                ndist=new_dist[i]
+                if numpy.isnan(numpy.sum(ndist)):
+                    print >>sys.stderr, "node %d has a NaN?"%(i,)
+                    print >>sys.stderr, ndist
+                    print >>sys.stderr, marginals_lab
+            sys.exit(1)
         (new_dist,old_dist)=(old_dist,new_dist)
     ys_new=[]
     print >>sys.stderr, "done. (maxdiff=%s)"%(maxdiff,)
@@ -100,6 +111,7 @@ def load_data(fname_labeled, fname_unlabeled, normalize_func=norm_set):
     line_no=0
     for l in file(fname_labeled):
         bin_unused, data, label, span = json.loads(l, object_hook=object_hook)
+        span=tuple(span)
         xs.append(data)
         bin_nr=line_no%n_bins
         y=alph[normalize_func(label)]
@@ -114,6 +126,7 @@ def load_data(fname_labeled, fname_unlabeled, normalize_func=norm_set):
         line_no+=1
     for l in file(fname_unlabeled):
         bin_unused, data, label, span = json.loads(l, object_hook=object_hook)
+        span=tuple(span)
         if span not in labeled:
             xs.append(data)
             for i in xrange(n_bins):
