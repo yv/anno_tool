@@ -110,7 +110,11 @@ def load_data(fname_labeled, fname_unlabeled, normalize_func=norm_set):
     all_ys=[[] for i in xrange(n_bins)]
     line_no=0
     for l in file(fname_labeled):
-        bin_unused, data, label, span = json.loads(l, object_hook=object_hook)
+        try:
+            bin_unused, data, label, span = json.loads(l, object_hook=object_hook)
+        except ValueError:
+            print >>sys.stderr, l
+            raise
         span=tuple(span)
         xs.append(data)
         bin_nr=line_no%n_bins
@@ -125,7 +129,11 @@ def load_data(fname_labeled, fname_unlabeled, normalize_func=norm_set):
         labeled[span]=len(xs)-1
         line_no+=1
     for l in file(fname_unlabeled):
-        bin_unused, data, label, span = json.loads(l, object_hook=object_hook)
+        try:
+            bin_unused, data, label, span = json.loads(l, object_hook=object_hook)
+        except ValueError:
+            print >>sys.stderr, l
+            raise
         span=tuple(span)
         if span not in labeled:
             xs.append(data)
