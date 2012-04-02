@@ -165,8 +165,10 @@ def extract_semlinks(fname, corpus_db, f_out):
             determine_set_ids(ana_links,alph)
             # add NE info
             for t in trees:
-                all_spans=[en_extract.add_ne_db(t, ne_range, t.span[0], corpus_db)
-                           for ne_range in en_extract.extract_ne_old(t)]
+                print t.all_nes
+                all_spans=[add_ne_nodb(t,ne, sent_start, corpus)
+                           #for ne_range in en_extract.extract_ne_old(t)]
+                           for ne in t.all_nes]
                 sent_start=t.span[0]
                 for headword, span, semtag, span_parts in all_spans:
                     n=en_extract.get_node_ver1(t, span[0]-sent_start, span[-1]-sent_start)
@@ -221,8 +223,8 @@ def main(fname, corpus_db):
             determine_set_ids(ana_links,alph)
             # add NE info
             for t in trees:
-                all_spans=[en_extract.add_ne_db(t, ne_range, t.span[0], corpus_db)
-                           for ne_range in en_extract.extract_ne_old(t)]
+                all_spans=[en_extract.add_ne_nodb(t, ne_range, t.span[0], corpus_db)
+                           for ne_range in t.all_nes]
                 sent_start=t.span[0]
                 for headword, span, semtag, span_parts in all_spans:
                     n=en_extract.get_node_ver1(t, span[0]-sent_start, span[-1]-sent_start)
