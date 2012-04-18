@@ -11,11 +11,12 @@ import numpy
 
 def run_labelprop(graph, ys, loss, opts):
     """
+    does one run of label propagation
     Input: weighted graph (co-occurrence matrix),
     partial labeling in ys (-1=unlabeled, otherwise class)
     loss matrix
     Output:
-    complete labeling
+    complete labeling, as tuples of (label, distribution)
     """
     eta=opts.eta
     k_max=opts.k_max
@@ -93,9 +94,9 @@ def run_labelprop(graph, ys, loss, opts):
     print >>sys.stderr, "done. (maxdiff=%s)"%(maxdiff,)
     for i,y in enumerate(ys):
         if y==-1:
-            ys_new.append(old_dist[i].argmax())
+            ys_new.append((old_dist[i].argmax(),old_dist[i]))
         else:
-            ys_new.append(y)
+            ys_new.append((y,None))
     return ys_new
 
 
@@ -108,6 +109,7 @@ def load_data(fname_labeled, fname_unlabeled, normalize_func=norm_set):
     xs=[]
     ys_gold=[]
     all_ys=[[] for i in xrange(n_bins)]
+    all_spans=[]
     line_no=0
     for l in file(fname_labeled):
         try:
@@ -127,6 +129,7 @@ def load_data(fname_labeled, fname_unlabeled, normalize_func=norm_set):
                 all_ys[i].append(y)
         assert span not in labeled
         labeled[span]=len(xs)-1
+        all_spans.append(span)
         line_no+=1
     for l in file(fname_unlabeled):
         try:
@@ -140,7 +143,7 @@ def load_data(fname_labeled, fname_unlabeled, normalize_func=norm_set):
             for i in xrange(n_bins):
                 all_ys[i].append(-1)
             labeled[span]=len(xs)-1
-    return xs, ys_gold, all_ys, alph, labeled
+    return xs, ys_gold, all_ys, alph, labeled, all_spans
 
 level_weights=[1.0,1.0,1.0]
 def multilevel_dice(lab,lab2):
@@ -156,6 +159,10 @@ def multilevel_dice(lab,lab2):
     return 1.0-total/Z
 
 def run_xval(graph, loss, all_ys, opts):
+    """
+    does a complete cross-validation run,
+    producing labels for all folds
+    """
     all_output=[]
     output_ys=[]
     for k in xrange(len(all_ys)):
@@ -227,13 +234,14 @@ oparse.add_option('--neighbours', action='store', type='int',
 oparse.add_option('--renorm', action='store', type='float',
                       dest='renorm', default=0.5)
 oparse.add_option('--graph', action='append', dest='graph_file')
+oparse.add_option('--diagnostic', action='store', dest='diagnostic')
 oparse.set_defaults(reassign_folds=True,max_depth=3,graph_file=[])
 opts,args=oparse.parse_args(sys.argv[1:])
 
 fc=FCombo(opts.degree)
 fc.codec=codecs.lookup('ISO-8859-15')
 
-xs0, ys_gold, all_ys, alph, labeled=load_data(args[0],args[1])
+xs0, ys_gold, all_ys, alph, labeled, all_spans =load_data(args[0],args[1])
 n_labeled=len(ys_gold)
 xs=[fc(x) for x in xs0]
 graph=make_graph(xs,opts,labeled)
@@ -247,8 +255,23 @@ output_ys=run_xval(graph, loss, all_ys, opts)
 all_data=zip([0]*len(ys_gold),
               xs0,
               [alph.words[y] for y in ys_gold])
-sys_labels=[alph.words[y] for y in output_ys[:len(ys_gold)]]
+sys_labels=[alph.words[y] for (y,dist) in output_ys[:len(ys_gold)]]
 
 stats=make_stats_multi(all_data, sys_labels, opts)
 
 print_stats(stats)
+
+if opts.diagnostic is not None:
+    lbls_sorted=sorted(list(alph))
+    f_lbl=codecs.open('%s.labels'%(opts.diagnostic,),'w','UTF-8')
+    for lbl in lbls_sorted:
+        print >>f_lbl, ' '.join(lbl)
+    f_lbl.close()
+    f_dump=file('%s.output.json'%(opts.diagnostic,),'w')
+    for i,span in enumerate(all_spans):
+        (y_sys,dist_sys)=output_ys[i]
+        ws=[]
+        for lbl in lbls_sorted:
+            ws.append(PrettyFloat(dist_sys[alph[lbl]]))
+        print >>f_dump, json.dumps([span,ws,alph.words[y_sys]])
+    f_dump.close()
