@@ -143,6 +143,7 @@ def load_data(fname_labeled, fname_unlabeled, normalize_func=norm_set):
             for i in xrange(n_bins):
                 all_ys[i].append(-1)
             labeled[span]=len(xs)-1
+            all_spans.append(span)
     return xs, ys_gold, all_ys, alph, labeled, all_spans
 
 level_weights=[1.0,1.0,1.0]
@@ -261,6 +262,10 @@ stats=make_stats_multi(all_data, sys_labels, opts)
 
 print_stats(stats)
 
+def printable_span(idx):
+    spn=all_spans[idx]
+    return '%d-%d'%(spn[0],spn[1])
+
 if opts.diagnostic is not None:
     lbls_sorted=sorted(list(alph))
     f_lbl=codecs.open('%s.labels'%(opts.diagnostic,),'w','UTF-8')
@@ -275,3 +280,20 @@ if opts.diagnostic is not None:
             ws.append(PrettyFloat(dist_sys[alph[lbl]]))
         print >>f_dump, json.dumps([span,ws,alph.words[y_sys]])
     f_dump.close()
+    f_graph=file('%s.graph.txt'%(opts.diagnostic,),'w')
+    for i,edges in enumerate(graph):
+        for j,val in edges:
+            if i>=len(ys_gold):
+                code='?'
+            elif j>=len(ys_gold):
+                code='?'
+            else:
+                if ys_gold[i]==ys_gold[j]:
+                    code='+'
+                else:
+                    code='-'
+            print >>f_graph, "%s\t%s\t%f\t%s"%(printable_span(i),
+                                               printable_span(j),
+                                               val,
+                                               code)
+    f_graph.close()
