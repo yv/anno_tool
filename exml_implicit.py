@@ -3,6 +3,7 @@
 import re
 import sys
 import exml
+from exml import Text, EduRange, Topic, edu_re, topic_s
 from itertools import izip
 from collections import defaultdict
 from ordereddict import OrderedDict
@@ -21,18 +22,6 @@ python exml_implicit.py Annotator > datei_exml.xml
 __version__="2011-03-03"
 __author__="Yannick Versley / Univ. Tuebingen"
 
-class Edu(object):
-    def __init__(self):
-        self.rels=[]
-
-class EduRange(exml.GenericMarkable):
-    def __init__(self):
-        self.rels=[]
-    
-class Topic(exml.GenericMarkable):
-    def __init__(self,**kw):
-        self.__dict__.update(kw)
-        self.rels=[]
 
 class DiscRel(exml.GenericMarkable):
     def __init__(self,label,target,marking=None):
@@ -54,6 +43,11 @@ class DiscRelEdges(object):
         return edges
     def get_updown(self,obj,doc,result):
         pass
+
+comment_re=re.compile("//.*$");
+span_re="(?:"+edu_re+"(?:-"+edu_re+")?|"+topic_s+")"
+relation_re=re.compile("(\\w+(?:[- ]\\w+)*|\\?)\\s*\\(\\s*("+span_re+")\\s*,\\s*("+span_re+")\\s*\\)\\s*(%[^/]*)?\\s*")
+
 
 def make_implicit_doc():
     text_schema=exml.MarkableSchema('text',Text)
@@ -79,47 +73,7 @@ def make_implicit_doc():
                          exml.RefAttribute('dephead',prop_name='syn_parent'),
                          exml.EnumAttribute('deprel',prop_name='syn_label')]
     return exml.Document(t_schema,[text_schema,s_schema,
-                                   edu_schema,topic_schema,edu_range_schema])
-
-edu_re="[0-9]+(?:\\.[0-9]+)?"
-topic_s="T[0-9]+"
-topic_re=re.compile(topic_s)
-span_re="(?:"+edu_re+"(?:-"+edu_re+")?|"+topic_s+")"
-relation_re=re.compile("(\\w+(?:[- ]\\w+)*|\\?)\\s*\\(\\s*("+span_re+")\\s*,\\s*("+span_re+")\\s*\\)\\s*(%[^/]*)?\\s*")
-comment_re=re.compile("//.*$");
-class Text(object):
-    def __init__(self,origin,doc_no):
-        self.origin=origin
-        self.topics={}
-        self.edus={}
-        self.edu_ranges={}
-        self.edu_list=[]
-        self.unparsed_rels=[]
-    def get_segment(self,arg,ctx):
-        if topic_re.match(arg):
-            return self.topics[arg]
-        else:
-            endpoints=arg.split('-')
-            start_edu=endpoints[0]
-            if '.' not in start_edu:
-                    start_edu+='.0'
-            if len(endpoints)==1:
-                return self.edus[start_edu]
-            else:
-                end_edu=endpoints[-1]
-                if '.' not in end_edu:
-                    end_edu+='.0'
-                if (start_edu,end_edu) in self.edu_ranges:
-                    x=self.edu_ranges[(start_edu,end_edu)]
-                else:
-                    x=EduRange()
-                    x.span=(self.edus[start_edu].span[0],
-                            self.edus[end_edu].span[1])
-                    x.xml_id='edus%s_%s-%s'%(self.xml_id.split('_')[-1],start_edu.replace('.','_'),end_edu.replace('.','_'))
-                    ctx.register_object(x)
-                    self.edu_ranges[(start_edu,end_edu)]=x
-                return x
-                
+                                   edu_schema,topic_schema,edu_range_schema])                
 
 def parse_relations(relations,text,ctx):
     relations_unparsed=text.unparsed_rels

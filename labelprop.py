@@ -206,6 +206,7 @@ def make_graph(xs, opts, alph):
     print >>sys.stderr, "Create graph"
     for i in xrange(n):
         cands=[]
+        print mat[i]
         for j in xrange(n):
             if i!=j:
                 val=ker.kernel(i,j)

@@ -266,7 +266,29 @@ class ReferenceEdges:
             tgt=None
             if info[0]!='expletive':
                 tgt=' '.join(info[1])
-            return [[info[0],tgt]]
+            if info[0]!='split_antecedent':
+                return [[info[0],tgt]]
+            else:
+                return []
+        else:
+            return []
+    def get_updown(self,obj,doc,result):
+        pass
+
+class SplitRefEdges:
+    def __init__(self,name):
+        self.name=name
+        self.attributes=[EnumAttribute('type'),
+                         TextAttribute('target')]
+    def get_edges(self,obj,doc):
+        info=getattr(obj,'anaphora_info',None)
+        if info is not None:
+            tgt=None
+            if info[0]=='split_antecedent':
+                tgt=' '.join(info[1])
+                return [[info[0],tgt]]
+            else:
+                return []
         else:
             return []
     def get_updown(self,obj,doc,result):
@@ -338,6 +360,11 @@ class Document:
         self.word_ids=CPPAlphabet()
         if t_schema.cls is not None:
             self.schema_by_class[t_schema.cls]=t_schema
+        for schema in schemas:
+            if schema.cls is not None:
+                self.schema_by_class[schema.cls]=schema
+    def add_schemas(self, schemas):
+        self.schemas+=schemas
         for schema in schemas:
             if schema.cls is not None:
                 self.schema_by_class[schema.cls]=schema
@@ -532,9 +559,57 @@ def assign_node_ids(n,prefix,sent_start=0):
 class GenericMarkable(object):
     def __init__(self, **kw):
         self.__dict__.update(kw)
+
+class Edu(object):
+    def __init__(self):
+        self.rels=[]
+
+class EduRange(GenericMarkable):
+    def __init__(self):
+        self.rels=[]
     
-class Text(GenericMarkable):
-    pass
+class Topic(GenericMarkable):
+    def __init__(self,**kw):
+        self.__dict__.update(kw)
+        self.rels=[]
+
+edu_re="[0-9]+(?:\\.[0-9]+)?"
+topic_s="T[0-9]+"
+topic_re=re.compile(topic_s)
+class Text(object):
+    def __init__(self,origin,doc_no):
+        self.origin=origin
+        self.topics={}
+        self.edus={}
+        self.edu_ranges={}
+        self.edu_list=[]
+        self.unparsed_rels=[]
+        self.doc_no=doc_no
+    def get_segment(self,arg,ctx):
+        if topic_re.match(arg):
+            return self.topics[arg]
+        else:
+            endpoints=arg.split('-')
+            start_edu=endpoints[0]
+            if '.' not in start_edu:
+                    start_edu+='.0'
+            if len(endpoints)==1:
+                return self.edus[start_edu]
+            else:
+                end_edu=endpoints[-1]
+                if '.' not in end_edu:
+                    end_edu+='.0'
+                if (start_edu,end_edu) in self.edu_ranges:
+                    x=self.edu_ranges[(start_edu,end_edu)]
+                else:
+                    x=EduRange()
+                    x.span=(self.edus[start_edu].span[0],
+                            self.edus[end_edu].span[1])
+                    x.xml_id='edus%s_%s-%s'%(self.xml_id.split('_')[-1],start_edu.replace('.','_'),end_edu.replace('.','_'))
+                    ctx.register_object(x)
+                    self.edu_ranges[(start_edu,end_edu)]=x
+                return x
+
 
 class NamedEntity(object):
     def __init__(self,kind,**kw):
@@ -550,6 +625,7 @@ def make_syntax_doc():
     nt_schema.locality='sentence'
     secedge_edge=SecondaryEdges('secEdge')
     relation_edge=ReferenceEdges('relation')
+    split_edge=SplitRefEdges('splitRelation')
     func_attr=EnumAttribute('func',prop_name='edge_label')
     nt_schema.attributes=[EnumAttribute('cat'),
                           func_attr,
@@ -557,7 +633,8 @@ def make_syntax_doc():
                                        restrict_target=['node']),
                           TextAttribute('comment')]
     nt_schema.edges=[secedge_edge,
-                     relation_edge]
+                     relation_edge,
+                     split_edge]
     ne_schema=MarkableSchema('ne',NamedEntity)
     ne_schema.locality='sentence'
     ne_schema.attributes=[EnumAttribute('type',prop_name='kind')]
@@ -576,7 +653,8 @@ def make_syntax_doc():
                                       restrict_target=['node']),
                          TextAttribute('comment')]
     t_schema.edges=[secedge_edge,
-                    relation_edge]
+                    relation_edge,
+                    split_edge]
     return Document(t_schema,[s_schema,nt_schema,text_schema,ne_schema])
 
 def make_noderef(x):
@@ -741,7 +819,10 @@ class ExportCorpusReader:
                     comment=''
                 else:
                     comment=line[2]
-                tables[where].add_item(line[1],comment)
+                what=line[1]
+                if where=='NODETAG' and '=' in what:
+                    continue
+                tables[where].add_item(what,comment)
             elif where=='ORIGIN':
                 line=l.strip().split(None,2)
                 self.origins[line[0]]=line[1]
@@ -759,6 +840,8 @@ class ExportCorpusReader:
         while True:
             l=self.f.readline()
             if l=='':
+                if self.origin_markable is not None:
+                    self.on_text(self.origin_markable)
                 raise StopIteration()
             m=export.bos_pattern.match(l)
             if m:
@@ -772,12 +855,16 @@ class ExportCorpusReader:
                     t.comment=t.comment.lstrip()
                 self.do_add(t)
                 return self.last_stop
+    def on_text(self, text):
+        pass
     def do_add(self,t):
         if self.doc_no==t.doc_no:
             self.origin_markable.span[-1]+=len(t.terminals)
         else:
+            if self.origin_markable is not None:
+                self.on_text(self.origin_markable)
             self.last_stop=len(self.doc.words)
-            origin_markable=Text(origin=self.origins.get(t.doc_no))
+            origin_markable=Text(origin=self.origins.get(t.doc_no),doc_no=t.doc_no)
             origin_markable.span=[len(self.doc.words),
                                   len(self.doc.words)+len(t.terminals)]
             origin_markable.xml_id='text_%s'%(t.doc_no,)
