@@ -5,6 +5,7 @@ from itertools import izip
 from collections import defaultdict
 import pytree.export as export
 import annodb.database as annodb
+from dist_sim.fcomb import InfoNode, InfoTree
 from annodb.schema import schemas
 from pynlp.de import smor_pos, tueba_heads
 from pytree import deps
@@ -12,6 +13,7 @@ import simplejson as json
 
 import sys
 from pynlp.de import pydeps
+from gwn_old import germanet
 from gwn_old import wordsenses
 from gwn_old.semclass import semclass_for_node
 from gwn_old.gwn_word_features import get_verb_features
@@ -577,6 +579,27 @@ def arg_lengths(t,sub_cl,main_cl,conn):
         result.append('al%sS%d'%(k,discretize(group_counts[k])))
     return result
 
+def make_simple_tree(main_cl, sub_cl):
+    ni1=InfoNode(main_cl.cat)
+    for n2 in main_cl.children:
+        if n2.cat in ['VF','MF','NF']:
+            for n3 in n2.children:
+                if n3 is sub_cl:
+                    ni2=InfoNode('SUB_CL',['fd:'+n2.cat,'cat:'+n3.cat])
+                    ni1.add_edge(ni2)
+                    continue
+                feats=['fd:'+n2.cat]
+                if hasattr(n3,'head'):
+                    feats.append(n3.head.lemma)
+                ni2=InfoNode(n3.cat,feats)
+                ni1.add_edge(ni2)
+    return ni1
+
+def node2tree(n):
+    ti=InfoTree()
+    ti.add_node(n,True)
+    return ti.as_json()
+
 def process_spans(spans,annotator):
     for span in spans:
         sent_no=db.sentences.cpos2struc(span[0])
@@ -612,7 +635,10 @@ def process_spans(spans,annotator):
         #print "anno: rel1=%s rel2=%s"%(anno.rel1,anno._doc.get('rel2','NULL'))
         print feats
         #print anno._doc
-        print >>f_out, json.dumps([0,map(grok_encoding,feats),target,[span[0],span[1]-1]])
+        print >>f_out, json.dumps([0,{'_type':'multipart','parts':[map(grok_encoding,feats)],
+                                      'trees':[node2tree(make_simple_tree(main_cl, sub_cl)),
+                                               node2tree(make_simple_tree(sub_cl, None))]},
+                                  target,[span[0],span[1]-1]],encoding='ISO-8859-15')
 
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc']
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc','wordpairs','productions']

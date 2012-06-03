@@ -402,7 +402,8 @@ def dep2paths_sat2(nodes,idx,feature,path,seen,result):
 filters={
     'N':set(['NN']),
     'A':set(['ADJA','ADJD']),
-    'V':set(['VVFIN','VVINF','VVPP','VVIZU'])
+    'V':set(['VVFIN','VVINF','VVPP','VVIZU']),
+    'R':['ADV']
 }
 
 def dep2paths_all(corpus, kind='NN'):

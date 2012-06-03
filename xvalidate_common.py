@@ -45,7 +45,11 @@ def object_hook(o):
     if '_type' in o:
         tp=o['_type']
         if tp=='multipart':
-            return Multipart(o['parts'])
+            obj=Multipart(o['parts'])
+            if 'trees' in o:
+                for d in o['trees']:
+                    obj.add_tree(d)
+            return obj
     return o
 
 def load_data(fname, opts):
