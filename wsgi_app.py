@@ -46,7 +46,8 @@ urls=[('/login',web_stuff.login_form),
       ('/get_sketch',get_collocates.get_sketch),
       ('/get_similar',get_collocates.get_similar),
       ('/get_neighbour_graph',get_collocates.get_neighbour_graph),
-      ('/stunden',web_stuff.stunden)]
+      ('/stunden',web_stuff.stunden),
+      ('/senses',web_stuff.senseEditor)]
 
 mymap=web_stuff.MyMap(urls)
 

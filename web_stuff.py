@@ -244,6 +244,11 @@ def stunden(request):
                              today_date=now.strftime('%F'))
     return response
 
+def senseEditor(request):
+    db=request.corpus
+    return render_template('senses.html',
+                           corpus=db.corpus_name)
+
 def tasks(request):
     db=request.corpus
     tasks=db.get_tasks()
