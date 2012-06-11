@@ -148,7 +148,7 @@ def render_sentence(request,sent_no):
     annotations=db.find_annotations([start,end],'*gold*')
     if names_parses or names_alignments or annotations:
         print >>trees_out,'<div id="parses-tabs">'
-        print >>trees_out,'<ul>'
+        print >>trees_out,'<ul class="nav nav-tabs">'
         for k in names_parses:
             print >>trees_out,'<li><a href="#parses-%s">%s (parse)</a></li>'%(k,k)
         for k in names_alignments:

@@ -206,8 +206,8 @@ def stunden(request):
     cur_month=now.strftime('%Y-%m')
     cur_val=now.year*12+now.month
     buf=StringIO()
-    buf.write('<table class="data_table">\n')
-    buf.write('<tr class="header_row"><th>Wann</th><th width="250">Was</th><th>Stunden</th></tr>\n')
+    buf.write('<table class="table table-striped">\n')
+    buf.write('<tr><th>Wann</th><th width="250">Was</th><th>Stunden</th></tr>\n')
     for month in sorted(times.iterkeys()):
         all_entries=times[month]
         sum_stunden=sum([x['hours'] for x in all_entries])
@@ -219,7 +219,7 @@ def stunden(request):
             monat_val=-1
         display_str='%s %s'%(monat_str, month[:4].encode(SENSIBLE_ENCODING))
         buf.write('<tr class="header_row">\n')
-        buf.write('<td>&nbsp;</td><td>%s</td><td>%2s</td>\n'%(display_str,fmt_stunden(sum_stunden)))
+        buf.write('<td><span class="icon-time">&nbsp;</span></td><td>%s</td><td>%2s</td>\n'%(display_str,fmt_stunden(sum_stunden)))
         buf.write('</tr>')
         if cur_val-monat_val<3:
             if request.args.get('order','default')=='entered':
@@ -248,6 +248,17 @@ def senseEditor(request):
     db=request.corpus
     return render_template('senses.html',
                            corpus=db.corpus_name)
+
+def writeToDB():
+    db_senses=get_database().senses
+    for doc in senseInfo:
+        db_senses.save(doc)
+
+def sensesJson(request):
+    db_senses=get_database().senses
+    info=list(db_senses.find({}))
+    return Response(json.dumps(info),mimetype="text/javascript")
+ 
 
 def tasks(request):
     db=request.corpus

@@ -1,6 +1,8 @@
 <html>
 <head>
 <title>[{{corpus_name}}] Discourse Annotator</title>
+<link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+<link href="/static/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
 <link rel="stylesheet" href="/static/pycwb.css" type="text/css" />
 <link rel="stylesheet" href="/static/discourseEdit.css">
 <link rel="stylesheet" href="/static/token-input.css" type="text/css" /> 
@@ -60,7 +62,25 @@ $('#dialog-form').dialog('open');
 </script>
 </head>
 <body>
-<h1>Discourse annotation for {{corpus_name}}</h1>
+<div class="navbar navbar-fixed-top">
+     <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="/pycwb">PyCWB</a>
+	  <ul class="nav">
+	    <li><a href="/pycwb">Home</a></li>
+	    <li><a href="/pycwb/tasks">All Tasks</a></li>
+	    <li class="active"><a href="/pycwb/discourse_list">Discourse</a></li>
+	    <li><a href="/pycwb/senses">Sense editor</a></li>
+	    <li><a href="/pycwb/stunden">Stundentool</a></li>
+            </ul>
+        </div>
+      </div>
+</div>
+<div class="container">
+  <div class="page-header">
+    <h1>Discourse annotation for {{corpus_name}}</h1>
+    </div>
+    
 <table class="data_table">
 {% for user, docid, text, all_users in results %}
 <tr class="{{loop.cycle('odd_row','even_row')}}">

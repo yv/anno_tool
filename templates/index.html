@@ -9,6 +9,8 @@
 <script src="/static/jq/jquery.ui.position.min.js"></script>
 <script src="/static/jq/jquery.ui.autocomplete.min.js"></script>
 <script src="/static/jq/ui.selectmenu.js"></script>
+<link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+<link href="/static/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
 <link rel="stylesheet" href="/static/pycwb.css" type="text/css">
 <link rel="stylesheet" href="/static/themes/base/jquery.ui.all.css" type="text/css">
 <link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css">
@@ -55,25 +57,23 @@ $("#corpus_chooser > option [val="+get_corpus()+"]").attr('selected','selected')
 </script>
 </head>
 <body onload="set_corpus();">
-<div id="main">
-<h1>Index</h1>
-<table>
-<tr valign="top">
-<td>Satznummer finden:</td>
-<td>
-<form method="POST" action="/pycwb/find_sent">
-<input name="sent_no"><input type="submit">
-</form>
-</td></tr><tr valign="top">
-<td>Wort finden:</td>
-<td>
-<form method="POST" action="/pycwb/find_word">
-<input id="input-word" name="w"><input type="submit">
-</form>
-</td>
-</tr></table>
+<div class="navbar navbar-fixed-top">
+     <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="/pycwb">PyCWB</a>
+	  <ul class="nav">
+	    <li class="active"><a href="/pycwb">Home</a></li>
+	    <li><a href="/pycwb/tasks">All Tasks</a></li>
+	    <li><a href="/pycwb/discourse_list">Discourse</a></li>
+	    <li><a href="/pycwb/senses">Sense editor</a></li>
+	    <li><a href="/pycwb/stunden">Stundentool</a></li>
+            </ul>
+        </div>
+      </div>
 </div>
-<div id="left_nav">
+<div class="container">
+  <div class="row">
+<div class="span4">
 {% if user %}
 Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>, <a href="/pycwb/stunden">stunden</a>)
 {% else %}
@@ -121,5 +121,18 @@ Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>, <a href="/pycwb/st
 <a href="/pycwb/tasks">All Tasks</a>
 </div>
 {% endif %}
+</div>
+
+<div class="span8">
+  <div class="well">
+<form method="POST" action="/pycwb/find_sent" class="form-search">
+<input name="sent_no" placeholder="Satznummer finden"><button type="submit" class="btn">Finden</button>
+</form>
+<form method="POST" action="/pycwb/find_word" class="form-search">
+<input id="input-word" placeholder="Wort finden" name="w"><button type="submit" class="btn">Finden</button>
+</form>
+</div>
+</div>
+</div>
 </div>
 </body>
