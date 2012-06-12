@@ -109,6 +109,15 @@ def is_ready(anno):
 def annotate(request,taskname):
     db=request.corpus
     task=db.get_task(taskname)
+    if task.level == 'konn2':
+        return annotate2(request,taskname)
+    else:
+        return annotate1(request,taskname)
+    
+
+def annotate1(request,taskname):
+    db=request.corpus
+    task=db.get_task(taskname)
     schema=schemas[task.level]
     if task is None:
         raise NotFound("no such task")

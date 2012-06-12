@@ -2,8 +2,13 @@
 <head>
 <title>{{user}} / Stunden</title>
 <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+<style>
+body {
+ padding-top:45px;
+}
+</style>
 <link href="/static/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
-<script src="/static/jq/jquery-1.4.2.min.js"></script>
+<script src="/static/jq/jquery-1.7.1.min.js"></script>
 <script src="/static/jq/jquery.ui.core.min.js"></script>
 <script src="/static/jq/jquery.ui.widget.min.js"></script>
 <script src="/static/jq/jquery.ui.button.min.js"></script>
@@ -35,48 +40,52 @@ $('#datepicker').val('{{today_date}}');
       </div>
 </div>
 <div class="container">
-<section>
 <div class="page-header">
 <h1>Stunden ({{user}})</h1>
 </div>
-<div class="row">
-<div class="span4">
-  Bisher eingetragene Stunden:
-  </div>
-<div class="span8">
-{{main_body}}
-  </div>
-  </div>
+<section>
 
+<div class="row">
+<div class="span8 offset4">
+<h3> Bisher eingetragene Stunden:</h3>
+<p>
+{{main_body}}
+</p>
+</div>
+</div>
+</section>
+<section>
   <div class="row">
-    <div class="span4">Neue Stunden eintragen</div>
-<div class="span8">
-<form id="stundenform" method="post" action="/pycwb/stunden" class="well form-horizontal">
-<fieldset>
-<div class="control-group">
-    <label class="control-label" for="datepicker">Wann?</label>
-    <div class="controls">
-      <input type="text" class="input-small" name="when" id="datepicker" value="{{today_date}}">
-    </div>
+<div class="span8 offset4">
+    <h3>Neue Stunden eintragen</h3>
+<p>
+<form id="stundenform" method="post" action="/pycwb/stunden" class="form-horizontal">
+  <fieldset>
+    <div class="control-group">
+      <label class="control-label" for="datepicker">Wann?</label>
+      <div class="controls">
+	<input type="text" class="input-small" name="when" id="datepicker" value="{{today_date}}">
+      </div>
     </div>
     <div class="control-group">
       <label class="control-label" for="inp-what">Was?</label>
-    <div class="controls">
-      <input type="text" class="input-xlarge" id="inp-what" name="what" value="Annotation">
-    </div>
+      <div class="controls">
+	<input type="text" class="input-xlarge" id="inp-what" name="what" value="Annotation">
+      </div>
     </div>
     <div class="control-group">
       <label class="control-label" for="hours">Anz. Stunden:</label>
-    <div class="controls">
-      <input type="text" name="hours" class="input-mini" value="1">
-    </div>
+      <div class="controls">
+	<input type="text" name="hours" class="input-mini" value="1">
+      </div>
     </div>
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">Eintragen</button>
     </div>
-    </fieldset>
+  </fieldset>
 </form>
+</p>
+</div>
 </div>
 </section>
-</div>
 </body>

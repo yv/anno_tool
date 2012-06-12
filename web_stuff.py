@@ -16,6 +16,7 @@ based on:
 """
 import os.path
 import re
+import sys
 import datetime
 from cStringIO import StringIO
 from werkzeug import Request, Response, cached_property, redirect, escape
@@ -244,21 +245,6 @@ def stunden(request):
                              today_date=now.strftime('%F'))
     return response
 
-def senseEditor(request):
-    db=request.corpus
-    return render_template('senses.html',
-                           corpus=db.corpus_name)
-
-def writeToDB():
-    db_senses=get_database().senses
-    for doc in senseInfo:
-        db_senses.save(doc)
-
-def sensesJson(request):
-    db_senses=get_database().senses
-    info=list(db_senses.find({}))
-    return Response(json.dumps(info),mimetype="text/javascript")
- 
 
 def tasks(request):
     db=request.corpus

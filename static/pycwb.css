@@ -19,6 +19,10 @@
 .difference { font-size: 11pt; }
 .file_id { font-weight: bold; font-size: 14pt;
 	   margin-top: 20pt; }
+
+tr.active td { 
+   background: #ddeeff;
+}
 .konn2 {
     width: 320px;
     font-size: 12pt;

@@ -1,7 +1,8 @@
 <html>
 <head>
 <title>Annotation database</title>
-<script src="/static/jq/jquery-1.4.2.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/static/jq/jquery-1.7.1.min.js"></script>
 <script src="/static/jq/jquery.cookie.js"></script>
 <script src="/static/jq/jquery.ui.core.min.js"></script>
 <script src="/static/jq/jquery.ui.widget.min.js"></script>
@@ -10,10 +11,15 @@
 <script src="/static/jq/jquery.ui.autocomplete.min.js"></script>
 <script src="/static/jq/ui.selectmenu.js"></script>
 <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+<style>
+body {
+ padding-top:60px;
+}
+</style>
 <link href="/static/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
 <link rel="stylesheet" href="/static/pycwb.css" type="text/css">
 <link rel="stylesheet" href="/static/themes/base/jquery.ui.all.css" type="text/css">
-<link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css">
+<link rel="stylesheet" href="/static/themes/bootstrap/jquery-ui-1.8.6.custom.css" type="text/css">
 <link rel="stylesheet" href="/static/ui.selectmenu.css" type="text/css">
 <script>
 all_corpora=[];
@@ -57,22 +63,22 @@ $("#corpus_chooser > option [val="+get_corpus()+"]").attr('selected','selected')
 </script>
 </head>
 <body onload="set_corpus();">
-<div class="navbar navbar-fixed-top">
-     <div class="navbar-inner">
-        <div class="container">
-          <a class="brand" href="/pycwb">PyCWB</a>
+  <div class="navbar navbar-fixed-top">
+    <div class="navbar-inner">
+      <div class="container">
+	<a class="brand" href="/pycwb">PyCWB</a>
 	  <ul class="nav">
 	    <li class="active"><a href="/pycwb">Home</a></li>
 	    <li><a href="/pycwb/tasks">All Tasks</a></li>
 	    <li><a href="/pycwb/discourse_list">Discourse</a></li>
 	    <li><a href="/pycwb/senses">Sense editor</a></li>
 	    <li><a href="/pycwb/stunden">Stundentool</a></li>
-            </ul>
-        </div>
+	  </ul>
       </div>
-</div>
-<div class="container">
-  <div class="row">
+    </div>
+  </div>
+  <div class="container">
+    <div class="row">
 <div class="span4">
 {% if user %}
 Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>, <a href="/pycwb/stunden">stunden</a>)
@@ -97,28 +103,17 @@ Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>, <a href="/pycwb/st
 <div>
 <b>Annotate:</b><br>
 {% for task in tasks %}
-{% if task.level == 'konn2' %}
-<a href="/pycwb/annotate2/{{task._id}}">{{task._id}}</a><br>
-{% else %}
-<a href="/pycwb/annotate/{{task._id}}">{{task._id}}</a><br>
-{% endif %}
+<a class="label label-info" href="/pycwb/annotate/{{task._id}}">{{task._id}}</a>
 {% endfor %}
 {% if tasks_ready %}
-<i>(fertig)</i>
+<br/><i>(fertig)</i>
 {% for task in tasks_ready %}
-{% if task.level == 'konn2' %}
-<a href="/pycwb/annotate2/{{task._id}}">{{task._id}}</a>
-{% else %}
-<a href="/pycwb/annotate/{{task._id}}">{{task._id}}</a>
-{% endif %}
+<a class="label" href="/pycwb/annotate/{{task._id}}">{{task._id}}</a>
 {% endfor %}
 {% endif %}
 </div>
 <div style="margin-top: 3px">
-<a href="/pycwb/discourse_list">Discourse Structure annotation</a>
 <a href="/pycwb/discourse_rels">Relation counts</a>
-<br>
-<a href="/pycwb/tasks">All Tasks</a>
 </div>
 {% endif %}
 </div>

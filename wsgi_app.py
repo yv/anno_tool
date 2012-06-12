@@ -11,6 +11,7 @@ if 'PYNLP' not in os.environ:
 import annodb.anno_query as anno_query
 import test_web
 import web_stuff
+import sense_edit
 import get_collocates
 
 urls=[('/login',web_stuff.login_form),
@@ -47,8 +48,10 @@ urls=[('/login',web_stuff.login_form),
       ('/get_similar',get_collocates.get_similar),
       ('/get_neighbour_graph',get_collocates.get_neighbour_graph),
       ('/stunden',web_stuff.stunden),
-      ('/senses',web_stuff.senseEditor),
-      ('/sensesJson',web_stuff.sensesJson),
+      ('/senses',sense_edit.senseEditor),
+      ('/sensesJson',sense_edit.sensesJson),
+      ('/sensesJson/([a-zA-Z0-9_]+)',sense_edit.sensesJsonSingle),
+      ('/wsd_tasks/([a-zA-Z0-9_]+)',sense_edit.sense_tasks)
       ]
 
 mymap=web_stuff.MyMap(urls)
