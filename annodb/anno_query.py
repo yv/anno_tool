@@ -111,6 +111,8 @@ def annotate(request,taskname):
     task=db.get_task(taskname)
     if task.level == 'konn2':
         return annotate2(request,taskname)
+    elif task.level == 'wsd':
+        return annotate_wsd(request, taskname)
     else:
         return annotate1(request,taskname)
     
@@ -180,6 +182,25 @@ def annotate2(request,taskname):
                            corpus_name=db.corpus_name,
                            jscode=jscode.getvalue())
 
+def annotate_wsd(request,taskname):
+    db=request.corpus
+    task=db.get_task(taskname)
+    if task is None:
+        raise NotFound("no such task")
+    user=request.user
+    if user is None:
+        return redirect('/pycwb/login')
+    annotations=task.retrieve_annotations(user)
+    scheme=schemas[task.level]
+    jscode=StringIO()
+    out=None
+    jscode.write('examples=[]\n;')
+    for anno in annotations:
+        scheme.make_widgets(anno,db,out,jscode)
+    return render_template('annodummy_wsd.html',
+                           task=taskname,
+                           corpus_name=db.corpus_name,
+                           jscode=jscode.getvalue())
 
 def adjudicate(request,taskname):
     db=request.corpus
@@ -347,7 +368,7 @@ def save_attributes(request):
         raise Forbidden
     if request.method=='POST':
         stuff=json.load(request.stream)
-        #print >>sys.stderr, stuff
+        print >>sys.stderr, stuff
         try:
             for k,v in stuff.iteritems():
                 anno_key,attr=k.split('-',1)

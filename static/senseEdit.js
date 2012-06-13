@@ -32,6 +32,7 @@ senseTemplate = _.template("<tr id=\"sense-tr-<%=lexunit_id%>\"><td><%= lexunit_
 senseTemplateNew = _.template("<tr id=\"sense-tr-<%=lexunit_id%>\"><td><%= lexunit_id %></td><td class='descr' id=\"sense-descr-<%=lexunit_id%>\"><input orderid='<%= order_id %>' class='input-large sense-descr' value='<%= description %>'></td><td class='edit_hover_class'><a class='icon-trash link-remove' orderid='<%= order_id %>'></a></td></tr>");
 var SenseListView = Backbone.View.extend({
 	initialize: function() {
+	    var that=this;
 	    this.action_template=_.template($('#action-template').html());
 	    this.render();
 	},
@@ -40,7 +41,7 @@ var SenseListView = Backbone.View.extend({
 	    var senses=this.model.get('senses');
 	    var need_save=this.model.get('need_save');
 	    parts=[];
-	    for (i=0;i<senses.length;i++) {
+	    for (var i=0;i<senses.length;i++) {
 		var x=senses[i];
 		var ctx={'order_id':i,'lexunit_id':x[0],'description':x[1]};
 		if (need_save) {
@@ -55,14 +56,25 @@ var SenseListView = Backbone.View.extend({
 		    var order_id=parseInt($(this).attr('orderid'));
 		    var senses=that.model.get('senses');
 		    senses.splice(order_id,1);
-		    //that.model.set('senses',senses);
-		    that.model.save({senses:senses},{success:function(){that.render()}})});
+		    if (need_save) {
+			that.model.set('senses',senses);
+			that.render();
+		    } else {
+			that.model.save({senses:senses},{success:function(){that.render()}});
+		    }
+		});
 	    $('#add_btn').bind('click', function(e) {
 		    var lu_id=parseInt($('#add_lu').val());
 		    var text=$('#add_descr').val();
 		    var senses=that.model.get('senses');
 		    senses.push([lu_id,text]);
-		    that.model.save({'senses':senses},{success:function(){that.render()}})});
+		    if (need_save) {
+			that.model.set('senses',senses);
+			that.render();
+		    } else {
+			that.model.save({senses:senses},{success:function(){that.render()}});
+		    }
+		});
 	    if (need_save) {
 		$('.sense-descr').keyup(function(ev) {
 			var elm=$(ev.target);
@@ -81,15 +93,24 @@ var SenseListView = Backbone.View.extend({
 	    }
 	    $('#sense-title').text('Senses for '+this.model.get('lemma'));
 	    if (that.model.has('need_save')) {
-		$('#sense-title').append(' <button class="btn btn-primary" id="save-btn">Save this entry</button>');
-		$('#save-btn').bind('click',function(){that.model.save()});
+		$('#sense-title').append(' <button class="btn btn-primary" id="save-btn">Save</button>');
+		$('#save-btn').bind('click',function(){
+			that.model.unset('need_save');
+			that.model.save({},{success:function(){that.render()}});
+		    });
+	    } else {
+		$('#sense-title').append(' <button class="btn btn-mini" id="edit-btn">edit</button>');
+		$('#edit-btn').bind('click',function(){
+			that.model.set('need_save',true);
+			that.render();
+		    });
 	    }
 	},
 	render_action: function(data) {
 	    var that=this;
 	    $('#lemma-actions').html(this.action_template(data));
 	    var inp=$('#input-action');
-	    inp.tokenInput("/pycwb/get_users", {prePopulate:[{id:'wsduser',name:'wsduser'}], 
+	    inp.tokenInput("/pycwb/get_users", {prePopulate:[{id:'wsduser',name:'wsduser'}],
 			hintText: "Annotatoren?!", classes:tokeninput_cls});
 	    $('#btn-add-remaining').bind('click', function(ev) { $.ajax({url:'/pycwb/wsd_tasks/'+that.model.id,
 				dataType:'json', type:'POST', contentType:'json',
@@ -105,10 +126,11 @@ var activeLemma=null;
 var LemmaView = Backbone.View.extend({
 	tagName:'tr',
 	initialize: function() {
-	    this.model.bind('change',this.rerender,this);
+	    this.model.bind('change',this.render,this);
 	},
 	rerender: function() {
-	    alert("foo");
+	    this.render();
+	  //alert("foo");
 	},
 	render: function() {
 	    this.$el.html(lemmaTemplate(this.model.toJSON()));

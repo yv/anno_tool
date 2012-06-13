@@ -2,6 +2,7 @@ import sys
 import re
 import simplejson as json
 import os.path
+from annodb.database import get_database
 from cStringIO import StringIO
 
 BASEDIR=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -110,7 +111,49 @@ class SimpleSchema:
             return 1
     def get_slots(self):
         return [k for (k,unused_) in self.descr]
-            
+
+class SenseDict(dict):
+    def __init__(self,coll):
+        self.collection=coll
+    def __missing__(self,k):
+        sense_entry=self.collection.find_one({'_id':k})
+        if sense_entry is None:
+            return [[-1,'unknown']]
+        else:
+            senses=sense_entry['senses']
+            self[k]=senses
+            return senses
+
+class WSDSchema:
+    def __init__(self, coll):
+        self.collection=coll
+        self.senses_by_lemma_id={}
+    def make_widgets(self, anno, db, out, out_js):
+        sense_dict=SenseDict(self.collection)
+        s_out=StringIO()
+        db.display_span(anno['span'],1,0,s_out)
+        munged_anno=dict(anno)
+        munged_anno['senses']=sense_dict[munged_anno['lemma_id']]
+        munged_anno['text']=s_out.getvalue().decode('ISO-8859-15')
+        print >>out_js,'examples.push(%s);'%(json.dumps(munged_anno),)
+    def make_display(self,anno,db,out,out_js):
+        make_display_simple(self.get_slots(),anno,db,out)
+    def get_state(self,anno):
+        has_comment=(anno.get('comment',None) is not None)
+        empty=False
+        if anno.get('sense',None) is None:
+            empty=True
+        if empty and not has_comment:
+            return 0
+        else:
+            if has_comment:
+                return 2
+            else:
+                return 3
+    def get_slots(self):
+        return ['sense']
+schemas['wsd']=WSDSchema(get_database().senses)
+
 
 konn_scheme=[('temporal',['temporal','non_temporal']),
              ('causal',['causal','enable','non_causal']),
