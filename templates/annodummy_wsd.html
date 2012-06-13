@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>[{{corpus_name}}] Annotation database</title>
+<link href="/static/pycwb.css" rel="stylesheet">
+<link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+<style>
+body {
+ padding-top:45px;
+}
+
+tr .edit_hover_class a {visibility:hidden}
+tr:hover .edit_hover_class a {visibility:visible}
+</style>
+<link href="/static/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
+<link rel="stylesheet" href="/static/token-input.css" type="text/css" /> 
+<link rel="stylesheet" href="/static/token-input-facebook.css" type="text/css" /> 
+<link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css" />
+<script src="/static/jq/jquery-1.7.1.min.js"></script>
+<script src="/static/jq/jquery.ui.core.min.js"></script>
+<script src="/static/jq/jquery.ui.widget.min.js"></script>
+<script src="/static/jq/jquery.ui.mouse.min.js"></script>
+<script src="/static/jq/jquery.ui.button.min.js"></script>
+<script src="/static/jq/jquery.ui.draggable.min.js"></script>
+<script src="/static/jq/jquery.ui.position.min.js"></script>
+<script src="/static/jq/jquery.ui.resizable.min.js"></script>
+<script src="/static/jq/jquery.ui.dialog.min.js"></script>
+<script src="/static/json2.js"></script>
+<script src="/static/underscore.js"></script>
+<script src="/static/backbone.js"></script>
+<script src="/static/qct_jquery.js"></script>
+<script src="/static/wsd_anno.js"></script>
+<script language="javascript">
+<!--
+{{jscode}}
+corpus_name="{{corpus_name}}";
+//-->
+</script>
+<script type="text/template" id="wsd-widget">
+<div class="srctext" id="src-<%= _id %>">
+<%= text %>
+</div>
+<div>
+<table>
+<tr><td><b>sense:</b></td><td>
+<% for (var i=0;i<senses.length;i++) {
+  var sns=senses[i];
+%>[<a id="<%=_id%>_<%=sns[0]%>" class="<%= (obj.sense && obj.sense[sns[0]]) ?'chosen':'choose' %>" onclick="toggle_sense('<%=_id%>','<%=sns[0]%>');"><%=sns[0]%>_<%=sns[1]%></a>]<%
+}
+%>
+</td></tr>
+<tr><td><b>comment:</b></td><td>
+<textarea cols="60" rows="5" id="<%=_id%>-comment" onkeyup="after_blur('<%=_id%>-comment');"><%=obj.comment?obj.comment:''%>
+</textarea>
+</td></tr>
+</table>
+</div>
+</script>
+</head>
+<body onload="create_widgets();">
+<div class="container">
+<h1>{{task}} ({{corpus_name}})</h1>
+<div id="panel">
+</div>
+<div><a href="/pycwb/mark_ready/{{task}}?force_corpus={{corpus_name}}">als fertig markieren</a></div>
+</div>
+<div id="status">
+Loading...
+</div>
+
+</body>
+</html>

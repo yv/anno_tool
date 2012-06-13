@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<link href="/static/pycwb.css" rel="stylesheet">
+<link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+<style>
+body {
+ padding-top:45px;
+}
+
+tr .edit_hover_class a {visibility:hidden}
+tr:hover .edit_hover_class a {visibility:visible}
+</style>
+<link href="/static/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
+<link rel="stylesheet" href="/static/token-input.css" type="text/css" /> 
+<link rel="stylesheet" href="/static/token-input-facebook.css" type="text/css" /> 
+<link rel="stylesheet" href="/static/themes/redmond/jquery-ui-1.8.2.custom.css" type="text/css" />
+<script src="/static/jq/jquery-1.7.1.min.js"></script>
+<script src="/static/jq/jquery.ui.core.min.js"></script>
+<script src="/static/jq/jquery.ui.widget.min.js"></script>
+<script src="/static/jq/jquery.ui.mouse.min.js"></script>
+<script src="/static/jq/jquery.ui.button.min.js"></script>
+<script src="/static/jq/jquery.ui.draggable.min.js"></script>
+<script src="/static/jq/jquery.ui.position.min.js"></script>
+<script src="/static/jq/jquery.ui.resizable.min.js"></script>
+<script src="/static/jq/jquery.ui.dialog.min.js"></script>
+<script src="/static/jq/jquery.tokeninput.js"></script>
+<script src="/static/json2.js"></script>
+<script src="/static/underscore.js"></script>
+<script src="/static/backbone.js"></script>
+<script src="/static/senseEdit.js"></script>
+<script type="text/javascript">
+var corpus_name="{{corpus_name}}";
+
+$(function() {
+var ll_view= new LemmaListView();
+});
+</script>
+<script type="text/template" id="action-template">
+<div class="hero-unit">
+<h3>Annotation tasks for {{corpus_name}}</h3>
+<p>
+<input type="text" id="input-action" value="wsduser">
+</p>
+<% if (num_existing) { %>
+<p>
+<button class="btn btn-primary" id="btn-add-existing">Add to <%= num_existing %> existing tasks</button>
+</p>
+<% } %>
+<% if (num_remaining) { %>
+<p>
+<button class="btn btn-primary" id="btn-add-remaining">Create <%= num_remaining %> remaining tasks</button>
+</p>
+<% } %>
+<% if (num_existing == 0 && num_remaining == 0) { %>
+<div class="alert alert-error">
+This lemma could not be found in the corpus
+</div>
+<% } %>
+</script>
+</head>
+<body>
+<div class="navbar navbar-fixed-top">
+     <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="/pycwb">PyCWB</a>
+	  <ul class="nav">
+	    <li><a href="/pycwb">Home</a></li>
+	    <li><a href="/pycwb/tasks">All Tasks</a></li>
+	    <li><a href="/pycwb/discourse_list">Discourse</a></li>
+	    <li class="active"><a href="/pycwb/senses">Sense editor</a></li>
+	    <li><a href="/pycwb/stunden">Stundentool</a></li>
+            </ul>
+        </div>
+      </div>
+</div>
+<div class="container">
+<section id="senseEdit">
+<div class="page-header">
+<h1>Sense Editor</h1>
+</div>
+<div class="row">
+<div class="span4">
+<div class="well">
+<input class="input-medium" id="lemma_filter" placeholder="Filter or new Lemma...">
+<button class="btn" id="lemma_create_btn">Create new</button>
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th style="width:250px;"">Lemma</th>
+<th>POS</th>
+<th>#senses</th>
+</tr>
+</thead>
+<tbody id="lemmalist">
+</tbody>
+</table>
+</div>
+<div class="span8">
+<div id="sense-view">
+<h3 id="sense-title">Click in lemma list to edit senses...</h3>
+<table class="table table-striped">
+<thead>
+<tr>
+<th>LexUnit-ID</th>
+<th>Beschreibung</th>
+<th></th>
+</tr>
+</thead>
+<tbody id="sense-table">
+</tbody>
+</table>
+</div>
+<div id="lemma-actions">
+</div>
+</div>
+</div>
+</section>
+</div>
+</body>
+</html>
