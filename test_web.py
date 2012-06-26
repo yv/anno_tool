@@ -130,6 +130,7 @@ def render_sentence(request,sent_no):
         tokens.append(words[i].decode('ISO-8859-1'))
     t_id=texts.cpos2struc(end-1)
     coref=db.db.referential.find_one({'_id':t_id})
+    discourse=db.db.discourse.find_one({'_id':'%s~*gold*'%(t_id,)})
     t_id_d=texts_d.cpos2struc(end-1)
     unused_start,unused_end,t_attrs=texts[t_id]
     if db.corpus_name in corpus_urls:
@@ -189,13 +190,15 @@ def render_sentence(request,sent_no):
     else:
         parses_html=''
     response=render_template('sentence.tmpl',
-                           sent_id=sno+1,
-                           sent_text=' '.join(tokens),
-                           parses_html=parses_html,
-                           text_id=t_attrs, text_url=text_url,
-                           prev_sent='/pycwb/sentence/%d'%(sno,),
-                           next_sent='/pycwb/sentence/%d'%(sno+2,),
-                           disc_id=t_id_d)
+                             sent_id=sno+1,
+                             sent_text=' '.join(tokens),
+                             parses_html=parses_html,
+                             text_id=t_attrs, text_url=text_url,
+                             prev_sent='/pycwb/sentence/%d'%(sno,),
+                             next_sent='/pycwb/sentence/%d'%(sno+2,),
+                             disc_id=t_id_d,
+                             corpus_name=request.corpus.corpus_name,
+                             has_gold=(discourse is not None))
     request.set_corpus_cookie(response)
     return response
 
