@@ -13,7 +13,7 @@ $('#parses-tabs').tabs({collapsible:true,selected:-1});
 </div>
 <div class="link_box">
 [<a href="{{prev_sent}}">&lt;prev</a>]
-<a href="{{text_url}}">{{text_id}}</a> <a href="/pycwb/discourse/{{disc_id}}&force_corpus={{corpus_name}}">(D)</a>
+<a href="{{text_url}}">{{text_id}}</a> <a href="/pycwb/discourse/{{disc_id}}?force_corpus={{corpus_name}}">(D)</a>
 {%if has_gold %}<a href="/pycwb/printDiscourse/{{disc_id}}?who=*gold*&force_corpus={{corpus_name}}">(G)</a>{%endif%}
 [<a href="{{next_sent}}">next&gt;</a>]
 </div>
