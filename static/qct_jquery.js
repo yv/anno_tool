@@ -38,7 +38,7 @@ function after_timeout() {
 }
 
 function after_blur(field_id) {
-  dirty[field_id]=$('#'+field_id).value;
+  dirty[field_id]=$('#'+field_id).val();
   set_status("(changed)");
   resetTimeout();
 }
