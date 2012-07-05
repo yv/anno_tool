@@ -133,6 +133,11 @@ class WSDSchema:
         s_out=StringIO()
         db.display_span(anno['span'],1,0,s_out)
         munged_anno=dict(anno)
+        try:
+            lemma_id=munged_anno['lemma_id']
+        except KeyError:
+            print >>sys.stderr, munged_anno
+            lemma_id=munged_anno['lemma']
         munged_anno['senses']=sense_dict[munged_anno['lemma_id']]
         munged_anno['text']=s_out.getvalue().decode('ISO-8859-15')
         print >>out_js,'examples.push(%s);'%(json.dumps(munged_anno),)

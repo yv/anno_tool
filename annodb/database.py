@@ -134,6 +134,8 @@ class Task(object):
             a=self._db.get_annotation(annotator,
                                 self.level,
                                 span)
+            if self.level=='wsd' and not hasattr(a,'lemma_id'):
+                a.lemma_id=self.lemma_id
             result.append(a)
         return result
     def set_status(self,annotator,status):
