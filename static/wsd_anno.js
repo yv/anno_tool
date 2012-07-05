@@ -1,5 +1,5 @@
 function toggle_sense(item,what) {
-    var sense=example_hash[item];
+    var sense=example_hash[item].sense;
     if (sense[what]) {
 	sense[what]=0;
 	$('#'+item+"_"+what).addClass('choose').removeClass('chosen');
@@ -35,7 +35,17 @@ function create_widgets(hide_done) {
 	  !has_entry(ex.sense) || ex.comment) {
 	  parts.push(tmpl_example(ex));
       }
-      example_hash[ex._id]=ex.sense?ex.sense:{};
+      if (!ex.sense) ex.sense={};
+      example_hash[ex._id]=ex;
   }
   $('#panel').html(parts.join(''));
+}
+
+function changed_comment(item) {
+    var field_id=item+'-comment';
+    var field_val=$('#'+field_id).val();
+    example_hash[item].comment=field_val;
+    dirty[field_id]=field_val;
+    set_status("(changed)");
+    resetTimeout();
 }

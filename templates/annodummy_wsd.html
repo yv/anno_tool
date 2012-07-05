@@ -50,7 +50,7 @@ corpus_name="{{corpus_name}}";
 %>
 </td></tr>
 <tr><td><b>comment:</b></td><td>
-<textarea cols="60" rows="5" id="<%=_id%>-comment" onkeyup="after_blur('<%=_id%>-comment');"><%=obj.comment?obj.comment:''%>
+<textarea cols="60" rows="5" id="<%=_id%>-comment" onkeyup="changed_comment('<%=_id%>');"><%=obj.comment?obj.comment:''%>
 </textarea>
 </td></tr>
 </table>
