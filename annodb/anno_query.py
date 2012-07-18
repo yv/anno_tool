@@ -258,6 +258,36 @@ def adjudicate(request,taskname):
                            corpus_name=db.corpus_name,
                            output=out.getvalue().decode('ISO-8859-15'))
 
+def download_anno(request,taskname):
+    db=request.corpus
+    task=db.get_task(taskname)
+    schema=schemas[task.level]
+    if task is None:
+        raise NotFound("no such task")
+    user=request.user
+    if user is None:
+        return redirect('/pycwb/login')
+    out_js=StringIO()
+    ms=annotation_join(db,task)
+    names=task.annotators
+    if not names:
+        return Response('Liste der Annotatoren ist leer.')
+    level=task.level
+    json_parts=[]
+    for part in ms:
+        part_repr={}
+        span=part[0].span
+        part_repr['_span']=span
+        part_repr['_sent_no']=db.sentences.cpos2struc(span[0])+1
+        out=StringIO()
+        db.display_span(span,1,0,out)
+        part_repr['_html']=out.getvalue().decode('ISO-8859-15')
+        part_repr['_annotators']=names
+        for anno,name in zip(part,names):
+            part_repr[name]=dict(((k,anno[k]) for k in anno))
+        json_parts.append(part_repr)
+    return Response(json.dumps(json_parts),mimetype='text/javascript')
+
 hier_map={}
 def make_schema(entries,prefix):
     for x in entries:

@@ -156,7 +156,8 @@ class WSDSchema:
             else:
                 return 3
     def get_slots(self):
-        return ['sense']
+        return []
+
 schemas['wsd']=WSDSchema(get_database().senses)
 
 

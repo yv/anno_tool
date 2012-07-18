@@ -585,12 +585,15 @@ def make_simple_tree(main_cl, sub_cl):
         if n2.cat in ['VF','MF','NF']:
             for n3 in n2.children:
                 if n3 is sub_cl:
-                    ni2=InfoNode('SUB_CL',['fd:'+n2.cat,'cat:'+n3.cat])
+                    ni2=InfoNode('SUB_CL',['fd:'+n2.cat])
                     ni1.add_edge(ni2)
                     continue
                 feats=['fd:'+n2.cat]
                 if hasattr(n3,'head'):
-                    feats.append(n3.head.lemma)
+                    feats.append('lm:'+n3.head.lemma)
+                    if n3.cat=='PX':
+                        if len(n3.children)>1 and n3.children[1].cat=='NX':
+                            feats.append('arg:'+n3.children[1].head.lemma)
                 ni2=InfoNode(n3.cat,feats)
                 ni1.add_edge(ni2)
     return ni1

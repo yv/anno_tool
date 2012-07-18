@@ -88,6 +88,7 @@ parts.push('[<a class="action" href="/pycwb/annotate2/'+task_id+'?force_corpus={
 } else {
 parts.push('[<a class="action" href="/pycwb/annotate/'+task_id+'?force_corpus={{corpus}}">Annotate</a>]');
 }
+parts.push('[<a class="action" href="/pycwb/download_anno/'+task_id+'?force_corpus={{corpus}}">Download</a>]');
 parts.push('</td></tr>');
 return parts.join('');
 }
