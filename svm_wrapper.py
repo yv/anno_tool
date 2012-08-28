@@ -2,11 +2,17 @@ import os.path
 import tempfile
 import numpy
 import sys
+from mltk import Factory
 from itertools import izip
 from xvalidate_common import shrink_to
 
-svm_dir='/home/yannickv/sources/svm_perf/'
-svmlearn=svm_dir+'svm_perf_learn'
+
+
+default_flags=['-w','3','-c','0.01','-l','1']
+def set_flags(new_flags):
+    global default_flags
+    default_flags=new_flags
+
 
 def read_weights(fname,fc=None):
     f=file(fname)
@@ -49,13 +55,17 @@ def read_weights(fname,fc=None):
         x[int(k_s)-1]=float(val_s)
     return b,x
 
-default_flags=['-w','3','-c','0.01','-l','1']
-def set_flags(new_flags):
-    global default_flags
-    default_flags=new_flags
+class LinearClassifier:
+    def __init__(self, w, bias=0.0):
+        self.w=w
+        self.bias=bias
+    def classify(self, vec):
+        return vec.dotFull(self.w)-self.bias
 
-class SVMLearner:
-    def __init__(self,basedir=None,prefix=None):
+
+class SVMPerfLearner(Factory):
+    def __init__(self,basedir=None,prefix=None,**kwargs):
+        Factory.__init__(self, **kwargs)
         if basedir is None:
             self.basedir=tempfile.mkdtemp(prefix='svm')
             self.want_cleanup=2
@@ -66,25 +76,82 @@ class SVMLearner:
             self.prefix=prefix
         else:
             self.prefix=''
-        self.flags=default_flags
-    def open_events(self):
-        fname=os.path.join(self.basedir,self.prefix+'train.data')
-        f=file(fname,'w')
-        return f
     def train(self):
-        args=([svmlearn]+self.flags+
-              [os.path.join(self.basedir,self.prefix+'train.data'),
-               os.path.join(self.basedir,self.prefix+'train.model')])
-        retval=os.spawnv(os.P_WAIT,svmlearn,args)
+        args=([self.svmlearn]+self.flags+
+              [self.fname_by_pat('datafile'),
+               self.fname_by_pat('classifier')])
+        retval=os.spawnv(os.P_WAIT,self.svmlearn,args)
         assert retval==0, (args,retval)
-    def read_weights(self,fc=None):
-        return read_weights(os.path.join(self.basedir,self.prefix+'train.model'),fc)
+    def write_data(self):
+        f=self.open_by_pat('datafile','w')
+        for (lbl,d) in self.data:
+            if lbl:
+                lab='+1'
+            else:
+                lab='-1'
+            f.write(lab)
+            d.write_pairs(f)
+            f.write('\n')
+        f.close()
+    def load_classifier(self):
+        if hasattr(self,'data'):
+            self.write_data()
+            self.train()
+        else:
+            # read auxiliary stuff for fc?
+            pass
+        bias,w=read_weights(self.fname_by_pat('classifier'))
+        return LinearClassifier(w,bias)
+
+svm_dir='/home/yannickv/sources/svm_perf/'
+svmlearn=svm_dir+'svm_perf_learn'
+svmperf=SVMPerfLearner(flags=['-w','3','-c','0.01','-l','1'],
+                       svmlearn=svmlearn,
+                       datafile_pattern='train.data',
+                       classifier_pattern='model.data')
+
+def train_greedy(vectors, labels, prototype, d=1):
+    labelset=set()
+    labels0=[[shrink_to(lbl,d) for lbl in lab] for lab in labels]
+    for labs in labels0:
+        for lab in labs:
+            labelset.add(lab)
+    all_labels=sorted(labelset)
+    if len(all_labels)==1:
+        return ([(all_labels[0],None)],None)
+    assert d<10
+    vecs=[]
+    cont={}
+    for label in all_labels:
+        print label,d
+        sub_cl_vec=[]
+        sub_cl_lab=[]
+        data_train=[]
+        n_pos=0
+        n_neg=0
+        for vec,lab0,lab in izip(vectors,labels0,labels):
+            if label in lab0:
+                n_pos+=1 
+                data_train.append((True,vec))
+                sub_cl_vec.append(vec)
+                sub_cl_lab.append([lb for lb in lab if lb.startswith(label)])
+            else:
+                n_neg+=1
+                data_train.append((False,vec))
+        if n_neg==0:
+            print >>sys.stderr, "No negative examples for %s. Are we done?"%(label,)
+            return ([(label,None)],None)
+        learner=prototype.bind(label=label,depth=d,data=data_train)
+        w_classify=learner.get('classifier')
+        vecs.append((label,w_classify))
+        cont[label]=train_greedy(sub_cl_vec,sub_cl_lab,prototype,d+1)
+    return (vecs,cont)
 
 def classify_greedy_mlab(stuff,vec_cl, num_labels=2):
     vecs,cont=stuff
     result=[]
-    for label,bias,vec in vecs:
-        score=vec_cl.dotFull(vec)-bias
+    for label,vec in vecs:
+        score=vec.classify(vec_cl)
         result.append((score,label))
     result.sort(reverse=True)
     rels=[]
@@ -97,74 +164,14 @@ def classify_greedy_mlab(stuff,vec_cl, num_labels=2):
         rels.append(rel)
     return rels
 
-def classify_greedy(stuff,vec_cl):
+def classify_greedy(stuff,vec_cl, num_labels=2):
     vecs,cont=stuff
     if len(vecs)==1:
         return vecs[0][0]
     result=[]
-    for label,bias,vec in vecs:
-        score=vec_cl.dotFull(vec)-bias
+    for label,vec in vecs:
+        score=vec.classify(vec_cl)
         result.append((score,label))
     result.sort(reverse=True)
     return classify_greedy(cont[result[0][1]],vec_cl)
 
-def train_greedy(vectors, labels, basedir=None, fc=None, d=1):
-    labelset=set()
-    labels0=[[shrink_to(lbl,d) for lbl in lab] for lab in labels]
-    for labs in labels0:
-        for lab in labs:
-            labelset.add(lab)
-    all_labels=sorted(labelset)
-    if len(all_labels)==1:
-        return ([(all_labels[0],None,None)],None)
-    print >>sys.stderr, all_labels
-    assert d<10
-    vecs=[]
-    cont={}
-    for label in all_labels:
-        print label,d
-        learner=SVMLearner(basedir=basedir,prefix='%s_d%s_'%(label,d))
-        f=learner.open_events()
-        sub_cl_vec=[]
-        sub_cl_lab=[]
-        n_pos=0
-        n_neg=0
-        for vec,lab0,lab in izip(vectors,labels0,labels):
-            if label in lab0:
-                n_pos+=1
-                f.write('+1')
-                sub_cl_vec.append(vec)
-                sub_cl_lab.append([lb for lb in lab if lb.startswith(label)])
-            else:
-                n_neg+=1
-                f.write('-1')
-            vec.write_pairs(f)
-            f.write('\n')
-        f.close()
-        if n_neg==0:
-            print >>sys.stderr, "No negative examples for %s. Are we done?"%(label,)
-            return ([(label,None,None)],None)
-        learner.train()
-        bias,w_classify=learner.read_weights(fc)
-        vecs.append((label,bias,w_classify))
-        cont[label]=train_greedy(sub_cl_vec,sub_cl_lab,basedir,fc,d+1)
-    return (vecs,cont)
-
-def convert_onevsall(vectors,labels,basedir=None,prefix=''):
-    labelset=set()
-    for labs in labels:
-        for lab in labs:
-            labelset.add(lab)
-    all_labels=sorted(labelset)
-    all_learners=[SVMLearner(basedir=basedir, prefix=prefix+label+'_') for label in all_labels]
-    for label,learner in izip(all_labels,all_learners):
-        f=learner.open_events()
-        for vec,lab in izip(vectors,labels):
-            if label in lab:
-                f.write('+1')
-            else:
-                f.write('-1')
-            vec.write_pairs(f)
-            f.write('\n')
-        f.close()
-    return all_learners

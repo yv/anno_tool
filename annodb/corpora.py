@@ -21,18 +21,11 @@ corpus_sattr={'EUROPARL_EN':'file_name',
               'EUROPARL_DE':'file_name'}
 corpus_d_sattr={'EUROPARL_EN':'SPEAKER_NAME',
                 'EUROPARL_DE':'SPEAKER_NAME'}
-corpus_urls={'TUEBA4':compute_url_tueba,
-             'R6PRE1':compute_url_tueba,
-             'R6FINAL':compute_url_tueba,
-             'R7PRE1':compute_url_tueba,
-             'R7FINAL':compute_url_tueba,
-             'TUEPP':compute_url_tueba,
-             'EUROPARL_EN':compute_url_europarl,
+corpus_urls={'EUROPARL_EN':compute_url_europarl,
              'EUROPARL_DE':compute_url_europarl}
-parse_order={'TUEBA4':parser_ordering_de,
-             'R6PRE1':parser_ordering_de,
-             'R7PRE1':parser_ordering_de,
-             'R6FINAL':parser_ordering_de,
-             'EUROPARL_DE':parser_ordering_de,
+parse_order={'EUROPARL_DE':parser_ordering_de,
              'PTB':parser_ordering_en,
              'EUROPARL_EN':parser_ordering_en}
+for corp_name in ['TUEBA4','R6PRE1','R6FINAL','R7PRE1','R7FINAL','R8PRE1','TUEPP']:
+    corpus_urls[corp_name]=compute_url_tueba
+    parse_order[corp_name]=parser_ordering_de

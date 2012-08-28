@@ -12,7 +12,7 @@ from getopt import getopt
 import optparse
 from dist_sim.fcomb import FCombo, make_multilabel, dump_example
 from alphabet import PythonAlphabet
-from svm_wrapper import SVMLearner, train_greedy, classify_greedy_mlab, set_flags
+from svm_wrapper import svmperf, train_greedy, classify_greedy_mlab, set_flags
 #import me_opt2 as me_opt
 #import sgd_opt as me_opt
 import random
@@ -35,16 +35,14 @@ oparse.set_defaults(reassign_folds=True,max_depth=3)
 
 opts,args=oparse.parse_args(sys.argv[1:])
 
+my_svmperf=svmperf.bind(datafile_pattern='/export2/local/yannick/konn-cls/fold-%(fold)d/%(label)s_d%(depth)d_train.data',
+                        classifier_pattern='/export2/local/yannick/konn-cls/fold-%(fold)d/%(label)s_d%(depth)d_train.model')
 if opts.method=='F':
-    set_flags(['-w','3','-c','0.01','-l','1'])
+    my_svmperf=my_svmperf.bind(flags=['-w','3','-c','0.01','-l','1'])
 elif opts.method=='acc':
-    set_flags(['-c','1'])
+    my_svmperf=my_svmperf.bind(flags=['-c','1'])
 
 all_data,labelset0=load_data(args[0],opts)
-
-(transform_target,gen_examples)=get_example_fn(opts)
-
-label_gen=LabelGenerator(opts,all_data)
 
 if opts.n_processors==1:
     def cleanup():
@@ -87,7 +85,7 @@ for i,data_bin in enumerate(data_bins):
     labels=[x[1] for x in data_bin]
     examples=[x[0] for x in data_bin]
     basedir='/export2/local/yannick/konn-cls/fold-%d'%(i,)
-    cl_greedy=train_greedy(examples,labels,basedir,fc)
+    cl_greedy=train_greedy(examples,labels,my_svmperf.bind(fold=i))
     classifiers.append(cl_greedy)
 
 # for i,data_bin in enumerate(test_bins):
