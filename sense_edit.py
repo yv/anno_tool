@@ -45,16 +45,17 @@ def sensesJson(request):
         if len(info)==0:
             from gwn_db import germanet
             gwn=germanet.get_database('gwn6')
-            synsets=gwn.synsets_for_word(wanted_lemma)
+            lemma_for_gwn=wanted_lemma.replace('#','')
+            synsets=gwn.synsets_for_word(lemma_for_gwn)
             objs=defaultdict(list)
             for synset in synsets:
                 pos_cat=str(synset.word_category)[0].upper()
-                lu_ids=[lu.id for lu in synset.lexunit if lu.orth_form==wanted_lemma or lu.orth_var==wanted_lemma]
+                lu_ids=[lu.id for lu in synset.lexunit if lu.orth_form==lemma_for_gwn or lu.orth_var==lemma_for_gwn]
                 if lu_ids:
                     lu_id=lu_ids[0]
                 else:
                     lu_id='?'
-                other_lus=[lu.orth_form for lu in synset.lexunit if lu.orth_form!=wanted_lemma and lu.orth_var!=wanted_lemma]
+                other_lus=[lu.orth_form for lu in synset.lexunit if lu.orth_form!=lemma_for_gwn and lu.orth_var!=lemma_for_gwn]
                 if other_lus:
                     lu_descr='_'.join(other_lus)
                 else:
@@ -79,6 +80,8 @@ def sensesJsonSingle(request,senseId):
     user=request.user
     if not user:
         raise Forbidden('not an admin')
+    print >>sys.stderr, senseId
+    sendeId=senseId.replace('%23','#')
     if request.method=='PUT':
         if user not in ADMINS:
             raise Forbidden('not an admin')
@@ -134,7 +137,6 @@ def sense_tasks(request,senseId):
     if not user or user not in ADMINS:
         raise Forbidden('not an admin')
     sense=get_database().senses.find_one({'_id':senseId})
-    print >>sys.stderr, sense
     (old_tasks,new_tasks)=query_tasks(request.corpus,sense['lemma'],sense['_id'],sense.get('pos','N'))
     if request.method=='GET':
         # retrieve task statistics

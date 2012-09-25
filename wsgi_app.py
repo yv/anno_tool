@@ -51,8 +51,8 @@ urls=[('/login',web_stuff.login_form),
       ('/stunden',web_stuff.stunden),
       ('/senses',sense_edit.senseEditor),
       ('/sensesJson',sense_edit.sensesJson),
-      ('/sensesJson/([a-zA-Z0-9_]+)',sense_edit.sensesJsonSingle),
-      ('/wsd_tasks/([a-zA-Z0-9_]+)',sense_edit.sense_tasks)
+      ('/sensesJson/([a-zA-Z0-9_#]+)',sense_edit.sensesJsonSingle),
+      ('/wsd_tasks/([a-zA-Z0-9_#]+)',sense_edit.sense_tasks)
       ]
 
 mymap=web_stuff.MyMap(urls)

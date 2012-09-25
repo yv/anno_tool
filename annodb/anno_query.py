@@ -2,6 +2,8 @@ import re
 from itertools import izip
 from pynlp.mmax_tools import *
 import simplejson as json
+import yaml
+
 import os.path
 import sys
 
@@ -261,6 +263,7 @@ def adjudicate(request,taskname):
 def download_anno(request,taskname):
     db=request.corpus
     task=db.get_task(taskname)
+    fmt=request.args.get('fmt','yaml')
     schema=schemas[task.level]
     if task is None:
         raise NotFound("no such task")
@@ -286,7 +289,10 @@ def download_anno(request,taskname):
         for anno,name in zip(part,names):
             part_repr[name]=dict(((k,anno[k]) for k in anno))
         json_parts.append(part_repr)
-    return Response(json.dumps(json_parts),mimetype='text/javascript')
+    if fmt=='yaml':
+        return Response(yaml.safe_dump_all(json_parts, allow_unicode=True),mimetype='text/yaml')
+    else:
+        return Response(json.dumps(json_parts),mimetype='text/javascript')
 
 hier_map={}
 def make_schema(entries,prefix):

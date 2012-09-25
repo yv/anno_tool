@@ -86,7 +86,7 @@ var SenseListView = Backbone.View.extend({
 		$('#lemma-actions').html('Save to enable annotation actions');
 	    } else {
 		var that=this;
-		$.ajax({url:'/pycwb/wsd_tasks/'+that.model.id, dataType:'json',
+		$.ajax({url:'/pycwb/wsd_tasks/'+encodeURIComponent(that.model.id), dataType:'json',
 			    success:function(data) {
 			    that.render_action(data)
 			}});
@@ -112,7 +112,7 @@ var SenseListView = Backbone.View.extend({
 	    var inp=$('#input-action');
 	    inp.tokenInput("/pycwb/get_users", {prePopulate:[{id:'wsduser',name:'wsduser'}],
 			hintText: "Annotatoren?!", classes:tokeninput_cls});
-	    $('#btn-add-remaining').bind('click', function(ev) { $.ajax({url:'/pycwb/wsd_tasks/'+that.model.id,
+	    $('#btn-add-remaining').bind('click', function(ev) { $.ajax({url:'/pycwb/wsd_tasks/'+encodeURIComponent(that.model.id),
 				dataType:'json', type:'POST', contentType:'json',
 				data:JSON.stringify({'method':'remaining','annotators':_.pluck(inp.tokenInput('get'),'name')}),
 				success: function() {alert("tasks created");}})});
@@ -168,7 +168,7 @@ var LemmaListView = Backbone.View.extend({
 	    FilteredLemmas.reset(models_new);
 	},
 	createLemma: function(lem) {
-	    $.ajax({url:'/pycwb/sensesJson?create='+lem,dataType:'json',success:function(data) {
+	    $.ajax({url:'/pycwb/sensesJson?create='+encodeURIComponent(lem),dataType:'json',success:function(data) {
 			_.each(data,function(obj){obj.need_save=true;});
 			Lemmas.add(data);FilteredLemmas.add(data);}});
 	},
