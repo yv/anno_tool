@@ -116,10 +116,11 @@ def query_tasks(corpus_db,wanted_lemma,lemma_id=None,wanted_pos=None):
     new_spans=sorted(set(all_matches)-old_spans)
     current_no=0
     new_tasks=[]
+    new_lemma_id=lemma_id.replace('#','')
     for i in xrange((len(new_spans)+PACKET_SIZE-1)/PACKET_SIZE):
-        while corpus_db.get_task('task_%s_%s'%(lemma_id,current_no)):
+        while corpus_db.get_task('task_%s_%s'%(new_lemma_id,current_no)):
             current_no+=1
-        task=corpus_db.create_task('%s_%s'%(lemma_id,current_no),'wsd')
+        task=corpus_db.create_task('%s_%s'%(new_lemma_id,current_no),'wsd')
         task.spans=[(x,x+1) for x in new_spans[i*PACKET_SIZE:(i+1)*PACKET_SIZE]]
         task.lemma_id=lemma_id
         task.annotators=[]
