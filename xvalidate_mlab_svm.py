@@ -31,6 +31,9 @@ oparse.add_option('--method',dest='method',
                   default='F')
 oparse.add_option('--maxlabels',dest='max_labels',
                   type='int', default=2)
+oparse.add_option('--featsel',dest='feat_sel',
+                  type='int', default=0)
+oparse.add_option('--featsize',dest='feat_size')
 oparse.set_defaults(reassign_folds=True,max_depth=3)
 
 opts,args=oparse.parse_args(sys.argv[1:])
@@ -56,8 +59,22 @@ if opts.n_processors==1:
 
 print >>sys.stderr, "preparing training file..."
 
+data0_bins=[[] for i in xrange(n_bins)]
+test0_bins=[[] for i in xrange(n_bins)]
 data_bins=[[] for i in xrange(n_bins)]
 test_bins=[[] for i in xrange(n_bins)]
+
+def chi2(n_ab,n_a,n_b,N):
+    if n_a==0 or n_a==N:
+        return 0.0
+    if n_b==0 or n_b==N:
+        return 0.0
+    obs=[n_ab,n_a-n_ab,n_b-n_ab,N+n_ab-n_a-n_b]
+    p_a=float(n_a)/N
+    p_b=float(n_b)/N
+    ext=[p_a*n_b,(1.0-p_b)*n_a,(1.0-p_a)*n_b,(1.0-p_a)*(N-n_b)]
+    x2=sum(((o-e)**2/e for (o,e) in izip(obs,ext)))
+    return x2
 
 left_out=0
 rnd_gen=random.Random(opts.seed)
@@ -71,12 +88,54 @@ for bin_nr,data,label in all_data:
     if rnd_gen.random()>=opts.subsample:
         left_out+=1
         continue
-    vec=fc(data)
+    if opts.feat_sel:
+        vec0=fc.munge_uni(data)
+    else:
+        vec0=fc(data)
     for i in xrange(n_bins):
         if i!=bin_nr:
-            data_bins[i].append((vec,label))
+            data0_bins[i].append((vec0,label))
         else:
-            test_bins[i].append((vec,label))
+            test0_bins[i].append((vec0,label))
+if opts.feat_sel:
+    if opts.feat_size is not None:
+        feat_sizes=[int(x) for x in opts.feat_size.split(',')]
+    else:
+        feat_sizes=[0,500]
+    # Feature Selection & Creation of actual feature vectors
+    for i in xrange(n_bins):
+        print >>sys.stderr, "Feature selection for fold %d"%(i,)
+        label_vecs, feature_vecs_a=example_vectors(data0_bins[i])
+        N=len(data0_bins[i])
+        mask=[None]
+        for j,feature_vecs in enumerate(feature_vecs_a):
+            all_vals=numpy.zeros(len(fc.dict))
+            for (k,fvec) in enumerate(feature_vecs):
+                best_val=0.0
+                fvec_len=len(fvec)
+                if fvec_len==0: continue
+                for lbl_vec in label_vecs:
+                    lbl_len=len(lbl_vec)
+                    val=chi2(fvec.count_intersection(lbl_vec),fvec_len,lbl_len,N)
+                    if val>best_val:
+                        best_val=val
+                all_vals[k]=best_val
+            ordering=numpy.argsort(all_vals)
+            for k in ordering[-3:]:
+                print "Feature %s value %f"%(fc.dict.get_sym(k),all_vals[k])
+            if j<len(feat_sizes):
+                n_max=feat_sizes[j]
+            if n_max>0:
+                if len(ordering)>n_max:
+                    print "cutoff[%d] = %f"%(j,all_vals[ordering[-n_max]])
+                    mask.append((all_vals >= all_vals[ordering[-n_max]]))
+                else:
+                    mask.append(None)
+        data_bins[i]=[(fc.munge_vec(vec0,mask),label) for (vec0,label) in data0_bins[i]]
+        test_bins[i]=[(fc.munge_vec(vec0,mask),label) for (vec0,label) in test0_bins[i]]
+else:
+    data_bins=data0_bins
+    test_bins=test0_bins
 fc.dict.growing=False
 
 print >>sys.stderr, "training models..."

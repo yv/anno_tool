@@ -309,7 +309,8 @@ def get_features(t, sub_cl, main_cl):
         sub_parent.parent.cat in ['VF','MF','NF']):
         sub_parent=sub_parent.parent
     print "field:",sub_parent.cat
-    feats.append('fd'+sub_parent.cat)
+    if 'nobaseline' not in wanted_features:
+        feats.append('fd'+sub_parent.cat)
     neg_sub=find_negation(sub_cl)
     print "neg[sub]: ",neg_sub
     if 'neg' in wanted_features:
@@ -392,16 +393,18 @@ def get_features(t, sub_cl, main_cl):
             feats.append('PUNC'+t.terminals[main_end].word)
     return feats
 
-def production_features(t,sub_cl,main_cl):
+def production_features(t,sub_cl,main_cl, do_filter=True):
     result=[]
     lst_main=[]
     lst_sub=[]
     get_productions(main_cl,[sub_cl],lst_main)
     get_productions(sub_cl,[main_cl],lst_sub)
     set_main=set(lst_main)
-    set_main.intersection_update(wanted_productions)
+    if do_filter:
+        set_main.intersection_update(wanted_productions)
     set_sub=set(lst_sub)
-    set_sub.intersection_update(wanted_productions)
+    if do_filter:
+        set_sub.intersection_update(wanted_productions)
     for k in set_main:
         if k in set_sub:
             result.append('prB%s'%(k,))
@@ -412,10 +415,11 @@ def production_features(t,sub_cl,main_cl):
             result.append('prS%s'%(k,))
     return result
 
-ignore_pos=['NN','NE','VVFIN','VVINF','VVIZU','VVPP']
+#ignore_pos=['NN','NE','VVFIN','VVINF','VVIZU','VVPP']
+ignore_pos=[]
 
 #TODO: only include a given wordpair once?
-def wordpair_features(t,sub_cl,main_cl,conn):
+def wordpair_features(t,sub_cl,main_cl,conn, do_filter=True):
     result=[]
     idx_main=set(xrange(main_cl.start,main_cl.end))
     idx_sub=set(xrange(sub_cl.start,sub_cl.end))
@@ -428,10 +432,14 @@ def wordpair_features(t,sub_cl,main_cl,conn):
                if t.terminals[i].cat not in ignore_pos]
     wps=['%s_%s'%(x,y) for x in words_main for y in words_sub]
     #wps.intersection_update(wanted_pairs)
-    for k in wps:
-        if k in wanted_pairs:
+    if do_filter:
+        for k in wps:
+            if k in wanted_pairs:
+                result.append('WP'+k)
+        print result
+    else:
+        for k in wps:
             result.append('WP'+k)
-    print result
     return result
 
 def retrieve_synsets(t,idxs):
@@ -580,7 +588,9 @@ def arg_lengths(t,sub_cl,main_cl,conn):
     return result
 
 def make_simple_tree(main_cl, sub_cl):
-    ni1=InfoNode(main_cl.cat)
+    (pred,flags)=get_verbs(main_cl)
+    feats=list(flags)+['lm:'+pred]
+    ni1=InfoNode(main_cl.cat,feats)
     for n2 in main_cl.children:
         if n2.cat in ['VF','MF','NF']:
             for n3 in n2.children:
@@ -588,13 +598,27 @@ def make_simple_tree(main_cl, sub_cl):
                     ni2=InfoNode('SUB_CL',['fd:'+n2.cat])
                     ni1.add_edge(ni2)
                     continue
-                feats=['fd:'+n2.cat]
+                if n3.edge_label.endswith('-MOD'):
+                    continue
+                feats=['fd:'+n2.cat,'cat:'+n3.cat]
+                kind='MOD'
+                if n3.edge_label in ['ON','OA','OD','OG','OPP','FOPP','PRED']:
+                    kind='ARG'
+                    feats.append('gf:'+n3.edge_label)
+                if n3.cat=='PX':
+                    cls=classify_px(n3)
+                    if cls is not None:
+                        feats.append('cls:'+cls)
+                elif n3.cat=='ADVX':
+                    cls=classify_adverb(n3)
+                    if cls is not None:
+                        feats.append('cls:'+cls)
                 if hasattr(n3,'head'):
                     feats.append('lm:'+n3.head.lemma)
                     if n3.cat=='PX':
                         if len(n3.children)>1 and n3.children[1].cat=='NX':
                             feats.append('arg:'+n3.children[1].head.lemma)
-                ni2=InfoNode(n3.cat,feats)
+                ni2=InfoNode(kind,feats)
                 ni1.add_edge(ni2)
     return ni1
 
@@ -625,10 +649,15 @@ def process_spans(spans,annotator):
         print "MAIN:",main_cl.to_penn()
         #print "anno: temporal=%s contrastive=%s"%(anno.temporal,anno.contrastive)
         feats=get_features(t,sub_cl,main_cl)
+        aux_lst=[]
         if 'productions' in wanted_features:
             feats+=production_features(t,sub_cl,main_cl)
+        if 'productionsA' in wanted_features:
+            aux_lst.append(production_features(t, sub_cl, main_cl, False))
         if 'wordpairs' in wanted_features:
             feats+=wordpair_features(t,sub_cl,main_cl,offset)
+        if 'wordpairsA' in wanted_features:
+            aux_lst.append(wordpair_features(t,sub_cl,main_cl,offset, False))
         if 'arglen' in wanted_features:
             feats+=arg_lengths(t, sub_cl, main_cl, offset)
         if 'lexrel' in wanted_features:
@@ -638,7 +667,7 @@ def process_spans(spans,annotator):
         #print "anno: rel1=%s rel2=%s"%(anno.rel1,anno._doc.get('rel2','NULL'))
         print feats
         #print anno._doc
-        print >>f_out, json.dumps([0,{'_type':'multipart','parts':[map(grok_encoding,feats)],
+        print >>f_out, json.dumps([0,{'_type':'multipart','parts':[map(grok_encoding,feats)]+aux_lst,
                                       'trees':[node2tree(make_simple_tree(main_cl, sub_cl)),
                                                node2tree(make_simple_tree(sub_cl, None))]},
                                   target,[span[0],span[1]-1]],encoding='ISO-8859-15')
@@ -646,6 +675,8 @@ def process_spans(spans,annotator):
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc']
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc','wordpairs','productions']
 wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairs','productions']
+#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','productionsA']
+#wanted_features=['nobaseline']
 #wanted_features=['wordpairs','productions']
 #wanted_features=[]
 
@@ -667,7 +698,7 @@ if 'assoc' in wanted_features:
         assoc_features[line[0]]=line[1:]
 
 if 'productions' in wanted_features or 'wordpairs' in wanted_features:
-    wanted_productions,wanted_pairs=do_counting(spans_n+spans_w)
+    wanted_productions,wanted_pairs=do_counting(spans_n+spans_w2)
     print wanted_productions
     print wanted_pairs
 

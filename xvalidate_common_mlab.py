@@ -2,6 +2,7 @@ from collections import defaultdict
 from itertools import izip
 from lxml import etree
 from mltk import gather_stats, print_stats
+from dist_sim import sparsmat
 import simplejson as json
 import sys
 
@@ -25,6 +26,18 @@ def add_options_mlab(oparse):
     oparse.add_option('--filter_feature', dest='filter_feature')
     oparse.add_option('--bias-multi', dest='bias_multi',
                       type='float', default=0.0)
+
+def example_vectors(data):
+    label_dict=defaultdict(sparsmat.VecD1)
+    vecs_a=[[] for i in xrange(len(data[0][0]))]
+    for i,(vec0_a, label) in enumerate(data):
+        for vec0,vecs in izip(vec0_a, vecs_a):
+            vecs.append(vec0)
+        for lbl in label:
+            label_dict[lbl].add_count(i,1)
+    by_feature=[sparsmat.CSRMatrixD().fromVectors(vecs).transpose() for vecs in vecs_a]
+    by_label=[x.to_sparse() for x in label_dict.values()]
+    return by_label, by_feature
 
 def gen_examples_exact(label,labelset):
     labelT=tuple(label)
