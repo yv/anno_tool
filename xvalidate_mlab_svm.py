@@ -22,6 +22,7 @@ from lxml import etree
 
 from xvalidate_common import *
 from xvalidate_common_mlab import *
+from feature_sel import *
 
 oparse=optparse.OptionParser()
 add_options_common(oparse)
@@ -64,17 +65,6 @@ test0_bins=[[] for i in xrange(n_bins)]
 data_bins=[[] for i in xrange(n_bins)]
 test_bins=[[] for i in xrange(n_bins)]
 
-def chi2(n_ab,n_a,n_b,N):
-    if n_a==0 or n_a==N:
-        return 0.0
-    if n_b==0 or n_b==N:
-        return 0.0
-    obs=[n_ab,n_a-n_ab,n_b-n_ab,N+n_ab-n_a-n_b]
-    p_a=float(n_a)/N
-    p_b=float(n_b)/N
-    ext=[p_a*n_b,(1.0-p_b)*n_a,(1.0-p_a)*n_b,(1.0-p_a)*(N-n_b)]
-    x2=sum(((o-e)**2/e for (o,e) in izip(obs,ext)))
-    return x2
 
 left_out=0
 rnd_gen=random.Random(opts.seed)
@@ -97,7 +87,7 @@ for bin_nr,data,label in all_data:
             data0_bins[i].append((vec0,label))
         else:
             test0_bins[i].append((vec0,label))
-if opts.feat_sel:
+if opts.feat_sel==100:
     if opts.feat_size is not None:
         feat_sizes=[int(x) for x in opts.feat_size.split(',')]
     else:
@@ -105,34 +95,21 @@ if opts.feat_sel:
     # Feature Selection & Creation of actual feature vectors
     for i in xrange(n_bins):
         print >>sys.stderr, "Feature selection for fold %d"%(i,)
-        label_vecs, feature_vecs_a=example_vectors(data0_bins[i])
-        N=len(data0_bins[i])
-        mask=[None]
-        for j,feature_vecs in enumerate(feature_vecs_a):
-            all_vals=numpy.zeros(len(fc.dict))
-            for (k,fvec) in enumerate(feature_vecs):
-                best_val=0.0
-                fvec_len=len(fvec)
-                if fvec_len==0: continue
-                for lbl_vec in label_vecs:
-                    lbl_len=len(lbl_vec)
-                    val=chi2(fvec.count_intersection(lbl_vec),fvec_len,lbl_len,N)
-                    if val>best_val:
-                        best_val=val
-                all_vals[k]=best_val
-            ordering=numpy.argsort(all_vals)
-            for k in ordering[-3:]:
-                print "Feature %s value %f"%(fc.dict.get_sym(k),all_vals[k])
-            if j<len(feat_sizes):
-                n_max=feat_sizes[j]
-            if n_max>0:
-                if len(ordering)>n_max:
-                    print "cutoff[%d] = %f"%(j,all_vals[ordering[-n_max]])
-                    mask.append((all_vals >= all_vals[ordering[-n_max]]))
-                else:
-                    mask.append(None)
-        data_bins[i]=[(fc.munge_vec(vec0,mask),label) for (vec0,label) in data0_bins[i]]
-        test_bins[i]=[(fc.munge_vec(vec0,mask),label) for (vec0,label) in test0_bins[i]]
+        munge_fn=do_custom_comb(data0_bins[i],fc,feat_sizes)
+        data_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in data0_bins[i]]
+        test_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in test0_bins[i]]
+elif opts.feat_sel>0:
+    if opts.feat_size is not None:
+        feat_sizes=[int(x) for x in opts.feat_size.split(',')]
+    else:
+        feat_sizes=[0,500]
+    feat_sel_method=[feat_chi2,feat_pmi,feat_f1,feat_f18,feat_f8,feat_unsup][opts.feat_sel-1]
+    # Feature Selection & Creation of actual feature vectors
+    for i in xrange(n_bins):
+        print >>sys.stderr, "Feature selection for fold %d"%(i,)
+        munge_fn=do_fs_comb(data0_bins[i],fc,feat_sizes,feat_sel_method)
+        data_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in data0_bins[i]]
+        test_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in test0_bins[i]]
 else:
     data_bins=data0_bins
     test_bins=test0_bins

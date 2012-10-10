@@ -415,8 +415,8 @@ def production_features(t,sub_cl,main_cl, do_filter=True):
             result.append('prS%s'%(k,))
     return result
 
-#ignore_pos=['NN','NE','VVFIN','VVINF','VVIZU','VVPP']
-ignore_pos=[]
+ignore_pos=['NN','NE','VVFIN','VVINF','VVIZU','VVPP']
+#ignore_pos=[]
 
 #TODO: only include a given wordpair once?
 def wordpair_features(t,sub_cl,main_cl,conn, do_filter=True):
@@ -667,6 +667,8 @@ def process_spans(spans,annotator):
         #print "anno: rel1=%s rel2=%s"%(anno.rel1,anno._doc.get('rel2','NULL'))
         print feats
         #print anno._doc
+        # print >>f_out, json.dumps([0,map(grok_encoding,feats),
+        #                           target,[span[0],span[1]-1]],encoding='ISO-8859-15')
         print >>f_out, json.dumps([0,{'_type':'multipart','parts':[map(grok_encoding,feats)]+aux_lst,
                                       'trees':[node2tree(make_simple_tree(main_cl, sub_cl)),
                                                node2tree(make_simple_tree(sub_cl, None))]},
@@ -698,7 +700,8 @@ if 'assoc' in wanted_features:
         assoc_features[line[0]]=line[1:]
 
 if 'productions' in wanted_features or 'wordpairs' in wanted_features:
-    wanted_productions,wanted_pairs=do_counting(spans_n+spans_w2)
+    #wanted_productions,wanted_pairs=do_counting(spans_n+spans_w2)
+    wanted_productions,wanted_pairs=do_counting(spans_n+spans_w)
     print wanted_productions
     print wanted_pairs
 

@@ -33,6 +33,19 @@ def create_id(prefix,alphabet):
         n+=1
     return '%s%d'%(prefix,n)
 
+class JavaClass:
+    def __init__(self, name, extends=None):
+        self.name=name
+        self.extends=extends
+        self.body=[]
+    def add_body(self,txt):
+        self.body.append(txt)
+    def __str__(self):
+        parts=['class %s extends %s {'%(self.name,self.extends)]
+        parts+=self.body
+        parts.append(['}'])
+        return '\n'.join(parts)
+
 class TextAttribute:
     def __init__(self,name,prop_name=None,default_val=None):
         self.name=name
@@ -546,6 +559,19 @@ class Document:
         for schema in self.schemas:
             schema.describe_table(meta)
         return meta
+    def make_classes(self,ctx,prefix='Tueba'):
+        cls=JavaClass('%sDocument'%(prefix,),'Document<%sTerminal>'%(prefix,))
+        cls.add_body('''public static class TuebaTerminalFactory implements GenericObjectFactor<TuebaTerminal> {
+        @Override
+        public TuebaTerminal createObject(ObjectSchema<TuebaTerminal> schema) {
+          return new TuebaTerminal(schema);
+          }
+        }''')
+        for schema in self.schemas:
+            cls.add_body('''public Tueba%sLevel get%sLevel() { return (Tueba%sLevel)markableLevelByName("%s"); }'''%(
+                schema.name, schema.name, schema.name))
+        ctx.append(cls)
+        self.t_schema.make_classes(ctx,prefix)
 
 def assign_node_ids(n,prefix,sent_start=0):
     n.span=[n.start+sent_start,n.end+sent_start]
