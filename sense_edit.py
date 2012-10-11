@@ -151,6 +151,8 @@ def adjudication_spans(task):
     db=task._db
     level=task.level
     annotators=task.annotators
+    if not annotators:
+        return []
     new_annotations=[]
     new_spans=set()
     for span in task.spans:
