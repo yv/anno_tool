@@ -116,6 +116,10 @@ var SenseListView = Backbone.View.extend({
 				dataType:'json', type:'POST', contentType:'json',
 				data:JSON.stringify({'method':'remaining','annotators':_.pluck(inp.tokenInput('get'),'name')}),
 				success: function() {alert("tasks created");}})});
+	    $('#btn-add-adjudicate').bind('click', function(ev) { $.ajax({url:'/pycwb/wsd_tasks/'+encodeURIComponent(that.model.id),
+				dataType:'json', type:'POST', contentType:'json',
+				data:JSON.stringify({'method':'wsdgold'}),
+				success: function() {alert("tasks created");}})});
 	}
     });
 

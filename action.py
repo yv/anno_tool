@@ -1,7 +1,7 @@
 import os
 from werkzeug import script, DispatcherMiddleware, redirect, \
     DebuggedApplication
-from annodb.database import create_user, add_annotator
+from annodb.database import create_user, add_annotator, get_corpus
 from web_stuff import AppRequest, render_template
 from test_web import archive_user
 from wsgi_app import application
@@ -34,5 +34,8 @@ def action_archive_user(username='user'):
 
 def action_add_annotator(dbname='xxx', taskname='task1', username='yannick'):
     add_annotator(dbname, taskname, username)
+
+def action_remove_task(dbname='xxx', taskname='task1'):
+    get_corpus(dbname).remove_task(taskname)
 
 script.run()

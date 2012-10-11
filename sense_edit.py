@@ -1,6 +1,7 @@
 import re
 import sys
 import datetime
+from itertools import izip
 from collections import defaultdict
 from werkzeug import Response, redirect, escape
 from web_stuff import render_template, Forbidden, ADMINS
@@ -136,14 +137,14 @@ def create_new_task(task):
 def create_adjudication_task(task0, spans):
     db=task0._db
     current_no=0
-    lemma_id=task._doc.get('lemma_id','UNK')
+    lemma_id=task0._doc.get('lemma_id','UNK')
     while db.get_task('task_%s_adjudication_%s'%(lemma_id,current_no)) is not None:
         current_no+=1
-    task=db.create_task('%s_adjudication_%s'%(lemma_id,current_no))
+    task=db.create_task('%s_adjudication_%s'%(lemma_id,current_no),'wsd')
     task.spans=[(x,x+1) for x in sorted(spans)]
     task.lemma_id=lemma_id
     task.annotators=['wsdgold']
-    task.save()
+    return task
                         
 
 def adjudication_spans(task):
@@ -158,26 +159,30 @@ def adjudication_spans(task):
         comments={}
         for name in annotators:
             anno=db.get_annotation(name,level,span)
-            anno_senses=sorted([x[0] for x in anno.get(senses,{}).iteritems() if x[1]])
+            anno_senses=sorted([x[0] for x in anno.get('sense',{}).iteritems() if x[1]])
             annos.append(anno_senses)
             all_annos.update(anno_senses)
             if anno.get('comment',''):
                 comments[name]=anno.comment
         all_senses=sorted(all_annos)
         needed=False
+        if comments:
+            needed=True
         for (name,senses) in izip(annotators,annos):
             if senses!=all_senses:
                 needed=True
         anno=db.get_annotation('wsdgold',level,span)
-        anno.senses=dict([(x,1) for x in all_senses])
+        #print >>sys.stderr, all_senses
+        anno.sense=dict([(x,1) for x in all_senses])
         new_annotations.append(anno)
+        #print span, needed
         if needed:
             # add comment, add span to adjudication spans
             fragments=[]
             for (name,senses) in izip(annotators,annos):
                 fragments.append('%s: %s %s'%(name, '/'.join(senses), comments.get(name,'')))
             anno.comment='\n'.join(fragments)
-            new_spans.add(span)
+            new_spans.add(span[0])
     db.save_annotations(new_annotations)
     return new_spans
 
@@ -213,13 +218,15 @@ def sense_tasks(request,senseId):
             task0=old_tasks[0]
             for task in old_tasks:
                 if 'wsdgold' not in task._doc.get('annotators',[]):
-                    task.set_annotators(sorted(set(task._doc.get('annotators',[])).union(['wsdgold'])))
                     spans.update(adjudication_spans(task))
+                    task.set_annotators(sorted(set(task._doc.get('annotators',[])).union(['wsdgold'])))
+                    task.set_status('wsdgold','ready')
                     task.save()
+            print >>sys.stderr, spans
             task_adj=create_adjudication_task(task0,spans)
             task_adj.save()
             info={'num_existing':len(old_tasks), 'num_remaining':len(new_tasks)}
             return Response(json.dumps(info),mimetype="text/javascript") 
-   print >>sys.stderr, 'huh?'
+    print >>sys.stderr, 'huh?'
             
         

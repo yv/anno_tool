@@ -209,6 +209,9 @@ class AnnoDB(object):
             return Task(doc,self)
         else:
             return None
+    def remove_task(self,taskname):
+        errval=self.db.tasks.remove({'_id':taskname},safe=True)
+        return errval
     def get_parses(self, sent_no):
         doc=self.db.parses.find_one({'_id':sent_no})
         if doc is None:

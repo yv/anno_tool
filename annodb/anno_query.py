@@ -111,6 +111,8 @@ def is_ready(anno):
 def annotate(request,taskname):
     db=request.corpus
     task=db.get_task(taskname)
+    if task is None:
+        return NotFound("no such task")
     if task.level == 'konn2':
         return annotate2(request,taskname)
     elif task.level == 'wsd':
