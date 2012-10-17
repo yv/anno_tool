@@ -447,19 +447,25 @@ def retrieve_synsets(t,idxs):
     for idx in idxs:
         n=t.terminals[idx]
         if n.cat in ['NN','NE','ADJA','ADJD','VVFIN','VVINF','VVIZU']:
-            w=n.lemma.replace('#','')
-            wc=n.cat[0].lower()
-            if n.cat=='NN':
-                synsets=wordsenses.analyse_nn_lemma(w.split('|'))
-                synsets2=[syn for syn in synsets
-                          if not syn.getWords()[0].eigenname]
-                if synsets2:
-                    synsets=synsets2
-            else:
-                synsets=[syn for syn in germanet.synsets_for_word(w)
-                         if syn.lexGroup.wordclass[0]==wc]
+            synsets=wordsenses.synsets_for_lemma(n.lemma,n.cat)
             wanted_lemmas.append((n,synsets))
     return wanted_lemmas
+
+def expanded_synsets_for_lemma(lemma,pos):
+    synsets=wordsenses.synsets_for_lemma(lemma,pos)
+    if not synsets:
+        return []
+    depths=[wordsenses.synset_depth(syn) for syn in synsets]
+    max_depth=max(depths)
+    min_depth=min(depths)
+    if pos=='NN':
+        limit=max(3,min_depth-2)
+    else:
+        limit=max(0,min_depth-2)
+    hyp_map={}
+    for syn,d in izip(synsets,depths):
+        wordsenses.gather_hyperonyms(syn.synsetId,hyp_map,0,d-limit)
+    return hyp_map.keys()
 
 def lexrel_features(t, sub_cl, main_cl,feats):
     idx_main=set(xrange(main_cl.start,main_cl.end))
@@ -590,6 +596,7 @@ def arg_lengths(t,sub_cl,main_cl,conn):
 def make_simple_tree(main_cl, sub_cl):
     (pred,flags)=get_verbs(main_cl)
     feats=list(flags)+['lm:'+pred]
+    feats+=['hyp%d'%(k,) for k in expanded_synsets_for_lemma(pred,'VVINF')]
     ni1=InfoNode(main_cl.cat,feats)
     for n2 in main_cl.children:
         if n2.cat in ['VF','MF','NF']:
@@ -613,11 +620,17 @@ def make_simple_tree(main_cl, sub_cl):
                     cls=classify_adverb(n3)
                     if cls is not None:
                         feats.append('cls:'+cls)
+                elif n3.cat=='NX':
+                    sc=semclass_for_node(n3)
+                    if sc is not None:
+                        feats.append('sem:%s'%(sc,))
                 if hasattr(n3,'head'):
                     feats.append('lm:'+n3.head.lemma)
                     if n3.cat=='PX':
                         if len(n3.children)>1 and n3.children[1].cat=='NX':
                             feats.append('arg:'+n3.children[1].head.lemma)
+                    if n3.head.cat=='NN':
+                        feats+=['hyp%d'%(k,) for k in expanded_synsets_for_lemma(pred,'VVINF')]
                 ni2=InfoNode(kind,feats)
                 ni1.add_edge(ni2)
     return ni1
@@ -676,8 +689,8 @@ def process_spans(spans,annotator):
 
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc']
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc','wordpairs','productions']
-wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairs','productions']
-#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','productionsA']
+#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairs','productions']
+wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','productionsA']
 #wanted_features=['nobaseline']
 #wanted_features=['wordpairs','productions']
 #wanted_features=[]
@@ -705,24 +718,25 @@ if 'productions' in wanted_features or 'wordpairs' in wanted_features:
     print wanted_productions
     print wanted_pairs
 
-## 2. create data for nachdem and waehrend
-f_out=file('nachdem_1-6.json','w')
-process_spans(spans_n,'melike')
-f_out.close()
+if __name__=='__main__':
+    ## 2. create data for nachdem and waehrend
+    f_out=file('nachdem_1-6.json','w')
+    process_spans(spans_n,'melike')
+    f_out.close()
 
-# TBD: update wanted_productions
-f_out=file('waehrend_1-4.json','w')
-process_spans(spans_w,'melike')
-f_out.close()
+    # TBD: update wanted_productions
+    f_out=file('waehrend_1-4.json','w')
+    process_spans(spans_w,'melike')
+    f_out.close()
 
-f_out=file('waehrend_1-10.json','w')
-process_spans(spans_w2,'melike')
-f_out.close()
+    f_out=file('waehrend_1-10.json','w')
+    process_spans(spans_w2,'melike')
+    f_out.close()
 
-# tasks2=[db.get_task('task_aberA_new')]
-# print tasks2
-# spans=sorted(set([tuple(span) for task in tasks2 for span in task.spans]))
+    # tasks2=[db.get_task('task_aberA_new')]
+    # print tasks2
+    # spans=sorted(set([tuple(span) for task in tasks2 for span in task.spans]))
 
-# f_out=file('aberA.json','w')
-# process_spans(spans,'sabrina')
-# f_out.close()
+    # f_out=file('aberA.json','w')
+    # process_spans(spans,'sabrina')
+    # f_out.close()

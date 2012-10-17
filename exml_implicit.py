@@ -3,7 +3,7 @@
 import re
 import sys
 import exml
-from exml import Text, EduRange, Topic, edu_re, topic_s
+from exml import Text, Edu, EduRange, Topic, edu_re, topic_s
 from itertools import izip
 from collections import defaultdict
 from ordereddict import OrderedDict
@@ -92,7 +92,7 @@ def parse_relations(relations,text,ctx):
                 rel_arg2=text.get_segment(m.group(3),ctx)
                 rel_marking=m.group(4)
                 if rel_marking is not None:
-                    rel_marking=rel_marking.lstrip('%')
+                    rel_marking=rel_marking.lstrip('%').strip()
                     rel_marking=rel_marking.encode('ISO-8859-15')
             except KeyError:
                 relations_unparsed.append(l_orig)

@@ -38,4 +38,10 @@ def action_add_annotator(dbname='xxx', taskname='task1', username='yannick'):
 def action_remove_task(dbname='xxx', taskname='task1'):
     get_corpus(dbname).remove_task(taskname)
 
+def action_list_empty_tasks(dbname='xxx'):
+    for task in get_corpus(dbname).get_tasks():
+        if not task.annotators:
+            print task._id,
+    print
+
 script.run()

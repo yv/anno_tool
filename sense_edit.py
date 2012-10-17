@@ -138,9 +138,10 @@ def create_adjudication_task(task0, spans):
     db=task0._db
     current_no=0
     lemma_id=task0._doc.get('lemma_id','UNK')
-    while db.get_task('task_%s_adjudication_%s'%(lemma_id,current_no)) is not None:
+    new_lemma_id=lemma_id.replace('#','')
+    while db.get_task('task_%s_adjudication_%s'%(new_lemma_id,current_no)) is not None:
         current_no+=1
-    task=db.create_task('%s_adjudication_%s'%(lemma_id,current_no),'wsd')
+    task=db.create_task('%s_adjudication_%s'%(new_lemma_id,current_no),'wsd')
     task.spans=[(x,x+1) for x in sorted(spans)]
     task.lemma_id=lemma_id
     task.annotators=['wsdgold']
