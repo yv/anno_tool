@@ -14,8 +14,7 @@ couch_ignore_attributes=set(['_id','_rev','type',
                              'span','corpus','annotator','level',
                              'word'])
 
-srv=pymongo.Connection.paired(('192.168.1.1',27017),
-                              ('192.168.1.2',27017))
+srv=pymongo.Connection('192.168.1.1',27017)
 PARSES_ROOT='/export/local/yannick/parses'
 ALIGNMENT_ROOT='/export/local/yannick/align'
 #srv=pymongo.Connection('192.168.1.2')

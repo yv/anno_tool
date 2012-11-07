@@ -20,8 +20,6 @@ from gwn_old.gwn_word_features import get_verb_features
 
 from sem_features import classify_adverb, classify_px, get_productions
 
-db=annodb.get_corpus('R6PRE1')
-lemmas=db.corpus.attribute('lemma','p')
 
 stupid_head_finder=deps.SimpleDepExtractor(tueba_heads.hr_table+[(None,[(None,'HD','r'),(None,'l')])],['$,','$.'])
 
@@ -629,8 +627,8 @@ def make_simple_tree(main_cl, sub_cl):
                     if n3.cat=='PX':
                         if len(n3.children)>1 and n3.children[1].cat=='NX':
                             feats.append('arg:'+n3.children[1].head.lemma)
-                    if n3.head.cat=='NN':
-                        feats+=['hyp%d'%(k,) for k in expanded_synsets_for_lemma(pred,'VVINF')]
+                    # if n3.head.cat=='NN':
+                    #     feats+=['hyp%d'%(k,) for k in expanded_synsets_for_lemma(pred,'NN')]
                 ni2=InfoNode(kind,feats)
                 ni1.add_edge(ni2)
     return ni1
@@ -695,30 +693,41 @@ wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','p
 #wanted_features=['wordpairs','productions']
 #wanted_features=[]
 
-if len(sys.argv)>=2:
-    wanted_features=sys.argv[1].split(',')
-
-tasks_n=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
-tasks_w=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,7)]
-tasks_w2=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,11)]
-spans_n=sorted(set([tuple(span) for task in tasks_n for span in task.spans]))
-spans_w=sorted(set([tuple(span) for task in tasks_w for span in task.spans]))
-spans_w2=sorted(set([tuple(span) for task in tasks_w2 for span in task.spans]))
-
-## 1. prepare necessary data (assoc, productions, wordpairs)
-if 'assoc' in wanted_features:
-    assoc_features={}
-    for l in file('word_assoc.txt'):
-        line=l.strip().split()
-        assoc_features[line[0]]=line[1:]
-
-if 'productions' in wanted_features or 'wordpairs' in wanted_features:
-    #wanted_productions,wanted_pairs=do_counting(spans_n+spans_w2)
-    wanted_productions,wanted_pairs=do_counting(spans_n+spans_w)
-    print wanted_productions
-    print wanted_pairs
+def do_initialization(wanted_features, dbname='R6PRE1'):
+    global assoc_features
+    global wanted_productions
+    global wanted_pairs
+    global db
+    global lemmas
+    db=annodb.get_corpus(dbname)
+    lemmas=db.corpus.attribute('lemma','p')
+    if 'assoc' in wanted_features:
+        assoc_features={}
+        for l in file('word_assoc.txt'):
+            line=l.strip().split()
+            assoc_features[line[0]]=line[1:]
+    if 'productions' in wanted_features or 'wordpairs' in wanted_features:
+        #wanted_productions,wanted_pairs=do_counting(spans_n+spans_w2)
+        wanted_productions,wanted_pairs=do_counting(spans_n+spans_w)
+        print wanted_productions
+        print wanted_pairs
 
 if __name__=='__main__':
+    if len(sys.argv)>=2:
+        wanted_features=sys.argv[1].split(',')
+
+    tasks_n=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
+    tasks_w=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,7)]
+    tasks_w2=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,11)]
+    tasks_und=[db.get_task('task_und_r6_%d'%(n,)) for n in xrange(1,7)]
+    spans_n=sorted(set([tuple(span) for task in tasks_n for span in task.spans]))
+    spans_w=sorted(set([tuple(span) for task in tasks_w for span in task.spans]))
+    spans_w2=sorted(set([tuple(span) for task in tasks_w2 for span in task.spans]))
+    spans_und=sorted(set([tuple(span) for task in tasks_und for span in task.spans]))
+
+    ## 1. prepare necessary data (assoc, productions, wordpairs)
+    do_initialization(wanted_features)
+
     ## 2. create data for nachdem and waehrend
     f_out=file('nachdem_1-6.json','w')
     process_spans(spans_n,'melike')
