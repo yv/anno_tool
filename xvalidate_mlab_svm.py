@@ -1,4 +1,6 @@
 import sys
+import os
+import shutil
 sys.path.append('/home/yannickv/proj/pytree')
 
 import codecs
@@ -35,12 +37,23 @@ oparse.add_option('--maxlabels',dest='max_labels',
 oparse.add_option('--featsel',dest='feat_sel',
                   type='int', default=0)
 oparse.add_option('--featsize',dest='feat_size')
+oparse.add_option('--sdepth',dest='sdepth',
+                  type='int',default=1)
+oparse.add_option('--subdir',action="store_true",dest="want_subdir")
 oparse.set_defaults(reassign_folds=True,max_depth=3)
 
 opts,args=oparse.parse_args(sys.argv[1:])
 
-my_svmperf=svmperf.bind(datafile_pattern='/export2/local/yannick/konn-cls/fold-%(fold)d/%(label)s_d%(depth)d_train.data',
-                        classifier_pattern='/export2/local/yannick/konn-cls/fold-%(fold)d/%(label)s_d%(depth)d_train.model')
+if opts.want_subdir:
+    subdir='/export2/local/yannick/konn-cls/%s/'%(os.getpid(),)
+    os.mkdir(subdir)
+    for i in xrange(10):
+        os.mkdir('%sfold-%d'%(subdir,i))
+else:
+    subdir='/export2/local/yannick/konn-cls/'
+    
+my_svmperf=svmperf.bind(datafile_pattern=subdir+'fold-%(fold)d/%(label)s_d%(depth)d_train.data',
+                        classifier_pattern=subdir+'fold-%(fold)d/%(label)s_d%(depth)d_train.model')
 if opts.method=='F':
     my_svmperf=my_svmperf.bind(flags=['-w','3','-c','0.01','-l','1'])
 elif opts.method=='acc':
@@ -98,6 +111,17 @@ if opts.feat_sel==100:
         munge_fn=do_custom_comb(data0_bins[i],fc,feat_sizes)
         data_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in data0_bins[i]]
         test_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in test0_bins[i]]
+elif opts.feat_sel==200:
+    if opts.feat_size is not None:
+        feat_sizes=[int(x) for x in opts.feat_size.split(',')]
+    else:
+        feat_sizes=[0,500]
+    # Feature Selection & Creation of actual feature vectors
+    for i in xrange(n_bins):
+        print >>sys.stderr, "Feature selection for fold %d"%(i,)
+        munge_fn=do_custom_comb_2(data0_bins[i],fc,feat_sizes)
+        data_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in data0_bins[i]]
+        test_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in test0_bins[i]]
 elif opts.feat_sel>0:
     if opts.feat_size is not None:
         feat_sizes=[int(x) for x in opts.feat_size.split(',')]
@@ -121,7 +145,7 @@ for i,data_bin in enumerate(data_bins):
     labels=[x[1] for x in data_bin]
     examples=[x[0] for x in data_bin]
     basedir='/export2/local/yannick/konn-cls/fold-%d'%(i,)
-    cl_greedy=train_greedy(examples,labels,my_svmperf.bind(fold=i))
+    cl_greedy=train_greedy(examples,labels,my_svmperf.bind(fold=i),opts.sdepth)
     classifiers.append(cl_greedy)
 
 # for i,data_bin in enumerate(test_bins):
@@ -146,3 +170,6 @@ stats=make_stats_multi(all_data,
 if left_out:
     print >>sys.stderr, "Subsampling: left out %d/%d examples"%(left_out,len(all_data))
 print_stats(stats)
+
+if opts.want_subdir:
+    shutil.rmtree(subdir)

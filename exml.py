@@ -9,8 +9,15 @@ from ordereddict import OrderedDict
 from collections import defaultdict
 from itertools import izip, islice
 from xml.sax.saxutils import quoteattr,escape
-from sqlalchemy import Table, Column, MetaData, \
-    Integer, String, Enum, ForeignKey
+
+try:
+    from sqlalchemy import Table, Column, MetaData, \
+         Integer, String, Enum, ForeignKey
+except ImportError:
+    print >>sys.stderr, "Warning: no SQLAlchemy installed"
+    def dummy_fun(*args):
+        pass
+    Table=Column=MetaData=Integer=String=Enum=ForeignKey=dummy_fun
 
 __doc__="""
 konvertiert eine Datei im Negra-Export-Format (Version 3 oder 4)
@@ -277,12 +284,12 @@ class ReferenceEdges:
         info=getattr(obj,'anaphora_info',None)
         if info is not None:
             tgt=None
-            if info[0]!='expletive':
-                tgt=' '.join(info[1])
-            if info[0]!='split_antecedent':
-                return [[info[0],tgt]]
-            else:
+            if info[0]=='split_antecedent':
                 return []
+            elif info[0] not in ['expletive','inherent_reflexive']:
+                tgt=' '.join(info[1])
+                #tgt=info[1]
+            return [[info[0],tgt]]
         else:
             return []
     def get_updown(self,obj,doc,result):
@@ -759,6 +766,7 @@ def nodes_to_ne(t):
         if '=' in n.cat:
             idx=n.cat.index('=')
             kind=n.cat[idx+1:]
+            n.ne_kind=kind
             ne_span=set(xrange(n.start,n.end))
             remove_ne_holes(n.children,ne_span,True)
             for n_punct in t.terminals:
@@ -794,6 +802,7 @@ def add_tree_to_doc(t,ctx):
         suffixes=['','a','b','c','d']
         for kind, local_span in t.all_nes:
             ne=NamedEntity(kind)
+            assert local_span, ('Empty NE span in sentence %s'%(t.sent_no,))
             ne.span=[k+sent_start for k in local_span]
             ne_start=ne.span[0]
             suff=suffixes[last_num[ne_start]]

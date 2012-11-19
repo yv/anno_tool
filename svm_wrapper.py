@@ -141,6 +141,9 @@ def train_greedy(vectors, labels, prototype, d=1):
         if n_neg==0:
             print >>sys.stderr, "No negative examples for %s. Are we done?"%(label,)
             return ([(label,None)],None)
+        if n_pos==1 and n_neg>len(all_labels)+1:
+            print >>sys.stderr, "Giving up on %s (%d/%d)"%(label,n_pos,n_neg)
+            continue
         learner=prototype.bind(label=label,depth=d,data=data_train)
         w_classify=learner.get('classifier')
         vecs.append((label,w_classify))

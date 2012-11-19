@@ -30,12 +30,25 @@ def null_warning_handler(w,args):
 
 deps.warning_handler=null_warning_handler
 
-hier_map={}
-def make_schema(entries,prefix):
-    for x in entries:
-        hier_map[x[0]]=prefix+x[0]
-        make_schema(x[2],'%s%s.'%(prefix,x[0]))
-make_schema(schemas['konn2'].schema,'')
+def make_hier_schema(lines):
+    prefixes=['']
+    h_map={}
+    for l in lines:
+        l=l.rstrip()
+        if l[0]=='%':
+            continue
+        if ' ' in l:
+            l=l[:l.index(' ')]
+        level=1
+        while l[0]=='+':
+            l=l[1:]
+            level+=1
+        del prefixes[level:]
+        h_map[l]=prefixes[-1]+l
+        prefixes.append('%s%s.'%(prefixes[-1],l))
+    return h_map
+
+hier_map=make_hier_schema(file('konn2_schema.txt'))
 
 def find_args(n):
     if n.cat=='KOUS':
@@ -72,6 +85,9 @@ def find_args(n):
         if main_cl is not None and main_cl.cat=='FKONJ':
             main_cl=pp.parent
         return sub_cl,main_cl
+    else:
+        print >>sys.stderr, "Unknown connective type: %s/%s"%(n.word,n.cat)
+        return None,None
 
 def find_negation(n):
     result=[]
@@ -244,6 +260,8 @@ def gather_verbs_nfin(chlds,nfin_v):
             gather_verbs_nfin(n1.children,nfin_v)
             if n1.edge_label=='KONJ':
                 break
+        elif n1.cat=='ADVX':
+            continue
         else:
             assert False, n1
 def gather_verbs(nodes,fin_v,nfin_v):
@@ -268,7 +286,7 @@ def gather_verbs(nodes,fin_v,nfin_v):
 def get_target(anno):
     rel1=anno.rel1
     tgt=[hier_map[rel1]]
-    if 'rel2' in anno._doc and anno.rel2!='NULL':
+    if 'rel2' in anno._doc and anno.rel2 not in ['NULL','']:
         tgt.append(hier_map[anno.rel2])
     return tgt
 
@@ -440,10 +458,16 @@ def wordpair_features(t,sub_cl,main_cl,conn, do_filter=True):
             result.append('WP'+k)
     return result
 
-def retrieve_synsets(t,idxs):
-    wanted_lemmas=[]
+def get_terminals_by_idx(t,idxs):
+    nodes=[]
     for idx in idxs:
         n=t.terminals[idx]
+        nodes.append(n)
+    return nodes
+
+def retrieve_synsets(nodes):
+    wanted_lemmas=[]
+    for n in nodes:
         if n.cat in ['NN','NE','ADJA','ADJD','VVFIN','VVINF','VVIZU']:
             synsets=wordsenses.synsets_for_lemma(n.lemma,n.cat)
             wanted_lemmas.append((n,synsets))
@@ -469,8 +493,13 @@ def lexrel_features(t, sub_cl, main_cl,feats):
     idx_main=set(xrange(main_cl.start,main_cl.end))
     idx_sub=set(xrange(sub_cl.start,sub_cl.end))
     idx_main.difference_update(idx_sub)
-    lemmas_s=retrieve_synsets(t,idx_sub)
-    lemmas_m=retrieve_synsets(t,idx_main)
+    terminals_s=get_terminals_by_idx(t,idx_sub)
+    terminals_m=get_terminals_by_idx(t,idx_main)
+    lexrel_features_1(terminals_s, terminals_m,feats)
+
+def lexrel_features_1(terminals_s, terminals_m,feats):
+    lemmas_s=retrieve_synsets(terminals_s)
+    lemmas_m=retrieve_synsets(terminals_m)
     hyp_map={}
     for n_s,synsets_s in lemmas_s:
         for n_m,synsets_m in lemmas_m:
@@ -591,46 +620,142 @@ def arg_lengths(t,sub_cl,main_cl,conn):
         result.append('al%sS%d'%(k,discretize(group_counts[k])))
     return result
 
-def make_simple_tree(main_cl, sub_cl):
-    (pred,flags)=get_verbs(main_cl)
-    feats=list(flags)+['lm:'+pred]
-    feats+=['hyp%d'%(k,) for k in expanded_synsets_for_lemma(pred,'VVINF')]
-    ni1=InfoNode(main_cl.cat,feats)
-    for n2 in main_cl.children:
+def mark_nodes(nodes1,nodes2):
+    for n1 in nodes1:
+        n1.is_root=True
+    for n2 in nodes2:
+        n2.is_root=True
+    for n1 in nodes1:
+        mark_node(n1,'1',nodes2)
+    for n2 in nodes2:
+        mark_node(n2,'2',nodes1)
+
+def unmark_nodes(nodes1,nodes2):
+    for n in nodes1:
+        unmark_node(n)
+    for n in nodes2:
+        unmark_node(n)
+
+def mark_node(n,mark,exclude):
+    if n in exclude:
+        n.is_root=False
+        return
+    n.mark=mark
+    if not n.isTerminal():
+        for n1 in n.children:
+            mark_node(n1,mark,exclude)
+
+def unmark_node(n):
+    if hasattr(n,'mark'):
+        del n.mark
+        if hasattr(n,'is_root'):
+            del n.is_root
+        if not n.isTerminal():
+            for n1 in n.children:
+                unmark_node(n1)
+
+def clause_children(n1, exclude):
+    field=None
+    result=[]
+    for n2 in n1.children:
         if n2.cat in ['VF','MF','NF']:
             for n3 in n2.children:
-                if n3 is sub_cl:
-                    ni2=InfoNode('SUB_CL',['fd:'+n2.cat])
-                    ni1.add_edge(ni2)
-                    continue
-                if n3.edge_label.endswith('-MOD'):
-                    continue
-                feats=['fd:'+n2.cat,'cat:'+n3.cat]
-                kind='MOD'
-                if n3.edge_label in ['ON','OA','OD','OG','OPP','FOPP','PRED']:
-                    kind='ARG'
-                    feats.append('gf:'+n3.edge_label)
-                if n3.cat=='PX':
-                    cls=classify_px(n3)
-                    if cls is not None:
-                        feats.append('cls:'+cls)
-                elif n3.cat=='ADVX':
-                    cls=classify_adverb(n3)
-                    if cls is not None:
-                        feats.append('cls:'+cls)
-                elif n3.cat=='NX':
-                    sc=semclass_for_node(n3)
-                    if sc is not None:
-                        feats.append('sem:%s'%(sc,))
-                if hasattr(n3,'head'):
-                    feats.append('lm:'+n3.head.lemma)
-                    if n3.cat=='PX':
-                        if len(n3.children)>1 and n3.children[1].cat=='NX':
-                            feats.append('arg:'+n3.children[1].head.lemma)
-                    # if n3.head.cat=='NN':
-                    #     feats+=['hyp%d'%(k,) for k in expanded_synsets_for_lemma(pred,'NN')]
-                ni2=InfoNode(kind,feats)
-                ni1.add_edge(ni2)
+                result.append((n2.cat, n3))
+        elif n2.cat == 'C' and len(n2.children)==1:
+            n3=n2.children[0]
+            if n3.cat in ['NX','PX','ADVX']:
+                result.append(('C',n3))
+        elif n2.cat=='FKOORD':
+            fkonj_seen=False
+            for n2a in n2.children:
+                if n2a.cat=='FKONJ' and not fkonj_seen and n2a not in exclude:
+                    result+=clause_children(n2a,exclude)
+                    fkonj_seen=True
+                elif n2a.cat=='MF':
+                    for n3 in n2a.children:
+                        result.append((n2a.cat, n3))
+                    fkonj_seen=True
+    return result
+
+
+def munge_single_phrase(node):
+        feats=['cat:'+node.cat]
+        kind='MOD'
+        if node.edge_label in ['ON','OA','OD','OG','OPP','FOPP','PRED']:
+            kind='ARG'
+            feats.append('gf:'+node.edge_label)
+        if node.cat=='PX':
+            cls=classify_px(node)
+            if cls is not None:
+                feats.append('cls:'+cls)
+        elif node.cat=='ADVX':
+            cls=classify_adverb(node)
+            if cls is not None:
+                feats.append('cls:'+cls)
+        elif node.cat=='NX':
+            if hasattr(node,'ne_kind'):
+                sc=node.ne_kind
+                if sc=='GPE':
+                    sc='LOC'
+            else:
+                sc=semclass_for_node(node)
+            if sc is not None:
+                feats.append('sem:%s'%(sc,))
+            istatus='new'
+            if hasattr(node,'anaphora_info'):
+                a_kind=node.anaphora_info[0]
+                if a_kind in ['expletive','inherent_reflexive']:
+                    kind=a_kind
+                    istatus='expl'
+                else:
+                    istatus='old'
+            feats.append('ref:%s'%(istatus,))
+        if hasattr(node,'head') and 'delexG' not in wanted_features:
+            feats.append('lm:'+node.head.lemma)
+            if node.cat=='PX':
+                if len(node.children)>1 and node.children[1].cat=='NX':
+                    feats.append('arg:'+node.children[1].head.lemma)
+            # if node.head.cat=='NN':
+            #     feats+=['hyp%d'%(k,) for k in expanded_synsets_for_lemma(pred,'NN')]
+        return kind,feats
+
+def tree_yield(nodes,exclude,result=None):
+    if result is None:
+        result=[]
+    for n in nodes:
+        if n in exclude:
+            continue
+        if n.isTerminal():
+            result.append(n)
+        else:
+            tree_yield(n.children,exclude,result)
+    return result
+
+def make_simple_tree(main_cl, exclude, other_terms=None):
+    if other_terms is None:
+        other_terms=tree_yield(exclude,[main_cl])
+    (pred,flags)=get_verbs(main_cl)
+    feats=list(flags)+['cat:'+main_cl.cat]
+    if 'delexG' not in wanted_features:
+        feats.append('lm:'+pred)
+    #feats+=['hyp%d'%(k,) for k in expanded_synsets_for_lemma(pred,'VVINF')]
+    ni1=InfoNode('S',feats)
+    for n2_cat, n3 in clause_children(main_cl, exclude):
+        if n3 in exclude:
+            if n3.cat=='R-SIMPX':
+                ni2=InfoNode('REL_CL',['fd:'+n2_cat])
+            else:
+                ni2=InfoNode('SUB_CL',['fd:'+n2_cat])
+            ni1.add_edge(ni2)
+            continue
+        if n3.edge_label.endswith('-MOD') and n3.edge_label!='V-MOD':
+            continue
+        (kind,feats)=munge_single_phrase(n3)
+        if 'lexrelG' in wanted_features:
+            lexrel_features_1(tree_yield([n3],exclude),other_terms,feats)
+        feats+=['fd:'+n2_cat]
+        ni2=InfoNode(kind,feats)
+        ni1.add_edge(ni2)
     return ni1
 
 def node2tree(n):
@@ -681,8 +806,8 @@ def process_spans(spans,annotator):
         # print >>f_out, json.dumps([0,map(grok_encoding,feats),
         #                           target,[span[0],span[1]-1]],encoding='ISO-8859-15')
         print >>f_out, json.dumps([0,{'_type':'multipart','parts':[map(grok_encoding,feats)]+aux_lst,
-                                      'trees':[node2tree(make_simple_tree(main_cl, sub_cl)),
-                                               node2tree(make_simple_tree(sub_cl, None))]},
+                                      'trees':[node2tree(make_simple_tree(main_cl, [sub_cl])),
+                                               node2tree(make_simple_tree(sub_cl, []))]},
                                   target,[span[0],span[1]-1]],encoding='ISO-8859-15')
 
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc']
@@ -693,14 +818,16 @@ wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','p
 #wanted_features=['wordpairs','productions']
 #wanted_features=[]
 
-def do_initialization(wanted_features, dbname='R6PRE1'):
-    global assoc_features
-    global wanted_productions
-    global wanted_pairs
+def init_db(wanted_features, dbname='R6PRE1'):
     global db
     global lemmas
     db=annodb.get_corpus(dbname)
     lemmas=db.corpus.attribute('lemma','p')
+
+def do_initialization(wanted_features, dbname='R6PRE1'):
+    global assoc_features
+    global wanted_productions
+    global wanted_pairs
     if 'assoc' in wanted_features:
         assoc_features={}
         for l in file('word_assoc.txt'):
@@ -716,6 +843,7 @@ if __name__=='__main__':
     if len(sys.argv)>=2:
         wanted_features=sys.argv[1].split(',')
 
+    init_db(wanted_features)
     tasks_n=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
     tasks_w=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,7)]
     tasks_w2=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,11)]
