@@ -281,6 +281,17 @@ def gather_verbs(nodes,fin_v,nfin_v):
                 if n1.cat=='FKONJ':
                     gather_verbs(n1.children,fin_v,nfin_v)
                     break
+                elif n1.cat in ['LK','VC']:
+                    for n2 in n1.children:
+                        if n2.cat=='VXFIN':
+                            gather_verbs_fin(n2.children,fin_v)
+                        elif n2.cat=='VXINF':
+                            gather_verbs_nfin(n2.children,nfin_v)
+                        elif n2.cat=='PTKVZ':
+                            nfin_v.append(n2)
+                        else:
+                            print "unclear:",n1.cat
+                    break
 
 
 def get_target(anno):
