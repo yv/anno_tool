@@ -688,6 +688,31 @@ def clause_children(n1, exclude):
                     fkonj_seen=True
     return result
 
+def get_istatus(node):                
+    istatus='new'
+    if hasattr(node,'anaphora_info'):
+        a_kind=node.anaphora_info[0]
+        if a_kind in ['expletive','inherent_reflexive']:
+            kind=a_kind
+            istatus='expl'
+        else:
+            istatus='old'
+    else:
+        for n in node.children:
+            if n.edge_label in ['HD','APP']:
+                is2=get_istatus(n)
+                if is2!='new':
+                    return is2
+            elif n.edge_label=='-' and n.cat in ['NX','PPOSAT']:
+                is2=get_istatus(n)
+                if is2!='new':
+                    return 'mediated'
+            elif n.edge_label=='-' and n.cat=='PX':
+                if len(n.children)==2 and n.children[0].cat=='APPR' and n.children[1].cat=='NX':
+                    is2=get_istatus(n.children[1])
+                    if is2!='new':
+                        return 'mediated'
+    return node
 
 def munge_single_phrase(node):
         feats=['cat:'+node.cat]
@@ -712,15 +737,9 @@ def munge_single_phrase(node):
                 sc=semclass_for_node(node)
             if sc is not None:
                 feats.append('sem:%s'%(sc,))
-            istatus='new'
-            if hasattr(node,'anaphora_info'):
-                a_kind=node.anaphora_info[0]
-                if a_kind in ['expletive','inherent_reflexive']:
-                    kind=a_kind
-                    istatus='expl'
-                else:
-                    istatus='old'
-            feats.append('ref:%s'%(istatus,))
+            if 'istatusG' in wanted_features:
+                istatus=get_istatus(node)
+                feats.append('ref:%s'%(istatus,))
         if hasattr(node,'head') and 'delexG' not in wanted_features:
             feats.append('lm:'+node.head.lemma)
             if node.cat=='PX':

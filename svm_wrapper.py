@@ -3,6 +3,7 @@ import tempfile
 import numpy
 import sys
 from mltk import Factory
+from collections import defaultdict
 from itertools import izip
 from xvalidate_common import shrink_to
 
@@ -110,7 +111,24 @@ svmperf=SVMPerfLearner(flags=['-w','3','-c','0.01','-l','1'],
                        datafile_pattern='train.data',
                        classifier_pattern='model.data')
 
-def train_greedy(vectors, labels, prototype, d=1):
+def subsample_by_class(data,n_pos,n_neg):
+    pos_instances=[d for d in data if d[0]]
+    neg_instances=[d for d in data if not d[0]]
+    return pos_instances[:n_pos]+neg_instances[:n_neg]
+
+def make_labelfilter(labels,d):
+    filt=defaultdict(set)
+    labels0=[[shrink_to(lbl,d) for lbl in lab] for lab in labels]
+    for labs in labels0:
+        if len(labs)>1:
+            for k,lab0 in enumerate(labs):
+                filt[lab0].update(labs[:k])
+                filt[lab0].update(labs[k+1:])
+    print >>sys.stderr, filt
+    return filt
+                
+
+def train_greedy(vectors, labels, prototype, d=1, maxratio=0):
     labelset=set()
     labels0=[[shrink_to(lbl,d) for lbl in lab] for lab in labels]
     for labs in labels0:
@@ -144,13 +162,16 @@ def train_greedy(vectors, labels, prototype, d=1):
         if n_pos==1 and n_neg>len(all_labels)+1:
             print >>sys.stderr, "Giving up on %s (%d/%d)"%(label,n_pos,n_neg)
             continue
+        if maxratio!=0 and n_pos*maxratio<n_neg:
+            print >>sys.stderr, "Subsampling negative instances for %s"%(label,)
+            data_train=subsample_by_class(data_train,n_pos,n_pos*maxratio)
         learner=prototype.bind(label=label,depth=d,data=data_train)
         w_classify=learner.get('classifier')
         vecs.append((label,w_classify))
-        cont[label]=train_greedy(sub_cl_vec,sub_cl_lab,prototype,d+1)
+        cont[label]=train_greedy(sub_cl_vec,sub_cl_lab,prototype,d+1,maxratio)
     return (vecs,cont)
 
-def classify_greedy_mlab(stuff,vec_cl, num_labels=2):
+def classify_greedy_mlab(stuff,vec_cl, num_labels=2, labelfilter=None):
     vecs,cont=stuff
     result=[]
     for label,vec in vecs:
@@ -158,11 +179,21 @@ def classify_greedy_mlab(stuff,vec_cl, num_labels=2):
         result.append((score,label))
     result.sort(reverse=True)
     rels=[]
+    filters=[]
     for i,res in enumerate(result):
         if i>0 and res[0]<0:
             break
         if i>=num_labels:
             break
+        wanted=True
+        for filt in filters:
+            if res[1] not in filt:
+                print >>sys.stderr, "Rejected %s %s"%(rels,res[1])
+                wanted=False
+        if not wanted:
+            continue
+        if labelfilter is not None:
+            filters.append(labelfilter[res[1]])
         rel=classify_greedy(cont[res[1]],vec_cl)
         rels.append(rel)
     return rels

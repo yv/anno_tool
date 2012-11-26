@@ -14,7 +14,7 @@ from getopt import getopt
 import optparse
 from dist_sim.fcomb import FCombo, make_multilabel, dump_example
 from alphabet import PythonAlphabet
-from svm_wrapper import svmperf, train_greedy, classify_greedy_mlab, set_flags
+from svm_wrapper import svmperf, make_labelfilter, train_greedy, classify_greedy_mlab, set_flags
 #import me_opt2 as me_opt
 #import sgd_opt as me_opt
 import random
@@ -40,6 +40,10 @@ oparse.add_option('--featsize',dest='feat_size')
 oparse.add_option('--sdepth',dest='sdepth',
                   type='int',default=1)
 oparse.add_option('--subdir',action="store_true",dest="want_subdir")
+oparse.add_option('--maxratio',dest='maxratio',
+                  type='int',default=0)
+oparse.add_option('--labelfilter',dest='labelfilter',
+                  action='store_true')
 oparse.set_defaults(reassign_folds=True,max_depth=3)
 
 opts,args=oparse.parse_args(sys.argv[1:])
@@ -141,12 +145,17 @@ fc.dict.growing=False
 
 print >>sys.stderr, "training models..."
 classifiers=[]
+label_filters=[]
 for i,data_bin in enumerate(data_bins):
     labels=[x[1] for x in data_bin]
     examples=[x[0] for x in data_bin]
     basedir='/export2/local/yannick/konn-cls/fold-%d'%(i,)
-    cl_greedy=train_greedy(examples,labels,my_svmperf.bind(fold=i),opts.sdepth)
+    cl_greedy=train_greedy(examples,labels,my_svmperf.bind(fold=i),opts.sdepth,maxratio=opts.maxratio)
     classifiers.append(cl_greedy)
+    if opts.labelfilter:
+        label_filters.append(make_labelfilter(labels,opts.sdepth))
+    else:
+        label_filters.append(None)
 
 # for i,data_bin in enumerate(test_bins):
 #     labels=[x[1] for x in data_bin]
@@ -159,7 +168,7 @@ if opts.weights_fname is not None:
 
 def classify(dat):
     bin_nr,data,label=dat
-    best=classify_greedy_mlab(classifiers[bin_nr],fc(data),opts.max_labels)
+    best=classify_greedy_mlab(classifiers[bin_nr],fc(data),opts.max_labels, label_filters[bin_nr])
     return best
 
 
