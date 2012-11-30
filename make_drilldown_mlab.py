@@ -5,13 +5,15 @@ import re
 import simplejson as json
 import numpy
 import codecs
+import optparse
 from annodb import database
 from jinja2 import Environment, FileSystemLoader
 from cStringIO import StringIO
 from collections import defaultdict
 from alphabet import PythonAlphabet
 from getopt import getopt
-from xvalidate_common import shrink_to
+from dist_sim.fcomb import Multipart
+from xvalidate_common import shrink_to, load_data, add_options_common
 
 
 __doc__="""
@@ -26,30 +28,40 @@ Options:
   -w weights_file : include weights
 """
 
-max_depth=None
-
 db_name=None
 mylookup=Environment(loader=FileSystemLoader('./templates',encoding='ISO-8859-15'))
 tmpl=mylookup.get_template('drilldown.html')
-corpus_name=None
-weights_fname=None
 
-opts,args=getopt(sys.argv[1:],'m:d:w:')
-for k,v in opts:
-    if k=='-m':
-        max_depth=int(v)
-    elif k=='-d':
-        corpus_name=v
-    elif k=='-w':
-        weights_fname=v
+oparse=optparse.OptionParser()
+add_options_common(oparse)
+oparse.add_option('--corpus',dest='corpus_name')
+oparse.set_defaults(reassign_folds=True,max_depth=3)
+
+opts,args=oparse.parse_args(sys.argv[1:])
+max_depth=opts.max_depth
+weights_fname=opts.weights_fname
+corpus_name=opts.corpus_name
+
+def munge_data(data):
+    if isinstance(data,Multipart):
+        lst=[]
+        for part in data.parts:
+            lst+=[x[0] for x in part]
+        return lst
+    else:
+        return data
+
+def make_spans(span):
+    spans=[(span[0],span[1]+1,"<b>","</b>")]
+    for name,start,end in span[2:]:
+        spans.append((start,end,"[<sub>%s</sub>"%(name,),"<sub>%s</sub>]"%(name,)))
+    return spans
 
 all_data=[]
 spans=[]
-for l in file(args[0]):
-    bin_nr,data,label,unused_span=json.loads(l)
-    if max_depth is not None:
-        label=[shrink_to(lab,max_depth) for lab in label]
-    all_data.append((bin_nr,data,label))
+all_data0,labelset0=load_data(args[0],opts)
+for bin_nr,data0,label in all_data0:
+    all_data.append((bin_nr,munge_data(data0),label))
 
 weights={}
 if weights_fname is not None:
@@ -66,7 +78,8 @@ if corpus_name is not None:
         sent_no=db.sentences.cpos2struc(span[0])+1
         print >>out,'<a href="http://localhost:5000/pycwb/sentence/%d?force_corpus=%s">s%d</a>'%(
             sent_no,corpus_name,sent_no)
-        db.display_spans([(span[0],span[1]+1,"<b>","</b>")],out)
+        spans=make_spans(span)
+        db.display_spans(spans,out)
         snippets.append(out.getvalue().decode('ISO-8859-15'))
 else:
     snippets=None

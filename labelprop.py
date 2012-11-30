@@ -117,7 +117,7 @@ def load_data(fname_labeled, fname_unlabeled, normalize_func=norm_set):
         except ValueError:
             print >>sys.stderr, l
             raise
-        span=tuple(span)
+        span=tuple(span[:2])
         xs.append(data)
         bin_nr=line_no%n_bins
         y=alph[normalize_func(label)]

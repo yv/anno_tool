@@ -54,7 +54,7 @@ SECRET_KEY = 'H\xda}\xa3k0\x0c\xdc\x0bY\na\x08}\n\x1f\x13\xc5\x9f\xf1'
 # the cookie name for the session
 COOKIE_NAME = 'session'
 
-ADMINS=['yannick','anna','anne','janne', 'kathrin', 'heike', 'verena']
+ADMINS=['yannick','anna','nadine','janne', 'kathrin', 'heike', 'verena']
 
 class AppRequest(Request):
     """A request with a secure cookie session."""

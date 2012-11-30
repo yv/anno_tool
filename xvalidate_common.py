@@ -53,7 +53,7 @@ def object_hook(o):
     return o
 
 def load_data(fname, opts):
-    reassign_folds=opts.reassign_folds
+    reassign_folds=getattr(opts,'reassign_folds',True)
     max_depth=opts.max_depth
     all_data=[]
     line_no=0

@@ -12,7 +12,7 @@ import json
 import numpy
 from getopt import getopt
 import optparse
-from dist_sim.fcomb import FCombo, make_multilabel, dump_example
+from dist_sim.fcomb import FCombo, make_multilabel, dump_example, Multipart
 from alphabet import PythonAlphabet
 from svm_wrapper import svmperf, make_labelfilter, train_greedy, classify_greedy_mlab, set_flags
 #import me_opt2 as me_opt
@@ -126,6 +126,18 @@ elif opts.feat_sel==200:
         munge_fn=do_custom_comb_2(data0_bins[i],fc,feat_sizes)
         data_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in data0_bins[i]]
         test_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in test0_bins[i]]
+elif opts.feat_sel in xrange(201,205):
+    feat_sel_method=[feat_chi2,feat_pmi,feat_f1,feat_f18,feat_f8,feat_unsup][opts.feat_sel-201]
+    if opts.feat_size is not None:
+        feat_sizes=[int(x) for x in opts.feat_size.split(',')]
+    else:
+        feat_sizes=[0,500]
+    # Feature Selection & Creation of actual feature vectors
+    for i in xrange(n_bins):
+        print >>sys.stderr, "Feature selection for fold %d"%(i,)
+        munge_fn=do_custom_comb_2(data0_bins[i],fc,feat_sizes,feat_sel_method)
+        data_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in data0_bins[i]]
+        test_bins[i]=[(munge_fn(vec0),label) for (vec0,label) in test0_bins[i]]    
 elif opts.feat_sel>0:
     if opts.feat_size is not None:
         feat_sizes=[int(x) for x in opts.feat_size.split(',')]

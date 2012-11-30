@@ -10,6 +10,7 @@ from annodb.schema import schemas
 from pynlp.de import smor_pos, tueba_heads
 from pytree import deps
 import simplejson as json
+import optparse
 
 import sys
 from pynlp.de import pydeps
@@ -159,6 +160,10 @@ def add_hypernyms(synsets,result):
         else:
             add_hypernyms(hyper,result)
 
+def strip_aux(s):
+    if s.endswith('%aux'):
+        return s[:-4]
+    return s
 def get_verbs(n):
     fin_verbs=[]
     nfin_verbs=[]
@@ -190,34 +195,34 @@ def get_verbs(n):
         else:
             print >>sys.stderr, "strange morph: %s for %s"%(main_v.morph,main_v)
     print main_v,all_v
-    pred=main_v.lemma
+    pred=strip_aux(main_v.lemma)
     for n in all_v:
         if n.cat.endswith('PP'):
-            if pred=='werden':
+            if pred in 'werden':
                 flags.add('passive:dyn')
-                pred=n.lemma
+                pred=strip_aux(n.lemma)
             elif pred=='haben':
                 flags.add('perfect')
-                pred=n.lemma
+                pred=strip_aux(n.lemma)
             elif pred=='sein':
-                lem=n.lemma
+                lem=strip_aux(n.lemma)
                 if (lem not in smor_pos.info_map or
                     'perfect:sein' in smor_pos.info_map[lem]):
                     flags.add('perfect')
                 else:
                     flags.add('passive:stat')
-                pred=n.lemma
+                pred=strip_aux(n.lemma)
             elif pred=='bleiben':
                 flags.add('passive:stat')
                 # bleiben markieren
-                pred=n.lemma
+                pred=strip_aux(n.lemma)
         elif n.cat.endswith('INF'):
             if pred=='werden':
                 flags.add('future')
-                pred=n.lemma
+                pred=strip_aux(n.lemma)
             elif pred in ['wollen','sollen','müssen','können']:
                 flags.add('mod:'+pred)
-                pred=n.lemma
+                pred=strip_aux(n.lemma)
         elif n.cat=='PTKVZ' and '#' not in pred:
             pred='%s#%s'%(n.word,pred)
     return (pred,flags)
@@ -712,7 +717,7 @@ def get_istatus(node):
                     is2=get_istatus(n.children[1])
                     if is2!='new':
                         return 'mediated'
-    return node
+    return istatus
 
 def munge_single_phrase(node):
         feats=['cat:'+node.cat]
@@ -842,8 +847,9 @@ def process_spans(spans,annotator):
 
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc']
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc','wordpairs','productions']
-#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairs','productions']
-wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','productionsA']
+wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairs','productions']
+#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel']
+#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','productionsA']
 #wanted_features=['nobaseline']
 #wanted_features=['wordpairs','productions']
 #wanted_features=[]
@@ -869,10 +875,35 @@ def do_initialization(wanted_features, dbname='R6PRE1'):
         print wanted_productions
         print wanted_pairs
 
-if __name__=='__main__':
-    if len(sys.argv)>=2:
-        wanted_features=sys.argv[1].split(',')
+def test_get_verbs(sent_no=17096):
+    global db
+    global lemmas
+    db=annodb.get_corpus('TUEBA4')
+    lemmas=db.corpus.attribute('lemma','p')
+    #
+    sent_span=db.sentences[sent_no]
+    t=export.from_json(db.get_parses(sent_no)['release'])
+    for n in t.topdown_enumeration():
+        if n.cat=='NCX': n.cat='NX'
+    stupid_head_finder(t)
+    for n,lemma in izip(t.terminals,lemmas[sent_span[0]:sent_span[1]+1]):
+        n.lemma=lemma
+    for node in t.topdown_enumeration():
+        if node.cat=='SIMPX':
+            print node.to_penn()
+            pred,flags=get_verbs(node)
+            print pred
+            print flags
 
+oparse=optparse.OptionParser()
+oparse.add_option('--fprefix',dest='fprefix',
+                  default='')
+oparse.add_option('--features',dest='features')
+if __name__=='__main__':
+    opts,args=oparse.parse_args(sys.argv[1:])
+    if len(args)>=1:
+        wanted_features=args[0].split(',')
+    fprefix=opts.fprefix
     init_db(wanted_features)
     tasks_n=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
     tasks_w=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,7)]
@@ -887,16 +918,16 @@ if __name__=='__main__':
     do_initialization(wanted_features)
 
     ## 2. create data for nachdem and waehrend
-    f_out=file('nachdem_1-6.json','w')
+    f_out=file(fprefix+'nachdem_1-6.json','w')
     process_spans(spans_n,'melike')
     f_out.close()
 
     # TBD: update wanted_productions
-    f_out=file('waehrend_1-4.json','w')
+    f_out=file(fprefix+'waehrend_1-4.json','w')
     process_spans(spans_w,'melike')
     f_out.close()
 
-    f_out=file('waehrend_1-10.json','w')
+    f_out=file(fprefix+'waehrend_1-10.json','w')
     process_spans(spans_w2,'melike')
     f_out.close()
 

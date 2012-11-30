@@ -194,10 +194,11 @@ def do_stuff(doc,last_stop,new_stop):
             terminals2=[doc.w_objs[i] for i in sorted(idxs2)]
             print "SUB: ",' '.join([x.word for x in terminals1])
             print "MAIN:",' '.join([x.word for x in terminals2])
+            spans=n.span+[['arg1']+sub_cl.span,['arg2']+main_cl.span]
             result.append(['konn',n.lemma,get_features.get_target(n.konn_rel),
                            extract_features(terminals1,terminals2,[sub_cl],[main_cl]),
                            extract_trees([sub_cl],[main_cl],terminals1,terminals2),
-                           n.span])
+                           spans])
     disc_rels=[]
     for edu in doc.get_objects_by_class(Edu,last_stop,new_stop):
         disc_rels+=get_unmarked_relations(doc,edu)
@@ -218,11 +219,14 @@ def do_stuff(doc,last_stop,new_stop):
         nodes2=span2nodes(doc,arg2.span)
         for node in nodes2:
             print node.to_penn()
+        spans=[min(arg1.span[0],arg2.span[0]),max(arg1.span[1],arg2.span[1]),
+               ['arg1']+list(arg1.span),
+               ['arg2']+list(arg2.span)]
         if marking[0]=='-':
             stuff=[label,
                    extract_features(terminals1,terminals2,nodes1,nodes2),
                    extract_trees(nodes1,nodes2,terminals1,terminals2),
-                   arg2.span]
+                   spans]
             if len(marking)==1:
                 result.append(['drel','-']+stuff)
             result.append(['drel','x']+stuff)
