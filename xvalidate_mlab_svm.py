@@ -14,7 +14,8 @@ from getopt import getopt
 import optparse
 from dist_sim.fcomb import FCombo, make_multilabel, dump_example, Multipart
 from alphabet import PythonAlphabet
-from svm_wrapper import svmperf, make_labelfilter, train_greedy, classify_greedy_mlab, set_flags
+from svm_wrapper import svmperf, make_labelfilter, train_greedy, \
+    classify_greedy_mlab, set_flags, make_weight_map
 #import me_opt2 as me_opt
 #import sgd_opt as me_opt
 import random
@@ -39,12 +40,12 @@ oparse.add_option('--featsel',dest='feat_sel',
 oparse.add_option('--featsize',dest='feat_size')
 oparse.add_option('--sdepth',dest='sdepth',
                   type='int',default=1)
-oparse.add_option('--subdir',action="store_true",dest="want_subdir")
+oparse.add_option('--nosubdir',action="store_false",dest="want_subdir")
 oparse.add_option('--maxratio',dest='maxratio',
                   type='int',default=0)
 oparse.add_option('--labelfilter',dest='labelfilter',
                   action='store_true')
-oparse.set_defaults(reassign_folds=True,max_depth=3)
+oparse.set_defaults(reassign_folds=True,max_depth=3,want_subdir=True)
 
 opts,args=oparse.parse_args(sys.argv[1:])
 
@@ -176,7 +177,12 @@ for i,data_bin in enumerate(data_bins):
 #     convert_onevsall(examples,labels,basedir,'test_')
 
 if opts.weights_fname is not None:
-    print_weights(opts.weights_fname,fc,classifiers)
+    wmaps=[]
+    for cl in classifiers:
+        wmap={}
+        make_weight_map(cl,fc.dict,wmap)
+        wmaps.append(wmap)
+    print_weights_2(opts.weights_fname,wmaps)
 
 def classify(dat):
     bin_nr,data,label=dat
