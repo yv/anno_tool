@@ -775,7 +775,6 @@ def make_simple_tree(main_cl, exclude, other_terms=None):
     feats=list(flags)+['cat:'+main_cl.cat]
     if 'delexG' not in wanted_features:
         feats.append('lm:'+pred)
-    #feats+=['hyp%d'%(k,) for k in expanded_synsets_for_lemma(pred,'VVINF')]
     ni1=InfoNode('S',feats)
     for n2_cat, n3 in clause_children(main_cl, exclude):
         if n3 in exclude:
