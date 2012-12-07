@@ -62,7 +62,10 @@ class LinearClassifier:
         self.bias=bias
     def classify(self, vec):
         return vec.dotFull(self.w)-self.bias
-
+    def add_to_weight_map(self, label, alph, wmap, threshold=0.001):
+        for i,w in enumerate(self.w):
+            if abs(w)>threshold:
+                wmap['%s^%s'%(label,alph.get_sym_unicode(i))]=w
 
 class SVMPerfLearner(Factory):
     def __init__(self,basedir=None,prefix=None,**kwargs):
@@ -209,3 +212,11 @@ def classify_greedy(stuff,vec_cl, num_labels=2):
     result.sort(reverse=True)
     return classify_greedy(cont[result[0][1]],vec_cl)
 
+def make_weight_map(stuff,alph,wmap,threshold=0.001):
+    vecs,cont=stuff
+    for label,vec in vecs:
+        if vec is not None:
+            vec.add_to_weight_map(label,alph,wmap,threshold)
+    if cont is not None:
+        for lab2, stuff2 in cont.iteritems():
+            make_weight_map(stuff2,alph,wmap,threshold)
