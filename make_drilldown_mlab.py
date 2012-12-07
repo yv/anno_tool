@@ -13,7 +13,7 @@ from collections import defaultdict
 from alphabet import PythonAlphabet
 from getopt import getopt
 from dist_sim.fcomb import Multipart
-from xvalidate_common import shrink_to, load_data, add_options_common
+from xvalidate_common import shrink_to, load_data, make_spans, add_options_common
 
 
 __doc__="""
@@ -50,12 +50,6 @@ def munge_data(data):
         return lst
     else:
         return data
-
-def make_spans(span):
-    spans=[(span[0],span[1]+1,"<b>","</b>")]
-    for name,start,end in span[2:]:
-        spans.append((start,end,"[<sub>%s</sub>"%(name,),"<sub>%s</sub>]"%(name,)))
-    return spans
 
 all_data=[]
 spans=[]
