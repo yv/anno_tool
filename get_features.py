@@ -514,6 +514,8 @@ def lexrel_features(t, sub_cl, main_cl,feats):
     lexrel_features_1(terminals_s, terminals_m,feats)
 
 def lexrel_features_1(terminals_s, terminals_m,feats):
+    print >>sys.stderr, "lexrel_features_1 %s // %s"%(' '.join([n.word for n in terminals_s]),
+                                                      ' '.join([n.word for n in terminals_m]))
     lemmas_s=retrieve_synsets(terminals_s)
     lemmas_m=retrieve_synsets(terminals_m)
     hyp_map={}
