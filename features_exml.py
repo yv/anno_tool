@@ -37,8 +37,12 @@ def get_unmarked_relations(doc,edu):
     return [[[x[0] for x in xs]]+xs[0][1:] for xs in by_target.itervalues()]
 
 def span2nodes(doc,span):
-    start,end=span
+    start,end0=span
     result=[]
+    end=end0
+    while end>start+1 and doc.w_objs[end-1].cat in ['$(','$.','$,']:
+        print >>sys.stderr, "Cut: %s"%(doc.w_objs[end-1])
+        end-=1
     while start<end:
         n0=doc.w_objs[start]
         if n0.cat in ['KON','$(','$.','$,']:
@@ -48,9 +52,9 @@ def span2nodes(doc,span):
         while parent and parent.span[0]>=start and parent.span[1]<=end:
             n=parent
             parent=parent.parent
-        if parent and n.cat in ['VF','LK','MF'] and parent.cat in ['SIMPX','R-SIMPX','FKONJ']:
+        if parent and n.span[1]<end and n.cat in ['VF','LK','MF'] and parent.cat in ['SIMPX','R-SIMPX','FKONJ']:
             n=parent
-        elif n.cat=='NF' and len(n.children)==1:
+        elif n.cat in ['VF','NF'] and len(n.children)==1:
             n=n.children[0]
         result.append(n)
         start=n.span[1]
@@ -171,7 +175,7 @@ def extract_features(terminals1,terminals2,nodes1,nodes2):
 def extract_trees(nodes1,nodes2,terminals1,terminals2):
     get_features.mark_nodes(nodes1,nodes2)
     result=[make_infotree(nodes1,nodes2,terminals2),
-            make_infotree(nodes2,nodes1,terminals2)]
+            make_infotree(nodes2,nodes1,terminals1)]
     get_features.unmark_nodes(nodes1,nodes2)
     return result
 
@@ -186,14 +190,14 @@ def do_stuff(doc,last_stop,new_stop):
             sub_cl,main_cl=get_features.find_args(n)
             if sub_cl is None or main_cl is None:
                 continue
-            print n.lemma, get_features.get_target(n.konn_rel)
+            print >>sys.stderr, n.lemma, get_features.get_target(n.konn_rel)
             idxs1=set(xrange(sub_cl.span[0],sub_cl.span[1]))
             idxs2=set(xrange(main_cl.span[0],main_cl.span[1]))
             idxs2.difference_update(idxs1)
             terminals1=[doc.w_objs[i] for i in sorted(idxs1)]
             terminals2=[doc.w_objs[i] for i in sorted(idxs2)]
-            print "SUB: ",' '.join([x.word for x in terminals1])
-            print "MAIN:",' '.join([x.word for x in terminals2])
+            print >>sys.stderr, "SUB: ",' '.join([x.word for x in terminals1])
+            print >>sys.stderr, "MAIN:",' '.join([x.word for x in terminals2])
             spans=n.span+[['arg1']+sub_cl.span,['arg2']+main_cl.span]
             result.append(['konn',n.lemma,get_features.get_target(n.konn_rel),
                            extract_features(terminals1,terminals2,[sub_cl],[main_cl]),
@@ -206,19 +210,23 @@ def do_stuff(doc,last_stop,new_stop):
         disc_rels+=get_unmarked_relations(doc,edu)
     for rel in disc_rels:
         label,marking,arg1,arg2=rel
-        print marking, label
+        print >>sys.stderr, marking, label
         idxs1=set(xrange(arg1.span[0],arg1.span[1]))
         idxs2=set(xrange(arg2.span[0],arg2.span[1]))
+        if idxs1.issubset(idxs2):
+            idxs2.difference_update(idxs1)
+        elif idxs2.issubset(idxs1):
+            idxs1.difference_update(idxs2)
         terminals1=[doc.w_objs[i] for i in sorted(idxs1)]
         terminals2=[doc.w_objs[i] for i in sorted(idxs2)]
-        print "ARG1:",' '.join([n.word for n in terminals1])
+        print >>sys.stderr, "ARG1:",' '.join([n.word for n in terminals1])
         nodes1=span2nodes(doc,arg1.span)
         for node in nodes1:
-            print node.to_penn()
-        print "ARG2:",' '.join([n.word for n in terminals2])
+            print >>sys.stderr, node.to_penn()
+        print >>sys.stderr, "ARG2:",' '.join([n.word for n in terminals2])
         nodes2=span2nodes(doc,arg2.span)
         for node in nodes2:
-            print node.to_penn()
+            print >>sys.stderr, node.to_penn()
         spans=[min(arg1.span[0],arg2.span[0]),max(arg1.span[1],arg2.span[1]),
                ['arg1']+list(arg1.span),
                ['arg2']+list(arg2.span)]
