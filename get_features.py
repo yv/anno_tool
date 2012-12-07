@@ -172,7 +172,7 @@ def get_verbs(n):
     if not fin_verbs:
         for n1 in n.children:
             if n1.cat=='FKOORD':
-                print "looking for finite verb in FKOORD..."
+                print >>sys.stderr, "looking for finite verb in FKOORD..."
                 for n2 in n1.children:
                     if n2.cat=='FKONJ':
                         gather_verbs(n2.children,fin_verbs,[])
@@ -366,12 +366,12 @@ def get_features(t, sub_cl, main_cl):
     if 'tmp' in wanted_features:
         for k in flags:
             feats.append('TFS'+k)
-    print p,flags
-    print get_verb_features(p)
-    print "args[sub]:"
+    print >>sys.stderr, p,flags
+    print >>sys.stderr, get_verb_features(p)
+    print >>sys.stderr, "args[sub]:"
     nomargs_sub=find_nomargs(sub_cl)
     for k,v in nomargs_sub:
-        print "  %s: %s[%s]"%(k,v.to_penn(), semclass_for_node(v))
+        print >>sys.stderr, "  %s: %s[%s]"%(k,v.to_penn(), semclass_for_node(v))
     (p,flags)=get_verbs(main_cl)
     if 'lex' in wanted_features:
         feats.append('LM'+p)
@@ -381,12 +381,12 @@ def get_features(t, sub_cl, main_cl):
     if 'tmp' in wanted_features:
         for k in flags:
             feats.append('TFM'+k)
-    print p,flags
-    print get_verb_features(p)
-    print "args[main]:"
+    print >>sys.stderr, p,flags
+    print >>sys.stderr, get_verb_features(p)
+    print >>sys.stderr, "args[main]:"
     nomargs_main=find_nomargs(main_cl)
     for k,v in nomargs_main:
-        print "  %s: %s[%s]"%(k,v.to_penn(),semclass_for_node(v))
+        print >>sys.stderr, "  %s: %s[%s]"%(k,v.to_penn(),semclass_for_node(v))
     if 'mod' in wanted_features:
         mod_main=find_adjuncts(main_cl,[sub_cl])
         mod_sub=find_adjuncts(sub_cl)
@@ -398,15 +398,15 @@ def get_features(t, sub_cl, main_cl):
                     val='-'
                 feats.append('mod%s%s%s'%(modS,k,val))
         if mod_main:
-            print "mod[main]"
+            print >>sys.stderr, "mod[main]"
             for k in mod_main:
                 for v in mod_main[k]:
-                    print " %s: %s"%(k,v.to_penn())
+                    print >>sys.stderr, " %s: %s"%(k,v.to_penn())
         if mod_sub:
-            print "mod[sub]"
+            print >>sys.stderr, "mod[sub]"
             for k in mod_sub:
                 for v in mod_sub[k]:
-                    print " %s: %s"%(k,v.to_penn())
+                    print >>sys.stderr, " %s: %s"%(k,v.to_penn())
     if 'csubj' in wanted_features:
         subj_main=[x[1] for x in nomargs_main if x[0]=='ON']
         subj_sub=[x[1] for x in nomargs_sub if x[0]=='ON']
