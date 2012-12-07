@@ -6,8 +6,9 @@ from dist_sim.fcomb import Multipart
 from alphabet import PythonAlphabet
 from itertools import izip
 
-__all__=['shrink_to','load_data','load_aux','make_stats',
-         'print_weights','print_eval','n_bins','add_options_common',
+__all__=['shrink_to','load_data','load_data_spans','load_aux','make_stats',
+         'print_weights','print_weights_2','print_eval','n_bins',
+         'add_options_common',
          'object_hook','PrettyFloat']
 
 class PrettyFloat(float):
@@ -76,6 +77,36 @@ def load_data(fname, opts):
     labelset.growing=False
     return all_data, labelset
 
+def load_data_spans(fname, opts):
+    reassign_folds=getattr(opts,'reassign_folds',True)
+    max_depth=opts.max_depth
+    all_data=[]
+    line_no=0
+    labelset=PythonAlphabet()
+    for l in file(fname):
+        bin_nr,data,label,span=json.loads(l, object_hook=object_hook)
+        if reassign_folds:
+            bin_nr=line_no%n_bins
+        new_label=[]
+        if label in [None, True, False]:
+            new_label=label
+        else:
+            for lbl in label:
+                if max_depth is not None:
+                    lbl=shrink_to(lbl,max_depth)
+                labelset[lbl]
+                new_label.append(lbl)
+        all_data.append((bin_nr,data,new_label,span))
+        line_no+=1
+    labelset.growing=False
+    return all_data, labelset
+
+def make_spans(span):
+    spans=[(span[0],span[1]+1,"<b>","</b>")]
+    for name,start,end in span[2:]:
+        spans.append((start,end,"[<sub>%s</sub>"%(name,),"<sub>%s</sub>]"%(name,)))
+    return spans
+
 def load_aux(fname):
     all_labels=[]
     for l in file(fname):
@@ -126,6 +157,19 @@ def print_weights(fname,fc,classifiers,epsilon=1e-4):
         print >>f_weights,"%-16s %.3f %.3f"%(x[0],x[1],x[2])
     f_weights.close()
 
+def print_weights_2(fname,wmaps):
+    f_weights=codecs.open(fname,'w','ISO-8859-15')
+    all_feat_names=set()
+    for wmap in wmaps:
+        all_feat_names.update(wmap.iterkeys())
+    all_feats=[]
+    for feat in all_feat_names:
+        aws=numpy.array([wmap.get(feat,0.0) for wmap in wmaps])
+        all_feats.append((feat,aws.mean(),aws.std()))
+    all_feats.sort(key=lambda x:-abs(x[1]))
+    for x in all_feats:
+        print >>f_weights,"%-16s %.3f %.3f"%(x[0],x[1],x[2])
+    f_weights.close()
 
 def print_eval(stats,labelset,d):
     print >>sys.stderr, "*** for d=%d ***"%(d,)
