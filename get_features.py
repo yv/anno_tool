@@ -526,7 +526,7 @@ def lexrel_features_1(terminals_s, terminals_m,feats):
             lcs,dist=wordsenses.lcs_path(synsets_s,synsets_m)
             if lcs is not None:
                 lcs_depth=wordsenses.synset_depth(lcs)
-                print "GWN-LCS",n_s,n_m,lcs.explain(), dist, lcs_depth
+                print >>sys.stderr, "GWN-LCS",n_s,n_m,lcs.explain(), dist, lcs_depth
                 # if lcs in synsets_s:
                 #     if lcs in synsets_m:
                 #         feats.append('lcs_synonym')
@@ -674,7 +674,7 @@ def clause_children(n1, exclude):
     field=None
     result=[]
     for n2 in n1.children:
-        if n2.cat in ['VF','MF','NF']:
+        if n2.cat in ['VF','MF','NF'] and n2 not in exclude:
             for n3 in n2.children:
                 result.append((n2.cat, n3))
         elif n2.cat == 'C' and len(n2.children)==1:
@@ -687,7 +687,7 @@ def clause_children(n1, exclude):
                 if n2a.cat=='FKONJ' and not fkonj_seen and n2a not in exclude:
                     result+=clause_children(n2a,exclude)
                     fkonj_seen=True
-                elif n2a.cat=='MF':
+                elif n2a.cat=='MF' and n2a not in exclude:
                     for n3 in n2a.children:
                         result.append((n2a.cat, n3))
                     fkonj_seen=True
