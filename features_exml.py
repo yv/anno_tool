@@ -324,7 +324,12 @@ def do_nadine(export_fname='/gluster/nufa/public/tuebadz-7.0-mit-NE-format4-mit-
     for line in examples:
         print >>output,'\t'.join(line)
     output.close()
-    
+
+def test_span2nodes(doc,start,end):
+    doc.ensure_span(start,end)
+    for node in span2nodes(doc,[start,end]):
+        print node.to_penn()
+
 oparse=optparse.OptionParser()
 oparse.add_option('--fprefix',dest='fprefix',
                   default='')
