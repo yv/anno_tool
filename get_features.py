@@ -152,6 +152,66 @@ def find_adjuncts(n,exclude=[]):
     gather_adjuncts(n.children,result,exclude)
     return result
 
+def get_clause_type(node):
+    if node.cat=='R-SIMPX':
+        return 'REL'
+    # LK - possibly in FKOORD
+    # VC - possibly in FKOORD, possibly in VF ( "Einen Kuchen gebacken hat Peter nicht." )
+    fd_lk=None
+    fd_vc=None
+    fd_c=None
+    fd_vf=None
+    for n in node.children:
+        if n.cat=='LK':
+            fd_lk=n
+        elif n.cat=='VC':
+            fd_vc=n
+        elif n.cat=='C':
+            fd_c=n
+        elif n.cat=='VF':
+            fd_vf=n
+    if fd_lk:
+        if fd_vf or n.edge_label=='KONJ':
+            return "V2"
+        else:
+            return "V1"
+    elif fd_c:
+        assert len(fd_c.children)==1, fd_c.children
+        n1=fd_c.children[-1]
+        if n1.cat == 'KOUI':
+            return 'KOUI'
+        elif n1.cat in ['ADV','PX','NX']:
+            return 'W'
+        elif n1.cat == 'KOUS':
+            if n1.word.lower() in ['dass','daß']:
+                return 'dass'
+            elif n1.word.lower() == 'ob':
+                return 'ob'
+            else:
+                return 'KOUS'
+        else:
+            assert False, n1
+    elif fd_vc:
+        vx_izu=None
+        vx_fin=None
+        for n in fd_vc.children:
+            if n.cat == 'VXFIN':
+                vx_fin=n.children[0]
+            elif n.cat == 'VXINF':
+                if len(n.children)==2 and n.children[0].cat=='PTKZU':
+                    vx_izu=n.children[1]
+                else:
+                    assert len(n.children)==1
+                    n1=n.children[0]
+                    if n1.cat=='VVIZU':
+                        vx_izu=n1
+        if vx_fin:
+            return "Vfin"
+        elif vx_izu:
+            return "Vizu"
+        else:
+            assert False
+
 def add_hypernyms(synsets,result):
     for syn in synsets:
         hyper=syn.getHypernyms()
@@ -521,6 +581,7 @@ def lexrel_features_1(terminals_s, terminals_m,feats):
     hyp_map={}
     for n_s,synsets_s in lemmas_s:
         for n_m,synsets_m in lemmas_m:
+            assert n_s!=n_m
             # gwn_path=wordsenses.relate_senses(synsets_s,
             #                                   synsets_m)
             # if gwn_path:
@@ -761,6 +822,7 @@ def tree_yield(nodes,exclude,result=None):
         result=[]
     for n in nodes:
         if n in exclude:
+            print >>sys.stderr, "excluded:"+n.to_penn()
             continue
         if n.isTerminal():
             result.append(n)
@@ -771,6 +833,9 @@ def tree_yield(nodes,exclude,result=None):
 def make_simple_tree(main_cl, exclude, other_terms=None):
     if other_terms is None:
         other_terms=tree_yield(exclude,[main_cl])
+        all_exclude=exclude
+    else:
+        all_exclude=exclude+other_terms
     (pred,flags)=get_verbs(main_cl)
     feats=list(flags)+['cat:'+main_cl.cat]
     if 'delexG' not in wanted_features:
@@ -788,7 +853,7 @@ def make_simple_tree(main_cl, exclude, other_terms=None):
             continue
         (kind,feats)=munge_single_phrase(n3)
         if 'lexrelG' in wanted_features:
-            lexrel_features_1(tree_yield([n3],exclude),other_terms,feats)
+            lexrel_features_1(tree_yield([n3],all_exclude),other_terms,feats)
         feats+=['fd:'+n2_cat]
         ni2=InfoNode(kind,feats)
         ni1.add_edge(ni2)
@@ -895,6 +960,7 @@ def test_get_verbs(sent_no=17096):
             pred,flags=get_verbs(node)
             print pred
             print flags
+            print get_clause_type(node)
 
 oparse=optparse.OptionParser()
 oparse.add_option('--fprefix',dest='fprefix',
