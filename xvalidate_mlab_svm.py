@@ -41,6 +41,7 @@ oparse.add_option('--featsize',dest='feat_size')
 oparse.add_option('--sdepth',dest='sdepth',
                   type='int',default=1)
 oparse.add_option('--nosubdir',action="store_false",dest="want_subdir")
+oparse.add_option('--subdir',action="store_true",dest="want_subdir")
 oparse.add_option('--maxratio',dest='maxratio',
                   type='int',default=0)
 oparse.add_option('--labelfilter',dest='labelfilter',
