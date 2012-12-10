@@ -152,16 +152,32 @@ def find_adjuncts(n,exclude=[]):
     gather_adjuncts(n.children,result,exclude)
     return result
 
+def enumerate_field_nodes(node):
+    for n in node.children:
+        if n.cat in ['LK','VC','C','VF','MF','NF']:
+            yield n
+        elif n.cat in ['SIMPX', 'R-SIMPX'] and n.edge_label in ['KONJ','HD']:
+            for n1 in enumerate_field_nodes(n):
+                yield n1
+                return            
+        elif n.cat in ['FKOORD','FKONJ']:
+            for n1 in enumerate_field_nodes(n):
+                yield n1
+                return
+
 def get_clause_type(node):
     if node.cat=='R-SIMPX':
         return 'REL'
+    elif node.cat not in ['SIMPX','FKOORD','FKONJ']:
+        return node.cat
     # LK - possibly in FKOORD
     # VC - possibly in FKOORD, possibly in VF ( "Einen Kuchen gebacken hat Peter nicht." )
     fd_lk=None
     fd_vc=None
     fd_c=None
     fd_vf=None
-    for n in node.children:
+    fd_mf=None
+    for n in enumerate_field_nodes(node):
         if n.cat=='LK':
             fd_lk=n
         elif n.cat=='VC':
@@ -170,17 +186,24 @@ def get_clause_type(node):
             fd_c=n
         elif n.cat=='VF':
             fd_vf=n
+        elif n.cat=='MF':
+            fd_mf=n
     if fd_lk:
         if fd_vf or n.edge_label=='KONJ':
             return "V2"
         else:
             return "V1"
+    elif fd_vf:
+        return "V2"
     elif fd_c:
+        if len(fd_c.children)==2 and (fd_c.children[0].word.lower()=='so' and
+                                      fd_c.children[1].word.lower() in ['dass','daß']):
+            return 'KOUS'
         assert len(fd_c.children)==1, fd_c.children
         n1=fd_c.children[-1]
         if n1.cat == 'KOUI':
             return 'KOUI'
-        elif n1.cat in ['ADV','PX','NX']:
+        elif n1.cat in ['ADVX','ADJX','PX','NX']:
             return 'W'
         elif n1.cat == 'KOUS':
             if n1.word.lower() in ['dass','daß']:
@@ -190,27 +213,47 @@ def get_clause_type(node):
             else:
                 return 'KOUS'
         else:
-            assert False, n1
+            assert False, n1.to_penn()
     elif fd_vc:
         vx_izu=None
         vx_fin=None
+        last_cat=None
         for n in fd_vc.children:
             if n.cat == 'VXFIN':
                 vx_fin=n.children[0]
             elif n.cat == 'VXINF':
                 if len(n.children)==2 and n.children[0].cat=='PTKZU':
                     vx_izu=n.children[1]
+                    last_cat='IZU'
+                    continue
+                elif len(n.children)>1:
+                    konjs=[n1 for n1 in n.children if n1.edge_label=='KONJ']
+                    if konjs:
+                        assert len(konjs[0].children)==1
+                    else:
+                        assert False, n.to_penn()
+                    n1=konjs[0]
                 else:
-                    assert len(n.children)==1
                     n1=n.children[0]
-                    if n1.cat=='VVIZU':
-                        vx_izu=n1
+                if n1.cat=='VVIZU':
+                    vx_izu=n1
+                    last_cat='IZU'
+                else:
+                    last_cat=n1.cat[2:]
         if vx_fin:
             return "Vfin"
         elif vx_izu:
             return "Vizu"
+        elif last_cat=='PP':
+            return "Vpp"
+        elif last_cat=='INF':
+            return "Vinf"
         else:
-            assert False
+            assert False, '%s: %s'%(last_cat, n.to_penn())
+    elif fd_mf:
+        return 'null'
+    else:
+        assert False, node.to_penn()
 
 def add_hypernyms(synsets,result):
     for syn in synsets:
