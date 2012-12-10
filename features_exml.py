@@ -123,7 +123,8 @@ def make_infotree(nodes1,nodes2,terminals2):
         if n.cat in ['SIMPX','R-SIMPX','FKONJ']:
             ni=get_features.make_simple_tree(n,nodes2,terminals2)
         else:
-            ni=InfoNode('FRAG',['cat:'+n.cat])
+            kind,feats=get_features.munge_single_phrase(n)
+            ni=InfoNode('FRAG',feats)
         if last_node is not None:
             last_node.add_edge(ni,'frag')
         nodes.append(ni)
