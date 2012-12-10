@@ -4,6 +4,7 @@ syntax:regexp
 ^html_out/
 ^html_anno/
 ^annotation-.*/
+^[^/]+_experiments/
 ^[/]*\.html$
 .*\.log$
 .*\.aux$

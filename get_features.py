@@ -846,7 +846,7 @@ def make_simple_tree(main_cl, exclude, other_terms=None):
             if n3.cat=='R-SIMPX':
                 ni2=InfoNode('REL_CL',['fd:'+n2_cat])
             else:
-                ni2=InfoNode('SUB_CL',['fd:'+n2_cat,'cltype:'+get_clause_type(n3)]])
+                ni2=InfoNode('SUB_CL',['fd:'+n2_cat,'cltype:'+get_clause_type(n3)])
             ni1.add_edge(ni2)
             continue
         if n3.edge_label.endswith('-MOD') and n3.edge_label!='V-MOD':
