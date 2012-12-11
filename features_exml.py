@@ -25,6 +25,7 @@ disc_map['CommentaryC']=disc_map['Commentary']
 disc_map['ContinuationQ']=disc_map['Continuation']
 disc_map['InstanceV']=disc_map['Instance']
 disc_map['ParallelV']=disc_map['Parallel']
+disc_map['Result-Spreechact']=disc_map['Result-speechact']
 
 def get_unmarked_relations(doc,edu):
     by_target=defaultdict(list)
@@ -133,11 +134,43 @@ def make_infotree(nodes1,nodes2,terminals2):
         ti.add_node(ni,True)
     return ti.as_json()
 
+def connection_features(terminals1, nodes1, terminals2, nodes2):
+    last_nodes1=nodes1[-1]
+    last_nodes1_parent=last_nodes1.parent
+    if (last_nodes1_parent and last_nodes1_parent.cat=='VF' and
+        last_nodes1_parent.parent in nodes2):
+        return ['conVF']
+    last_nodes2=nodes2[-1]
+    last_nodes2_parent=last_nodes2.parent
+    if (last_nodes2_parent and last_nodes2_parent.cat=='VF' and
+        last_nodes2_parent.parent in nodes1):
+        return ['conVFi']
+    first_nodes2=nodes2[0]
+    first_nodes2_parent=first_nodes2.parent
+    if (first_nodes2_parent and first_nodes2_parent.cat=='NF' and
+        first_nodes2_parent.parent in nodes1):
+        return ['conNF']
+    start1=terminals1[0].span[0]
+    start2=terminals2[0].span[0]
+    if terminals1[0].span[0] > terminals2[0].span[0]:
+        return [x+'i' for x in connection_features(terminals2, nodes2, terminals1, nodes1)]
+    end1=terminals1[-1].span[1]
+    end2=terminals2[-1].span[1]
+    print start1,end1,start2,end2
+    if end1==start2:
+        return ['conME']
+    elif end1 < start2:
+        return ['conBE']
+    elif start1 < start2 and end2 < end1:
+        return ['conDU']
+    assert False
+
 def extract_features(terminals1,terminals2,nodes1,nodes2):
     # linguistic features
     feat_bl=ling_features(terminals1,nodes1,nodes2,'1')
     feat_bl+=ling_features(terminals2,nodes2,nodes1,'2')
     get_features.lexrel_features_1(terminals1,terminals2, feat_bl)
+    feat_bl+=connection_features(terminals1,nodes1,terminals2,nodes2)
     # Sporleder & Lascarides shallow bigrams
     feat_sl08=extract_bigrams('1w','word',terminals1)
     feat_sl08+=extract_bigrams('2w','word',terminals2)
