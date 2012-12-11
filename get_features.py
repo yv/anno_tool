@@ -900,6 +900,12 @@ def make_simple_tree(main_cl, exclude, other_terms=None):
         feats+=['fd:'+n2_cat]
         ni2=InfoNode(kind,feats)
         ni1.add_edge(ni2)
+    last_child=main_cl.children[-1]
+    if last_child.cat=='NF' and last_child in exclude and last_child.children[-1] not in exclude:
+        lbl=last_child.children[-1].edge_label
+        (kind,feats)=munge_single_phrase(last_child.children[-1])
+        ni2=InfoNode('RV',feats)
+        ni1.add_edge(ni2)
     return ni1
 
 def node2tree(n):
