@@ -91,12 +91,12 @@ def try_stuff(t):
         if tag is not None:
             print "%-10s: %s -> %s"%(tag[0],n.lemma,tag[1])
 
-def test():
+def test(sent_start=1, sent_end=300):
     from annodb.database import get_corpus
     db=get_corpus('R6PRE1')
     s=db.corpus.attribute('s','s')
     lemmas=db.corpus.attribute('lemma','p')
-    for sent_no in xrange(1,300):
+    for sent_no in xrange(sent_start,sent_end):
         t=export.from_json(db.get_parses(sent_no)['release'])
         sent_span=s[sent_no]
         for n,lemma in izip(t.terminals,lemmas[sent_span[0]:sent_span[1]+1]):

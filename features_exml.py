@@ -208,7 +208,7 @@ def do_stuff(doc,last_stop,new_stop):
     for edu in doc.get_objects_by_class(Edu,last_stop,new_stop):
         disc_rels+=get_unmarked_relations(doc,edu)
     for edu_range in doc.get_objects_by_class(EduRange, last_stop, new_stop):
-        disc_rels+=get_unmarked_relations(doc,edu)
+        disc_rels+=get_unmarked_relations(doc,edu_range)
     for rel in disc_rels:
         label,marking,arg1,arg2=rel
         print >>sys.stderr, marking, label

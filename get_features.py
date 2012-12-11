@@ -266,6 +266,8 @@ def add_hypernyms(synsets,result):
 def strip_aux(s):
     if s.endswith('%aux'):
         return s[:-4]
+    if s.endswith('%passiv'):
+        return s[:-7]
     return s
 def get_verbs(n):
     fin_verbs=[]
