@@ -11,6 +11,7 @@ from pynlp.de import smor_pos, tueba_heads
 from pytree import deps
 import simplejson as json
 import optparse
+import exml2db
 
 import sys
 from pynlp.de import pydeps
@@ -189,7 +190,7 @@ def get_clause_type(node):
         elif n.cat=='MF':
             fd_mf=n
     if fd_lk:
-        if fd_vf or n.edge_label=='KONJ':
+        if fd_vf or node.edge_label=='KONJ':
             return "V2"
         else:
             return "V1"
@@ -240,6 +241,8 @@ def get_clause_type(node):
                     last_cat='IZU'
                 else:
                     last_cat=n1.cat[2:]
+            elif n.cat == 'PTKVZ' and last_cat is None:
+                last_cat='PTKVZ'
         if vx_fin:
             return "Vfin"
         elif vx_izu:
@@ -248,6 +251,11 @@ def get_clause_type(node):
             return "Vpp"
         elif last_cat=='INF':
             return "Vinf"
+        elif last_cat=='PTKVZ':
+            if node.edge_label=='KONJ':
+                return 'V2'
+            else:
+                assert False, '%s: %s'%(last_cat, n.to_penn())
         else:
             assert False, '%s: %s'%(last_cat, n.to_penn())
     elif fd_mf:
@@ -875,7 +883,24 @@ def tree_yield(nodes,exclude,result=None):
             tree_yield(n.children,exclude,result)
     return result
 
-def make_simple_tree(main_cl, exclude, other_terms=None):
+def punc_type(node,doc):
+    result=[]
+    try:
+        if (doc.w_objs[node.span[0]-1].cat=='$(' and
+            doc.w_objs[node.span[1]].cat=='$('):
+            result.append('quoted')
+    except IndexError:
+        pass
+    posn=node.span[1]
+    last_punc=None
+    while doc.w_objs[posn].cat[0]=='$':
+        last_punc=doc.words[posn]
+        posn+=1
+    if last_punc is not None:
+        result.append('PUNC'+last_punc)
+    return result
+
+def make_simple_tree(main_cl, exclude, other_terms=None, doc=None):
     if other_terms is None:
         other_terms=tree_yield(exclude,[main_cl])
         all_exclude=exclude
@@ -883,15 +908,20 @@ def make_simple_tree(main_cl, exclude, other_terms=None):
         all_exclude=exclude+other_terms
     (pred,flags)=get_verbs(main_cl)
     feats=list(flags)+['cat:'+main_cl.cat,'cltype:'+get_clause_type(main_cl)]
+    if 'puncG' in wanted_features and doc is not None:
+        feats+=punc_type(main_cl,doc)
     if 'delexG' not in wanted_features:
         feats.append('lm:'+pred)
     ni1=InfoNode('S',feats)
     for n2_cat, n3 in clause_children(main_cl, exclude):
         if n3 in exclude:
+            extra_features=['fd:'+n2_cat]
+            if 'puncG' in wanted_features and doc is not None:
+                extra_features+=punc_type(main_cl,doc)
             if n3.cat=='R-SIMPX':
-                ni2=InfoNode('REL_CL',['fd:'+n2_cat])
+                ni2=InfoNode('REL_CL',extra_features)
             else:
-                ni2=InfoNode('SUB_CL',['fd:'+n2_cat,'cltype:'+get_clause_type(n3)])
+                ni2=InfoNode('SUB_CL',extra_features+['cltype:'+get_clause_type(n3)])
             ni1.add_edge(ni2)
             continue
         if n3.edge_label.endswith('-MOD') and n3.edge_label!='V-MOD':
@@ -919,7 +949,8 @@ def process_spans(spans,annotator):
     for span in spans:
         sent_no=db.sentences.cpos2struc(span[0])
         sent_span=db.sentences[sent_no]
-        t=export.from_json(db.get_parses(sent_no)['release'])
+        #t=export.from_json(db.get_parses(sent_no)['release'])
+        t=doc.get_tree(sent_no)
         for n in t.topdown_enumeration():
             if n.cat=='NCX': n.cat='NX'
         stupid_head_finder(t)
@@ -973,7 +1004,9 @@ wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairs','pr
 
 def init_db(wanted_features, dbname='R6PRE1'):
     global db
+    global doc
     global lemmas
+    doc=exml2db.DBDocument(dbname)
     db=annodb.get_corpus(dbname)
     lemmas=db.corpus.attribute('lemma','p')
 
@@ -1017,27 +1050,35 @@ oparse=optparse.OptionParser()
 oparse.add_option('--fprefix',dest='fprefix',
                   default='')
 oparse.add_option('--features',dest='features')
+oparse.add_option('--corpus',dest='corpus_name',
+                  default='R6PRE1')
 if __name__=='__main__':
     opts,args=oparse.parse_args(sys.argv[1:])
     if len(args)>=1:
         wanted_features=args[0].split(',')
     fprefix=opts.fprefix
-    init_db(wanted_features)
+    init_db(wanted_features,opts.corpus_name)
     tasks_n=[db.get_task('task_nachdem%d_new'%(n,)) for n in xrange(1,7)]
+    tasks_n5=[db.get_task('task_nachdem%d_new'%(n,)) for n in [5]]
     tasks_w=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,7)]
     tasks_w2=[db.get_task('task_waehrend%d_new'%(n,)) for n in xrange(1,11)]
     tasks_und=[db.get_task('task_und_r6_%d'%(n,)) for n in xrange(1,7)]
     spans_n=sorted(set([tuple(span) for task in tasks_n for span in task.spans]))
+    spans_n5=sorted(set([tuple(span) for task in tasks_n5 for span in task.spans]))
     spans_w=sorted(set([tuple(span) for task in tasks_w for span in task.spans]))
     spans_w2=sorted(set([tuple(span) for task in tasks_w2 for span in task.spans]))
     spans_und=sorted(set([tuple(span) for task in tasks_und for span in task.spans]))
 
     ## 1. prepare necessary data (assoc, productions, wordpairs)
-    do_initialization(wanted_features)
+    do_initialization(wanted_features,opts.corpus_name)
 
     ## 2. create data for nachdem and waehrend
     f_out=file(fprefix+'nachdem_1-6.json','w')
     process_spans(spans_n,'melike')
+    f_out.close()
+
+    f_out=file(fprefix+'nachdem_5.json','w')
+    process_spans(spans_n5,'melike')
     f_out.close()
 
     # TBD: update wanted_productions

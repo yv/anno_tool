@@ -14,7 +14,7 @@ from exml import ExportCorpusReader, make_syntax_doc, EnumAttribute, TextAttribu
 from sem_features import get_productions
 import sentiment
 
-wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','productionsA','istatusG']
+wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','productionsA','istatusG','puncG']
 
 disc_map=get_features.make_hier_schema(file('disc_schema.txt'))
 for x in ['Speechact','Cause','Enable','Epistemic']:

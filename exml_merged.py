@@ -2,7 +2,7 @@ import sys
 from annodb.database import get_corpus
 import exml
 from exml import ExportCorpusReader, make_syntax_doc, EnumAttribute, TextAttribute, \
-     Topic, EduRange, Edu
+     Topic, EduRange, Edu, GenericMarkable
 from exml_implicit import DiscRelEdges, parse_relations
 
 task_names=(['task_waehrend%s_new'%(k,) for k in xrange(1,11)]+
@@ -23,8 +23,15 @@ rel_map={
     'epistemic_cause':'evidence'
     }
 
+def anno2edge(anno, cls=GenericMarkable):
+    obj=cls()
+    for k in anno.keys():
+        if k not in ['span','level','annotator','corpus','_id','type']:
+            setattr(obj,k,anno[k])
+    return obj
+
 def get_rel(info,which):
-    k=info.get(which,None)
+    k=getattr(info,which,None)
     if k in rel_map:
         k=rel_map[k]
     if k=='NULL':
@@ -55,7 +62,7 @@ class ConnectiveEdges:
     def get_edges(self,obj,doc):
         info=getattr(obj,'konn_rel',None)
         if info is not None:
-            konn=info.get('word',obj.lemma.decode('ISO-8859-15')).encode('ISO-8859-15')
+            konn=getattr(info,'word',obj.lemma.decode('ISO-8859-15')).encode('ISO-8859-15')
             rel1=get_rel(info,'rel1')
             rel2=get_rel(info,'rel2')
             return [[konn,rel1,rel2]]
@@ -72,8 +79,16 @@ class MergedCorpusReader(ExportCorpusReader):
         self.db=db
         self.sentences=db.corpus.attribute("s",'s')
         self.words=db.words
-        self.deprel=db.corpus.attribute("deprel","p")
-        self.attach=db.corpus.attribute("attach","p")
+        try:
+            self.deprel=db.corpus.attribute("deprel","p")
+            self.attach=db.corpus.attribute("attach","p")
+        except KeyError:
+            self.deprel=None
+            self.attach=None
+        try:
+            self.lemmas=db.corpus.attribute('lemma','p')
+        except KeyError:
+            self.lemmas=None
         self.discourse=db.db.discourse
         tasks=[self.db.get_task(x) for x in task_names]
         self.spans=sorted(set([tuple(span) for task in tasks if task is not None for span in task.spans]))
@@ -95,18 +110,23 @@ class MergedCorpusReader(ExportCorpusReader):
                 self.span_idx+=1
                 continue
             #print "MCR anno:",anno.keys()
-            self.doc.w_objs[span[0]].konn_rel=anno
+            self.doc.w_objs[span[0]].konn_rel=anno2edge(anno)
             self.span_idx+=1
-        for i in xrange(old_start,new_start):
-            n=self.doc.w_objs[i]
-            n.syn_label=self.deprel[i]
-            tok_attach=self.attach[i]
-            if tok_attach!='ROOT':
-                try:
-                    n.syn_parent=self.doc.w_objs[i+int(tok_attach)]
-                except IndexError,e:
-                    print >>sys.stderr, n.word, tok_attach, i
-        
+        if self.deprel is not None:
+            for i in xrange(old_start,new_start):
+                n=self.doc.w_objs[i]
+                n.syn_label=self.deprel[i]
+                tok_attach=self.attach[i]
+                if tok_attach!='ROOT':
+                    try:
+                        n.syn_parent=self.doc.w_objs[i+int(tok_attach)]
+                    except IndexError,e:
+                        print >>sys.stderr, n.word, tok_attach, i
+        if self.lemmas is not None:
+            for i in xrange(old_start,new_start):
+                n=self.doc.w_objs[i]
+                if not(hasattr(n,'lemma')) or n.lemma is None:
+                    n.lemma=self.lemmas[i]
         return new_stop
     def on_text(self, text_markable):
         t_id=text_markable.doc_no
