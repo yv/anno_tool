@@ -989,8 +989,8 @@ def process_spans(spans,annotator):
         # print >>f_out, json.dumps([0,map(grok_encoding,feats),
         #                           target,[span[0],span[1]-1]],encoding='ISO-8859-15')
         print >>f_out, json.dumps([0,{'_type':'multipart','parts':[map(grok_encoding,feats)]+aux_lst,
-                                      'trees':[node2tree(make_simple_tree(main_cl, [sub_cl])),
-                                               node2tree(make_simple_tree(sub_cl, []))]},
+                                      'trees':[node2tree(make_simple_tree(main_cl, [sub_cl], doc=doc)),
+                                               node2tree(make_simple_tree(sub_cl, [], doc=doc))]},
                                   target,[span[0],span[1]-1]],encoding='ISO-8859-15')
 
 #wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','assoc']

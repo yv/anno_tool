@@ -116,13 +116,13 @@ def ling_features(terminals,nodes,exclude,prefix):
     result.append('%spol%s'%(prefix,pol_tag))
     return result
 
-def make_infotree(nodes1,nodes2,terminals2):
+def make_infotree(nodes1,nodes2,terminals2,doc=None):
     ti=InfoTree()
     nodes=[]
     last_node=None
     for n in nodes1:
         if n.cat in ['SIMPX','R-SIMPX','FKONJ']:
-            ni=get_features.make_simple_tree(n,nodes2,terminals2)
+            ni=get_features.make_simple_tree(n,nodes2,terminals2,doc=doc)
         else:
             kind,feats=get_features.munge_single_phrase(n)
             ni=InfoNode('FRAG',feats)
@@ -206,10 +206,10 @@ def extract_features(terminals1,terminals2,nodes1,nodes2):
     features=[feat_bl,feat_sl08, feat_wp, feat_prod]
     return features
 
-def extract_trees(nodes1,nodes2,terminals1,terminals2):
+def extract_trees(nodes1,nodes2,terminals1,terminals2,doc=None):
     get_features.mark_nodes(nodes1,nodes2)
-    result=[make_infotree(nodes1,nodes2,terminals2),
-            make_infotree(nodes2,nodes1,terminals1)]
+    result=[make_infotree(nodes1,nodes2,terminals2,doc),
+            make_infotree(nodes2,nodes1,terminals1,doc)]
     get_features.unmark_nodes(nodes1,nodes2)
     return result
 
@@ -217,6 +217,7 @@ def do_stuff(doc,last_stop,new_stop):
     for t in doc.get_objects_by_class(Tree,last_stop,new_stop):
         get_features.stupid_head_finder(t)
     result=[]
+    # extract features for connectives
     for n in doc.w_objs[last_stop:new_stop]:
         if hasattr(n,'konn_rel'):
             anno=n.konn_rel
@@ -235,7 +236,7 @@ def do_stuff(doc,last_stop,new_stop):
             spans=n.span+[['arg1']+sub_cl.span,['arg2']+main_cl.span]
             result.append(['konn',n.lemma,get_features.get_target(n.konn_rel),
                            extract_features(terminals1,terminals2,[sub_cl],[main_cl]),
-                           extract_trees([sub_cl],[main_cl],terminals1,terminals2),
+                           extract_trees([sub_cl],[main_cl],terminals1,terminals2,doc),
                            spans])
     disc_rels=[]
     for edu in doc.get_objects_by_class(Edu,last_stop,new_stop):
