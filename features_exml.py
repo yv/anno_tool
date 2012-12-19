@@ -125,6 +125,8 @@ def make_infotree(nodes1,nodes2,terminals2,doc=None):
             ni=get_features.make_simple_tree(n,nodes2,terminals2,doc=doc)
         else:
             kind,feats=get_features.munge_single_phrase(n)
+            if 'puncG' in wanted_features:
+                feats+=get_features.punc_type(n,doc)
             ni=InfoNode('FRAG',feats)
         if last_node is not None:
             last_node.add_edge(ni,'frag')
@@ -156,7 +158,6 @@ def connection_features(terminals1, nodes1, terminals2, nodes2):
         return [x+'i' for x in connection_features(terminals2, nodes2, terminals1, nodes1)]
     end1=terminals1[-1].span[1]
     end2=terminals2[-1].span[1]
-    print start1,end1,start2,end2
     if end1==start2:
         return ['conME']
     elif end1 < start2:
@@ -221,7 +222,7 @@ def do_stuff(doc,last_stop,new_stop):
     for n in doc.w_objs[last_stop:new_stop]:
         if hasattr(n,'konn_rel'):
             anno=n.konn_rel
-            if 'rel1' not in anno or anno.rel1 in ['NULL','##','']: continue
+            if not hasattr(anno,'rel1') or anno.rel1 in ['NULL','##','']: continue
             sub_cl,main_cl=get_features.find_args(n)
             if sub_cl is None or main_cl is None:
                 continue
@@ -268,7 +269,7 @@ def do_stuff(doc,last_stop,new_stop):
         if marking[0]=='-':
             stuff=[label,
                    extract_features(terminals1,terminals2,nodes1,nodes2),
-                   extract_trees(nodes1,nodes2,terminals1,terminals2),
+                   extract_trees(nodes1,nodes2,terminals1,terminals2,doc),
                    spans]
             if len(marking)==1:
                 result.append(['drel','-']+stuff)

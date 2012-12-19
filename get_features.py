@@ -20,6 +20,7 @@ from gwn_old import wordsenses
 from gwn_old.semclass import semclass_for_node
 from gwn_old.gwn_word_features import get_verb_features
 
+import sentiment
 from sem_features import classify_adverb, classify_px, get_productions
 
 
@@ -415,7 +416,7 @@ def gather_verbs(nodes,fin_v,nfin_v):
 def get_target(anno):
     rel1=anno.rel1
     tgt=[hier_map[rel1]]
-    if 'rel2' in anno._doc and anno.rel2 not in ['NULL','']:
+    if hasattr(anno,'rel2') and anno.rel2 not in ['NULL','']:
         tgt.append(hier_map[anno.rel2])
     return tgt
 
@@ -885,17 +886,21 @@ def tree_yield(nodes,exclude,result=None):
 
 def punc_type(node,doc):
     result=[]
+    posn=node.span[1]
+    last_punc=None
+    quote_at_end=False
+    while doc.w_objs[posn].cat[0]=='$':
+        if doc.w_objs[posn].cat=='$(':
+            quote_at_end=True
+        else:
+            last_punc=doc.words[posn]
+        posn+=1
     try:
-        if (doc.w_objs[node.span[0]-1].cat=='$(' and
-            doc.w_objs[node.span[1]].cat=='$('):
+        if (quote_at_end and
+            doc.w_objs[node.span[0]-1].cat=='$('):
             result.append('quoted')
     except IndexError:
         pass
-    posn=node.span[1]
-    last_punc=None
-    while doc.w_objs[posn].cat[0]=='$':
-        last_punc=doc.words[posn]
-        posn+=1
     if last_punc is not None:
         result.append('PUNC'+last_punc)
     return result
@@ -917,7 +922,7 @@ def make_simple_tree(main_cl, exclude, other_terms=None, doc=None):
         if n3 in exclude:
             extra_features=['fd:'+n2_cat]
             if 'puncG' in wanted_features and doc is not None:
-                extra_features+=punc_type(main_cl,doc)
+                extra_features+=punc_type(n3,doc)
             if n3.cat=='R-SIMPX':
                 ni2=InfoNode('REL_CL',extra_features)
             else:
@@ -929,6 +934,10 @@ def make_simple_tree(main_cl, exclude, other_terms=None, doc=None):
         (kind,feats)=munge_single_phrase(n3)
         if 'lexrelG' in wanted_features:
             lexrel_features_1(tree_yield([n3],all_exclude),other_terms,feats)
+        if 'sentimentG' in wanted_features:
+            tag=sentiment.phrase_tag(n3)
+            if tag is not None:
+                feats.append('sent_'+tag[1])
         feats+=['fd:'+n2_cat]
         ni2=InfoNode(kind,feats)
         ni1.add_edge(ni2)
@@ -959,7 +968,7 @@ def process_spans(spans,annotator):
         offset=span[0]-sent_span[0]
         n=t.terminals[offset]
         anno=db.get_annotation(annotator,'konn2',span)
-        if 'rel1' not in anno or anno.rel1=='NULL': continue
+        if not hasattr(anno,'rel1') or anno.rel1=='NULL': continue
         print "--- s%s"%(sent_no+1,)
         sub_cl,main_cl=find_args(n)
         if not main_cl: continue

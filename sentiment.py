@@ -5,6 +5,8 @@ from itertools import izip
 from pytree import export
 import codecs
 
+__all__ = ['terminal_tag', 'phrase_tag']
+
 """
 Regeln:
 nur pos/nur neg: wird vererbt
@@ -67,6 +69,8 @@ for l in codecs.open('/home/yannickv/sources/GermanPolarityClues-2012/GermanPola
     gpolarity_info[(lemma,postag)]='+'
 
 def terminal_tag(n):
+    """ retrieves a sentiment tag for a terminal
+    """
     lemma=n.lemma
     postag=n.cat
     if postag in ['ADJA','ADJD','NN'] or postag[:2]=='VV':
@@ -85,11 +89,72 @@ def terminal_tag(n):
     else:
         return None
 
+def phrase_tag(n):
+    """ computes a sentiment tag for a complete phrase
+    """
+    if n.isTerminal():
+        ttag=terminal_tag(n)
+        if ttag is None:
+            w_lc=n.word.lower()
+            if w_lc in ['kaum','nicht','kein','keine','keiner','keinem','keines','wenig']:
+                return ('neg','~')
+            elif w_lc in ['sehr','ganz']:
+                return ('lex','^')
+        return terminal_tag(n)
+    elif n.cat in ['R-SIMPX','SIMPX']:
+        return None
+    else:
+        head_tag=None
+        nonhead_tags=[]
+        for n1 in n.children:
+            tag=phrase_tag(n1)
+            if tag is not None:
+                if n1.edge_label=='HD':
+                    head_tag=tag+(n1.cat,)
+                else:
+                    nonhead_tags.append(tag+(n1.cat,))
+        if head_tag and nonhead_tags:
+            polarities=set([x[1] for x in [head_tag]+nonhead_tags])
+            if len(polarities)==2 and '~' in polarities:
+                other_pol=[x for x in polarities if x!='~'][0]
+                if other_pol in '+-':
+                    return ('neg_rule','-+'['+-'.index(other_pol)])
+            if len(polarities)==2 and '^' in polarities:
+                other_pol=[x for x in polarities if x!='~'][0]
+                if other_pol in '+-':
+                    return ('intensifier_rule',other_pol)
+            if len(polarities)>1:
+                print n.to_penn(),head_tag,nonhead_tags
+        elif len(nonhead_tags)>1:
+            polarities=set([x[1] for x in nonhead_tags])
+            if len(polarities)>1:
+                print n.to_penn(),head_tag,nonhead_tags
+        if head_tag is not None:
+            return head_tag[:2]
+        elif nonhead_tags:
+            return nonhead_tags[0][:2]
+        else:
+            return None
+
 def try_stuff(t):
     for n in t.terminals:
         tag=terminal_tag(n)
         if tag is not None:
             print "%-10s: %s -> %s"%(tag[0],n.lemma,tag[1])
+
+def try_compositional(t):
+    for node in t.topdown_enumeration():
+        if (node.cat in ['NX','PX','ADJX'] and 
+            node.edge_label not in ['HD','-','APP']):
+            ptag=phrase_tag(node)
+            if False: #ptag != None:
+                print node.to_penn()
+                print ptag
+        elif node.cat in ['LK','VC']:
+            ptag=phrase_tag(node)
+            if False: #ptag is not None:
+                print node.to_penn()
+                print ptag
 
 def test(sent_start=1, sent_end=300):
     from annodb.database import get_corpus
@@ -102,3 +167,4 @@ def test(sent_start=1, sent_end=300):
         for n,lemma in izip(t.terminals,lemmas[sent_span[0]:sent_span[1]+1]):
             n.lemma=lemma
         try_stuff(t)
+        try_compositional(t)
