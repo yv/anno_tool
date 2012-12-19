@@ -598,10 +598,28 @@ anno_adjudicate_docs=[
     [1685, 'janne*Version 2', 'anna*Version2'],
     [144,  'janne*Version2', 'anna*Version2']]
 
+anno_agree_neu_docs=[
+    [492,  'janne*Version1', 'anna*Version1'],
+    [490,  'janne*Version1', 'anna*Version1'],
+    [486,  'janne*Version1', 'anna*Version1'],
+    [487,  'janne*Version1', 'anna*Version1'],
+    [488,  'janne*Version1', 'anna*Version1'],
+    [469,  'janne*Version1', 'anna*Version1'],
+    [385,  'janne*Version1', 'anna*Version1']]
+
+anno_adjudicate_neu_docs=[
+    [492,  'janne*Version2', 'anna*Version2'],
+    [490,  'janne*Version2', 'anna*Version2'],
+    [486,  'janne*Version2', 'anna*Version2'],
+    [487,  'janne*Version2', 'anna*Version2'],
+    [488,  'janne*Version2', 'anna*Version2'],
+    [469,  'janne*Version2', 'anna*Version2'],
+    [385,  'janne*Version2', 'anna*Version2']]
+
 if __name__=='__main__':
     db=get_corpus('TUEBA4')
     stats=RelationStatistics()
-    for t_id, user1, user2 in anno_adjudicate_docs: #vorvergleich_docs:
+    for t_id, user1, user2 in vorvergleich_docs+anno_agree_docs+anno_agree_neu_docs: #vorvergleich_docs:
         print "**** DOC: %s (%s/%s)****"%(t_id,user1,user2)
         result=make_comparison(db,t_id,user1,user2)
         result.add_to_stats(stats)

@@ -5,10 +5,13 @@ syntax:regexp
 ^html_anno/
 ^annotation-.*/
 ^[^/]+_experiments/
+^[^/]+_experiments_[a-z]+/
 ^[/]*\.html$
+.*\.alph$
 .*\.log$
 .*\.aux$
 .*\.zip$
 .*\.pyc$
 .*\.txt$
+.*_exml\.json$
 .*~
