@@ -265,7 +265,7 @@ def transform_graphs(fname, gs, gn, main_features=False):
         print json.dumps(obj, default=encode_obj)
     sys.stderr.write('\n')
 
-def transform_graphs_2(fname, grinder, main_features=False):
+def transform_graphs_2(fname, grinder, f_out, main_features=False):
     num_lines=0
     for l in file(fname):
         obj=json.loads(l, object_hook=object_hook)
@@ -285,7 +285,7 @@ def transform_graphs_2(fname, grinder, main_features=False):
         else:
             data.parts.append(FeatureList(flst))
         data.trees=[]
-        print json.dumps(obj, default=encode_obj)
+        print >>f_out, json.dumps(obj, default=encode_obj)
     sys.stderr.write('\n')
 
 gspan_exe='/home/yannickv/sources/sam2010v1.2/bin/gSpanCORK'
@@ -312,26 +312,33 @@ def test_gspan(fprefix,N=3,M=0):
         feats2=graph_to_features(gs2,g,gn2)
         assert len(feats1)==len(feats2), (tuples, feats1, feats)
 
+def gspan_make_opts(arglist):
+    opts, args = oparse.parse_args(arglist)
+    assert len(args)==0
+    return opts
+
+def gspan_main(fname_in, f_out, fprefix, opts):
+    """
+    performs graph mining and transformation from subgraphs
+    into nominal features
+    """
+    all_data, labelset0=load_data(fname_in,opts)
+    grinder=GraphGrinder()
+    alph=print_data_gboost(all_data,fprefix,grinder)
+    # run gspanCORK
+    sys.stderr.write('%s -F %d -G %d -m 5 -L 7 < %s > %s\n'%(gspan_exe,alph['_f'],opts.N,
+                                                            fprefix+'.txt',fprefix+'_out.txt'))
+    os.system('%s -F %d -G %d -m 5 -L 7 < %s > %s'%(gspan_exe,alph['_f'],opts.N,
+                                                    fprefix+'.txt',fprefix+'_out.txt'))
+    grinder.from_gboost(fprefix,opts.N,opts.M,alph)
+    transform_graphs_2(fprefix,grinder,f_out, opts.main_features)
+
 if __name__=='__main__':
     opts, args = oparse.parse_args(sys.argv[1:])
-    all_data, labelset0=load_data(args[0],opts)
     if len(args)>1:
-        grinder=GraphGrinder()
-        alph=print_data_gboost(all_data,args[1],grinder)
-        # run gspanCORK
-        sys.stderr.write('%s -F %d -G %d -m 5 -L 7 < %s > %s\n'%(gspan_exe,alph['_f'],opts.N,
-                                                                args[1]+'.txt',args[1]+'_out.txt'))
-        os.system('%s -F %d -G %d -m 5 -L 7 < %s > %s'%(gspan_exe,alph['_f'],opts.N,
-                                                        args[1]+'.txt',args[1]+'_out.txt'))
-        #os.system('%s -m 5 -L 10 < %s > %s'%(gspan_exe, args[1]+'.txt',args[1]+'_out.txt'))
-        # read in subgraphs and replace graphs in data by more feature columns
-        grinder.from_gboost(args[1],opts.N,opts.M,alph)
-        transform_graphs_2(args[0],grinder,opts.main_features)
-        # OLD WAY
-        #gs,gn=graphs_from_gboost(args[1],opts.N,opts.M, alph)
-        #transform_graphs(args[0],gs,gn,opts.main_features)
-
+        gspan_main(args[0], sys.stdout, args[1], opts)
     else:
+        all_data, labelset0=load_data(args[0],opts)
         print_data_subdue(all_data)
             
 
