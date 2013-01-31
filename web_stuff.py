@@ -163,8 +163,6 @@ def index(request):
         corpora=allowed_corpora_nologin
         tasks_ready=[]
     else:
-        if request.user in ADMINS:
-            corpora=allowed_corpora_admin
         user=request.user
         tasks=[]
         tasks_ready=[]
@@ -174,6 +172,8 @@ def index(request):
             else:
                 tasks.append(task)
         corpora=allowed_corpora
+        if user in ADMINS:
+            corpora=allowed_corpora_admin
     response=render_template('index.html',user=request.user,
                              tasks=tasks, tasks_ready=tasks_ready,
                              corpus_name=corpus_name,
