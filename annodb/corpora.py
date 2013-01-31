@@ -1,5 +1,6 @@
-allowed_corpora_nologin=['TUEBA4','R6PRE1','R6FINAL','R7PRE1','R7FINAL','R8PRE1','R8FINAL','R9PRE1','EUROPARL_EN','EUROPARL_DE','RADIO']
+allowed_corpora_nologin=['TUEBA4','R6PRE1','R8FINAL','R9PRE1','EUROPARL_EN','EUROPARL_DE','RADIO']
 allowed_corpora=allowed_corpora_nologin+['PTB']
+# excluded: ,'R6FINAL','R7PRE1','R7FINAL','R8PRE1',
 
 def compute_url_tueba(text_id,unused_corpus):
     year=text_id[1:3]
