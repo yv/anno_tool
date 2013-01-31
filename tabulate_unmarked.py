@@ -46,7 +46,7 @@ def load_and_print_stats(fname,f_out,ident=None):
     for k,d in wanted_columns:
         f_out.write('\t')
         if k in result:
-            f_out.write('%f'%(result[k],))
+            f_out.write('%.3f'%(result[k],))
         else:
             f_out.write('--')
     f_out.write('\n')

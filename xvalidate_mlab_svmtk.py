@@ -27,8 +27,21 @@ oparse.add_option('--maxlabels',dest='max_labels',
                   type='int', default=2)
 oparse.add_option('--method', dest='method', default='poly',
                   type='choice', choices=['linear','poly','rbf','rbf2','rbf3','tree','st','pt'])
-oparse.add_option('--subdir',action="store_true",dest="want_subdir")
-oparse.set_defaults(reassign_folds=True,max_depth=3)
+oparse.add_option('--nosubdir',action="store_false",dest="want_subdir")
+oparse.add_option('--featsel',dest='feat_sel',
+                  type='int', default=0)
+oparse.add_option('--featsize',dest='feat_size')
+oparse.add_option('--labelfilter',dest='labelfilter',
+                  action='store_true')
+oparse.add_option('--svm-c',dest='svm_opt_c',
+                  type='float')
+oparse.add_option('--svm-M',dest='svm_opt_M',
+                  type='float')
+oparse.add_option('--svm-L',dest='svm_opt_L',
+                  type='float')
+oparse.add_option('--svm-T',dest='svm_opt_T',
+                  type='float')
+oparse.set_defaults(reassign_folds=True,max_depth=3,want_subdir=True)
 
 opts,args=oparse.parse_args(sys.argv[1:])
 
@@ -43,22 +56,32 @@ else:
 my_svmtk=svmtk.bind(datafile_pattern=subdir+'fold-%(fold)d/%(label)s_d%(depth)d_train.data',
                     classifier_pattern=subdir+'fold-%(fold)d/%(label)s_d%(depth)d_train.model')
 
+extra_flags=[]
+if opts.svm_opt_c is not None:
+    extra_flags+=['-c',str(opts.svm_opt_c)]
+if opts.svm_opt_M is not None:
+    extra_flags+=['-M',str(opts.svm_opt_M)]
+if opts.svm_opt_L is not None:
+    extra_flags+=['-L',str(opts.svm_opt_L)]
+if opts.svm_opt_T is not None:
+    extra_flags+=['-T',str(opts.svm_opt_T)]
+
 if opts.method=='poly':
-    my_svmtk=my_svmtk.bind(flags=['-t', '1','-d',str(opts.degree),'-c','1','-m','800'])
+    my_svmtk=my_svmtk.bind(flags=['-t', '1','-d',str(opts.degree),'-m','800']+extra_flags)
 elif opts.method=='linear':
-    my_svmtk=my_svmtk.bind(flags=['-t', '0','-c','1','-m','800'])
+    my_svmtk=my_svmtk.bind(flags=['-t', '0','-c','1','-m','800']+extra_flags)
 elif opts.method=='rbf':
-    my_svmtk=my_svmtk.bind(flags=['-t', '2','-m','800'])
+    my_svmtk=my_svmtk.bind(flags=['-t', '2','-m','800']+extra_flags)
 elif opts.method=='rbf2':
-    my_svmtk=my_svmtk.bind(flags=['-t', '2','-g','0.1','-m','800'])
+    my_svmtk=my_svmtk.bind(flags=['-t', '2','-g','0.1','-m','800']+extra_flags)
 elif opts.method=='rbf3':
-    my_svmtk=my_svmtk.bind(flags=['-t', '2','-c','10','-m','800'])
+    my_svmtk=my_svmtk.bind(flags=['-t', '2','-c','10','-m','800']+extra_flags)
 elif opts.method=='tree':
-    my_svmtk=my_svmtk.bind(flags=['-t', '5','-S','1','-F','1','-d',str(opts.degree),'-C','+','-N','1', '-m','800'])
+    my_svmtk=my_svmtk.bind(flags=['-t', '5','-S','1','-F','1','-d',str(opts.degree),'-C','+','-N','1', '-m','800']+extra_flags)
 elif opts.method=='st':
-    my_svmtk=my_svmtk.bind(flags=['-t', '5','-S','0','-F','1','-d',str(opts.degree),'-C','+','-N','1', '-m','800'])
+    my_svmtk=my_svmtk.bind(flags=['-t', '5','-S','0','-F','1','-d',str(opts.degree),'-C','+','-N','1', '-m','800']+extra_flags)
 elif opts.method=='pt':
-    my_svmtk=my_svmtk.bind(flags=['-t', '5','-S','2','-M','0.7','-N','0','-F','1','-d',str(opts.degree),'-C','+', '-m','800'])
+    my_svmtk=my_svmtk.bind(flags=['-t', '5','-S','2','-M','0.7','-N','0','-F','1','-d',str(opts.degree),'-C','+', '-m','800']+extra_flags)
 else:
     print >>sys.stderr, "No method selected?"
 
@@ -117,11 +140,17 @@ fc.dict.growing=False
 
 print >>sys.stderr, "training models..."
 classifiers=[]
+label_filters=[]
 for i,data_bin in enumerate(data_bins):
     labels=[x[1] for x in data_bin]
     examples=[x[0] for x in data_bin]
     cl_greedy=train_greedy(examples,labels,my_svmtk.bind(fold=i))
     classifiers.append(cl_greedy)
+    if opts.labelfilter:
+        label_filters.append(make_labelfilter(labels,opts.sdepth))
+    else:
+        label_filters.append(None)
+
 
 # for i,data_bin in enumerate(test_bins):
 #     labels=[x[1] for x in data_bin]
@@ -139,7 +168,7 @@ def classify(dat):
     fc.to_svmltk(data,buf)
     vec=buf.getvalue()
     #print vec
-    best=classify_greedy_mlab(classifiers[bin_nr],vec,opts.max_labels)
+    best=classify_greedy_mlab(classifiers[bin_nr],vec,opts.max_labels,label_filters[bin_nr])
     return best
 
 

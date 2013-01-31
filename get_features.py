@@ -810,6 +810,24 @@ def clause_children(n1, exclude):
                     fkonj_seen=True
     return result
 
+def clause_nonchildren(n1, exclude):
+    field=None
+    result=[]
+    for n2 in n1.children:
+        if n2.cat in ['LK','VC'] and n2 not in exclude:
+            result.append(n2)
+        elif n2.cat=='FKOORD':
+            fkonj_seen=False
+            for n2a in n2.children:
+                if n2a.cat=='FKONJ' and not fkonj_seen and n2a not in exclude:
+                    result+=clause_nonchildren(n2a,exclude)
+                    fkonj_seen=True
+                elif n2a.cat in ['LK','VC'] and n2a not in exclude:
+                    result.append(n2a)
+                    fkonj_seen=True
+    return result
+
+
 def get_istatus(node):                
     istatus='new'
     if hasattr(node,'anaphora_info'):
@@ -851,14 +869,15 @@ def munge_single_phrase(node):
             if cls is not None:
                 feats.append('cls:'+cls)
         elif node.cat=='NX':
-            if hasattr(node,'ne_kind'):
-                sc=node.ne_kind
-                if sc=='GPE':
-                    sc='LOC'
-            else:
-                sc=semclass_for_node(node)
-            if sc is not None:
-                feats.append('sem:%s'%(sc,))
+            if 'nosemG' not in wanted_features:
+                if hasattr(node,'ne_kind'):
+                    sc=node.ne_kind
+                    if sc=='GPE':
+                        sc='LOC'
+                else:
+                    sc=semclass_for_node(node)
+                if sc is not None:
+                    feats.append('sem:%s'%(sc,))
             if 'istatusG' in wanted_features:
                 istatus=get_istatus(node)
                 feats.append('ref:%s'%(istatus,))
@@ -917,6 +936,11 @@ def make_simple_tree(main_cl, exclude, other_terms=None, doc=None):
         feats+=punc_type(main_cl,doc)
     if 'delexG' not in wanted_features:
         feats.append('lm:'+pred)
+    if 'sentimentG' in wanted_features:
+        for n3 in  clause_nonchildren(main_cl, exclude):
+            tag=sentiment.phrase_tag(n3)
+            if tag is not None:
+                feats.append('senti_'+tag[1])
     ni1=InfoNode('S',feats)
     for n2_cat, n3 in clause_children(main_cl, exclude):
         if n3 in exclude:
@@ -937,7 +961,7 @@ def make_simple_tree(main_cl, exclude, other_terms=None, doc=None):
         if 'sentimentG' in wanted_features:
             tag=sentiment.phrase_tag(n3)
             if tag is not None:
-                feats.append('sent_'+tag[1])
+                feats.append('senti_'+tag[1])
         feats+=['fd:'+n2_cat]
         ni2=InfoNode(kind,feats)
         ni1.add_edge(ni2)

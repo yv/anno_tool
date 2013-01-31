@@ -12,6 +12,8 @@ from json2dot import get_graph_svg
 oparse=optparse.OptionParser()
 add_options_common(oparse)
 oparse.add_option('--corpus',dest='corpus_name')
+oparse.add_option('--attributes',dest='want_attributes',
+                  action='store_true')
 
 html_header='''
 <html>

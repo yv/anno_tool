@@ -331,7 +331,7 @@ def gspan_main(fname_in, f_out, fprefix, opts):
     os.system('%s -F %d -G %d -m 5 -L 7 < %s > %s'%(gspan_exe,alph['_f'],opts.N,
                                                     fprefix+'.txt',fprefix+'_out.txt'))
     grinder.from_gboost(fprefix,opts.N,opts.M,alph)
-    transform_graphs_2(fprefix,grinder,f_out, opts.main_features)
+    transform_graphs_2(fname_in,grinder,f_out, opts.main_features)
 
 if __name__=='__main__':
     opts, args = oparse.parse_args(sys.argv[1:])

@@ -2,6 +2,7 @@
 # -*- coding: iso-8859-15 -*-
 import sys
 import re
+from types import ClassType
 from topsort import topsort
 from pytree import tree, export
 from alphabet import CPPAlphabet, PythonAlphabet
@@ -9,15 +10,19 @@ from ordereddict import OrderedDict
 from collections import defaultdict
 from itertools import izip, islice
 from xml.sax.saxutils import quoteattr,escape
+import simplejson as json
 
 try:
     from sqlalchemy import Table, Column, MetaData, \
          Integer, String, Enum, ForeignKey
 except ImportError:
-    print >>sys.stderr, "Warning: no SQLAlchemy installed"
+    #print >>sys.stderr, "Warning: no SQLAlchemy installed"
     def dummy_fun(*args):
         pass
     Table=Column=MetaData=Integer=String=Enum=ForeignKey=dummy_fun
+
+class _EmptyClass:
+    pass
 
 __doc__="""
 konvertiert eine Datei im Negra-Export-Format (Version 3 oder 4)
@@ -174,6 +179,7 @@ class MarkableSchema:
     def __init__(self,name,cls=None):
         self.name=name
         self.attributes=[]
+        self.init_attrs=[]
         self.edges=[]
         self.cls=cls
         self.locality=None
@@ -199,6 +205,32 @@ class MarkableSchema:
                         attr_e[att.name]=att.map_attr(val,doc)
                 edges.append((edge_schema.name,attr_e))
         return (span,self.name,attr_d,edges)
+    def make_json(self,obj,doc):
+        oid=doc.get_obj_id(obj)
+        attrs={'_id':oid,'span':obj.span}
+        for att in self.attributes:
+            if hasattr(obj, att.prop_name):
+                v=getattr(obj,att.prop_name)
+                if v is not None:
+                    attrs[att.name]=munge_json(v)
+        return attrs
+    def create_from_json(self,obj,doc):
+        args=[]
+        for att in self.init_attrs:
+            v=None
+            try:
+                v=munge_json(obj[att.prop_name])
+            except KeyError:
+                pass
+            args.append(v)
+        try:
+            m=self.cls(*args)
+        except TypeError:
+            print "Cannot instantiate %s"%(self.cls)
+            raise
+        m.xml_id=obj['_id']
+        m.span=obj['span']
+        return m
     def get_updown(self,obj,doc,result):
         for att in self.attributes:
             att.get_updown(obj,doc,result)
@@ -314,6 +346,36 @@ class SplitRefEdges:
     def get_updown(self,obj,doc,result):
         pass
 
+def munge_json(obj):
+    if isinstance(obj,list) or isinstance(obj,tuple):
+        return map(obj,munge_json)
+    elif isinstance(obj,int) or isinstance(obj,unicode):
+        return obj
+    elif isinstance(obj,str):
+        return obj.decode('ISO-8859-15')
+    elif hasattr(obj,'xml_id'):
+        return {'_id':obj.xml_id}
+    assert False, obj
+
+def unmunge_json(obj,doc):
+    if isinstance(obj,list) or isinstance(obj,tuple):
+        return map(obj,unmunge_json)
+    elif isinstance(obj,int):
+        return obj
+    elif isinstance(obj,unicode):
+        return obj.encode('ISO-8859-15')
+    elif isinstance(obj,str):
+        return obj
+    elif obj.has_key('_id'):
+        return doc.object_by_id[obj['_id']]
+    assert False, obj
+
+def to_string(obj):
+    if isinstance(obj,unicode):
+        return obj.encode('ISO-8859-15')
+    elif isinstance(obj,str):
+        return obj
+
 class TerminalSchema:
     def __init__(self,name,cls):
         self.name=name
@@ -342,6 +404,25 @@ class TerminalSchema:
                         attr_e[att.name]=att.map_attr(val,doc)
                 edges.append((edge_schema.name,attr_e))
         return (self.name,attr_d,edges)
+    def make_json(self,obj,doc):
+        oid=doc.get_obj_id(obj)
+        attrs={'_id':oid}
+        for att in self.attributes:
+            if hasattr(obj, att.prop_name):
+                v=getattr(obj,att.prop_name)
+                if v is not None:
+                    attrs[att.name]=munge_json(v)
+        return attrs
+    def create_from_json(self, attrs, doc):
+        # special case: cat/pos is filled or None, word/form MUST be filled
+        obj=self.cls(attrs.get('pos'),to_string(attrs['form']))
+        if '_id' in attrs:
+            obj.xml_id=attrs['_id']
+        return obj
+    def fill_from_json(self, obj, attrs, doc):
+        for att in self.attributes:
+            if att.name in attrs:
+                setattr(obj,att.prop_name,unmunge_json(attrs[att.name],doc))
     def describe_schema(self,f,edges):
         open_tag(f,'tnode',[('name',self.name)],1)
         f.write('>\n')
@@ -399,13 +480,18 @@ class Document:
                 n='x'
             k='%s_%s'%(n,id(obj))
             obj.xml_id=k
-            #obj_by_id[k]=obj
+            self.object_by_id[k]=obj
             return k
     def add_terminal(self,w_obj):
         val=self.word_ids[self.get_obj_id(w_obj)]
         assert val==len(self.words),(val,w_obj.xml_id,len(self.words),self.words[val-2:val+2],self.words[-2:])
         self.words.append(getattr(w_obj,self.word_attr))
         self.w_objs.append(w_obj)
+    def replace_terminal(self,posn,w_obj):
+        w_obj.xml_id=self.word_ids.get_sym(posn)
+        assert self.words[posn]==getattr(w_obj,self.word_attr), (self.words[posn],getattr(w_obj,self.word_attr))
+        self.w_objs[posn]=w_obj
+        self.object_by_id[w_obj.xml_id]=w_obj
     def mlevel_for_class(self,cls):
         try:
             return self.schema_by_class[cls]
@@ -464,6 +550,19 @@ class Document:
                 if isinstance(obj,cls):
                     result.append(obj)
         return result
+    def clear_objects_by_level(self, levelname, start=0, end=None):
+        if end is None:
+            end=len(self.words)
+        objs_by_start=self.markables_by_start
+        for i in xrange(start,end):
+            objs_new=[]
+            for (mlevel,obj) in objs_by_start[i]:
+                if mlevel.name==levelname:
+                    if hasattr(obj,'xml_id'):
+                        del self.object_by_id[obj.xml_id]
+                else:
+                    objs_new.append((mlevel,obj))
+            objs_by_start[i]=objs_new
     def write_inline_xml(self,f,start=0,end=None):
         """inline XML serialization"""
         objs_by_start=self.markables_by_start
@@ -536,9 +635,62 @@ class Document:
             x=stack.pop()
             f.write(' '*(len(stack)-1))
             f.write('</%s>\n'%(x[0],))
-    def write_graph_xml(self,f):
-        """graph XML serialization"""
-        assert False
+    def json_chunk(self, start=0,end=None):
+        """JSON serialization"""
+        objs_by_start=self.markables_by_start
+        result_by_level={'_start':start}
+        if end is None:
+            end=len(self.words)
+        terminals=[]
+        for i in xrange(start,end):
+            w_obj=self.w_objs[i]
+            terminals.append(self.t_schema.make_json(w_obj,self))
+        result_by_level['word']=terminals
+        for i,n in izip(xrange(start,end),islice(self.w_objs,start,end)):
+            #find all markables starting here
+            o_here=objs_by_start[i]
+            for mlevel,obj in o_here:
+                m_levelname=mlevel.name
+                m_objs=result_by_level.get(m_levelname)
+                if m_objs is None:
+                    m_objs=[]
+                    result_by_level[m_levelname]=m_objs
+                m_objs.append(mlevel.make_json(obj,self))
+        return result_by_level
+    def json_insert(self, json_obj):
+        """JSON deserialization"""
+        start=json_obj.get('_start',0)
+        terminals=json_obj['word']
+        end=start+len(terminals)
+        if start==len(self.words):
+            self.w_objs+=[self.t_schema.create_from_json(n,self) for n in terminals]
+            self.words+=[w_obj.word for w_obj in self.w_objs[len(self.words):]]
+        else:
+            assert end<=len(self.words)
+            assert self.words[start:end]==[n['form'] for n in terminals]
+            self.w_objs[start:end]=[self.t_schema.create_from_json(n,self) for n in terminals]
+        for i,n in izip(xrange(start,end),islice(self.w_objs,start,end)):
+            n.span=[i,i+1]
+            word_id=self.get_obj_id(n)
+            assert self.word_ids[word_id]==i
+        markables_by_level={}
+        for schema in self.schemas:
+            if schema.name not in json_obj:
+                continue
+            objs=json_obj[schema.name]
+            markables=[schema.create_from_json(obj,self) for obj in objs]
+            markables_by_level[schema.name]=markables
+            for m in markables:
+                self.object_by_id[self.get_obj_id(m)]=m
+                self.register_object(m)
+        for i,n,obj in izip(xrange(start,end),islice(self.w_objs,start,end),terminals):
+            self.t_schema.fill_from_json(n,obj,self)
+        for schema in self.schemas:
+            if schema.name not in objs:
+                continue
+            objs=json_obj[schema.name]
+            for n,obj in izip(json_obj[schema.name], markables_by_level[schema.name]):
+                schema.fill_from_json(n,obj,self)
     def clear_markables(self, start=0, end=None):
         if end is None:
             end=len(self.words)
@@ -610,7 +762,7 @@ edu_re="[0-9]+(?:\\.[0-9]+)?"
 topic_s="T[0-9]+"
 topic_re=re.compile(topic_s)
 class Text(object):
-    def __init__(self,origin,doc_no):
+    def __init__(self,origin,doc_no=0):
         self.origin=origin
         self.topics={}
         self.edus={}
@@ -652,6 +804,7 @@ class NamedEntity(object):
 def make_syntax_doc():
     text_schema=MarkableSchema('text',Text)
     text_schema.attributes=[TextAttribute('origin')]
+    text_schema.init_attrs=text_schema.attributes
     s_schema=MarkableSchema('sentence',tree.Tree)
     s_schema.locality='text'
     nt_schema=MarkableSchema('node',tree.NontermNode)
@@ -665,6 +818,7 @@ def make_syntax_doc():
                           RefAttribute('parent',restriction='up',
                                        restrict_target=['node']),
                           TextAttribute('comment')]
+    nt_schema.init_attrs=nt_schema.attributes[:1]
     nt_schema.edges=[secedge_edge,
                      relation_edge,
                      split_edge]
@@ -785,18 +939,25 @@ def nodes_to_ne(t):
         if n.edge_label=='-NE':
             n.edge_label='-'
         
-def add_tree_to_doc(t,ctx):
-    sent_start=len(ctx.words)
+def add_tree_to_doc(t,ctx,start=None):
+    if start is None:
+        sent_start=len(ctx.words)
+    else:
+        sent_start=start
     comments_to_relations(t)
     lemmas_from_comments(t)
     nodes_to_ne(t)
     if hasattr(t,'sent_no'):
         prefix='s%s'%(t.sent_no,)
         t.xml_id=prefix
-        for i,n in enumerate(t.terminals):
-            n.xml_id='%s_%d'%(prefix,i+1)
-        for n in t.roots:
-            assign_node_ids(n,prefix,sent_start)
+    elif hasattr(t,'xml_id'):
+        prefix=t.xml_id
+    else:
+        assert False, t
+    for i,n in enumerate(t.terminals):
+        n.xml_id='%s_%d'%(prefix,i+1)
+    for n in t.roots:
+        assign_node_ids(n,prefix,sent_start)
     if hasattr(t,'all_nes'):
         last_num=defaultdict(int)
         suffixes=['','a','b','c','d']
@@ -809,8 +970,12 @@ def add_tree_to_doc(t,ctx):
             last_num[ne_start]+=1
             ne.xml_id='ne_%s%s'%(ne_start,suff)
             ctx.register_object(ne)
-    for n in t.terminals:
-        ctx.add_terminal(n)
+    if start is None:
+        for n in t.terminals:
+            ctx.add_terminal(n)
+    else:
+        for i,n in enumerate(t.terminals):
+            ctx.replace_terminal(start+i,n)
     t.span=[sent_start,sent_start+len(t.terminals)]
     ctx.register_object(t)
     for n in t.node_table.values():
@@ -908,7 +1073,36 @@ class ExportCorpusReader:
             self.doc_no=t.doc_no
         t.determine_tokenspan_all()
         add_tree_to_doc(t,self.doc)
- 
+
+def test_json(fname, f_out):
+    doc=make_syntax_doc()
+    reader=ExportCorpusReader(doc,fname)
+    last_stop=len(doc.words)
+    while True:
+        try:
+            new_stop=reader.addNext()
+            if (new_stop!=last_stop):
+                print json.dumps(doc.json_chunk(last_stop,new_stop))
+                doc.clear_markables(last_stop,new_stop)
+                last_stop=new_stop
+        except StopIteration:
+            break
+    print >>f_out,json.dumps(doc.json_chunk(last_stop))
+
+def read_json_doc(f_in):
+    doc=make_syntax_doc()
+    json_obj=json.load(f_in)
+    doc.json_insert(json_obj)
+    for t in doc.get_objects_by_class(tree.Tree):
+        t.terminals=doc.w_objs[t.span[0]:t.span[-1]]
+        ns=[n for n in doc.get_objects_by_class(tree.NontermNode)
+            if n.parent is None]
+        ns+=[n for n in doc.w_objs[t.span[0]:t.span[-1]]
+             if n.parent is None]
+        ns.sort(key=lambda n:n.start)
+        t.roots=ns
+    return doc
+
 if __name__=='__main__':
     doc=make_syntax_doc()
     if len(sys.argv)<=1:

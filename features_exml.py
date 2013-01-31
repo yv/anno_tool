@@ -14,7 +14,9 @@ from exml import ExportCorpusReader, make_syntax_doc, EnumAttribute, TextAttribu
 from sem_features import get_productions
 import sentiment
 
-wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','productionsA','istatusG','puncG']
+#wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','productionsA','istatusG','puncG']
+wanted_features=['csubj','mod','lex','tmp','neg','punc','lexrel','wordpairsA','productionsA','puncG']
+# sentimentG, istatusG
 
 disc_map=get_features.make_hier_schema(file('disc_schema.txt'))
 for x in ['Speechact','Cause','Enable','Epistemic']:
@@ -127,6 +129,10 @@ def make_infotree(nodes1,nodes2,terminals2,doc=None):
             kind,feats=get_features.munge_single_phrase(n)
             if 'puncG' in wanted_features:
                 feats+=get_features.punc_type(n,doc)
+            if 'sentimentG' in wanted_features:
+                tag=sentiment.phrase_tag(n)
+                if tag is not None:
+                    feats.append('senti_'+tag[1])
             ni=InfoNode('FRAG',feats)
         if last_node is not None:
             last_node.add_edge(ni,'frag')
