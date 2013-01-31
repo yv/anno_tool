@@ -27,7 +27,7 @@ from jinja2 import Environment, FileSystemLoader
 import json
 from annodb.database import login_user, get_corpus, \
      default_database, get_database, get_times, add_time
-from annodb.corpora import allowed_corpora_nologin, allowed_corpora
+from annodb.corpora import allowed_corpora_nologin, allowed_corpora, allowed_corpora_admin
 
 SENSIBLE_ENCODING='ISO-8859-15'
 
@@ -88,7 +88,7 @@ class AppRequest(Request):
     @property
     def corpus(self):
         data=self.cookies.get('corpus')
-        if not data or data not in allowed_corpora:
+        if not data or data not in allowed_corpora_admin:
             data=default_database
         if 'force_corpus' in self.args:
             data2=self.args['force_corpus']
@@ -155,7 +155,7 @@ def index(request):
         corpus_name=request.args['corpus']
     except KeyError:
         pass
-    if not corpus_name or corpus_name not in allowed_corpora:
+    if not corpus_name or corpus_name not in allowed_corpora_admin:
         corpus_name=default_database
     db=get_corpus(corpus_name)
     if not request.user:
@@ -163,6 +163,8 @@ def index(request):
         corpora=allowed_corpora_nologin
         tasks_ready=[]
     else:
+        if request.user in ADMINS:
+            corpora=allowed_corpora_admin
         user=request.user
         tasks=[]
         tasks_ready=[]
