@@ -28,6 +28,6 @@ corpus_urls={'EUROPARL_EN':compute_url_europarl,
 parse_order={'EUROPARL_DE':parser_ordering_de,
              'PTB':parser_ordering_en,
              'EUROPARL_EN':parser_ordering_en}
-for corp_name in ['TUEBA4','R6PRE1','R6FINAL','R7PRE1','R7FINAL','R8PRE1','R8FINAL','R9FINAL','TUEPP']:
+for corp_name in ['TUEBA4','R6PRE1','R6FINAL','R7PRE1','R7FINAL','R8PRE1','R8FINAL','R9PRE1','TUEPP']:
     corpus_urls[corp_name]=compute_url_tueba
     parse_order[corp_name]=parser_ordering_de
