@@ -2,12 +2,12 @@
 # -*- coding: iso-8859-15 -*-
 import sys
 import shelve
-import exml_merged
+from pytree import exml_merged
 import optparse
 from annodb.database import get_corpus
 from pytree.tree import Tree
 from collections import defaultdict
-from exml import Document, Text
+from pytree.exml import Document, Text
 
 def main(exp_fname,corpus_name,opts):
     exml_db=shelve.open('/export2/local/yannick/%s_db.db'%(corpus_name,),protocol=-1)

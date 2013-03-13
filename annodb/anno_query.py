@@ -13,8 +13,8 @@ from schema import schemas
 from annodb.database import *
 from web_stuff import *
 from cStringIO import StringIO
-from querygrammar import FunctorOp, Accessor, TaxonAccessor, \
-    Constant, parser, make_query
+# from querygrammar import FunctorOp, Accessor, TaxonAccessor, \
+#     Constant, parser, make_query
 
 from werkzeug.exceptions import NotFound, Forbidden
             
@@ -382,21 +382,21 @@ class Disagree(object):
 
 symbols={}
 konn2_mapping=schemas['konn2'].taxon_mapping
-symbols['==']=FunctorOp(lambda x,y: x==y)
-symbols['in']=FunctorOp(lambda x,y: x in y)
-symbols['not in']=FunctorOp(lambda x,y: x not in y)
-symbols['|']=FunctorOp(lambda x,y: x or y)
-symbols['&']=FunctorOp(lambda x,y: x and y)
-symbols['rel1']=TaxonAccessor('rel1',schemas['konn2'].taxon_mapping)
-symbols['rel2']=TaxonAccessor('rel2',schemas['konn2'].taxon_mapping)
-symbols['ForAll']=ForAll
-symbols['ForAny']=ForAny
-symbols['Disagree']=Disagree
+# symbols['==']=FunctorOp(lambda x,y: x==y)
+# symbols['in']=FunctorOp(lambda x,y: x in y)
+# symbols['not in']=FunctorOp(lambda x,y: x not in y)
+# symbols['|']=FunctorOp(lambda x,y: x or y)
+# symbols['&']=FunctorOp(lambda x,y: x and y)
+# symbols['rel1']=TaxonAccessor('rel1',schemas['konn2'].taxon_mapping)
+# symbols['rel2']=TaxonAccessor('rel2',schemas['konn2'].taxon_mapping)
+# symbols['ForAll']=ForAll
+# symbols['ForAny']=ForAny
+# symbols['Disagree']=Disagree
 
-#for k in ['temporal','causal','contrastive','other_rel']:
-#    symbols[k]=Accessor(k)
-for k,v in konn2_mapping.iteritems():
-    symbols[k]=Constant(v)
+# #for k in ['temporal','causal','contrastive','other_rel']:
+# #    symbols[k]=Accessor(k)
+# for k,v in konn2_mapping.iteritems():
+#     symbols[k]=Constant(v)
 
 immutable_attributes=set(['_id','annotator','span','corpus','level'])
 def save_attributes(request):

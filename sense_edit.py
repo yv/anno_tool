@@ -11,6 +11,7 @@ from annodb.database import login_user, get_corpus, \
      default_database, get_database, get_times, add_time
 from annodb.corpora import allowed_corpora_nologin, allowed_corpora
 
+default_annotator='verena'
 
 def senseEditor(request):
     db=request.corpus
@@ -176,7 +177,12 @@ def adjudication_spans(task):
                 needed=True
         anno=db.get_annotation('wsdgold',level,span)
         #print >>sys.stderr, all_senses
-        anno.sense=dict([(x,1) for x in all_senses])
+        # TODO: nur Verenas Annotation
+        if default_annotator is None:
+            anno.sense=dict([(x,1) for x in all_senses])
+        else:
+            wanted_anno=db.get_annotation(default_annotator,level,span)
+            anno.sense=wanted_anno.get('sense',{})
         new_annotations.append(anno)
         #print span, needed
         if needed:
@@ -226,9 +232,10 @@ def sense_tasks(request,senseId):
                     task.set_status('wsdgold','ready')
                     task.save()
             print >>sys.stderr, spans
-            task_adj=create_adjudication_task(task0,spans)
-            task_adj.save()
-            info={'num_existing':len(old_tasks), 'num_remaining':len(new_tasks)}
+            if spans:
+                task_adj=create_adjudication_task(task0,spans)
+                task_adj.save()
+            info={'num_existing':len(old_tasks), 'num_remaining':len(spans)}
             return Response(json.dumps(info),mimetype="text/javascript") 
     print >>sys.stderr, 'huh?'
             

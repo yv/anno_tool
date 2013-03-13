@@ -2,8 +2,8 @@
 # -*- coding: iso-8859-15 -*-
 import re
 import sys
-import exml
-from exml import Text, Edu, EduRange, Topic, edu_re, topic_s
+from pytree import exml
+from pytree.exml import Text, Edu, EduRange, Topic, edu_re, topic_s
 from itertools import izip
 from collections import defaultdict
 from ordereddict import OrderedDict

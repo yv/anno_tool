@@ -1,8 +1,6 @@
 import sys
 import os
 import shutil
-sys.path.append('/home/yannickv/proj/pytree')
-
 import codecs
 from itertools import izip,imap
 from collections import defaultdict
@@ -14,12 +12,9 @@ from getopt import getopt
 import optparse
 from dist_sim.fcomb import FCombo, make_multilabel, dump_example, Multipart
 from alphabet import PythonAlphabet
-from svm_wrapper import svmperf, make_labelfilter, train_greedy, \
+from mltk.svm_wrapper import svmperf, make_labelfilter, train_greedy, \
     classify_greedy_mlab, set_flags, make_weight_map
-#import me_opt2 as me_opt
-#import sgd_opt as me_opt
 import random
-import me_opt_new as me_opt
 
 from lxml import etree
 
@@ -79,6 +74,9 @@ if opts.n_processors==1:
 
 print >>sys.stderr, "preparing training file..."
 
+if opts.train_model:
+    n_bins=1
+
 data0_bins=[[] for i in xrange(n_bins)]
 test0_bins=[[] for i in xrange(n_bins)]
 data_bins=[[] for i in xrange(n_bins)]
@@ -101,11 +99,14 @@ for bin_nr,data,label in all_data:
         vec0=fc.munge_uni(data)
     else:
         vec0=fc(data)
-    for i in xrange(n_bins):
-        if i!=bin_nr:
-            data0_bins[i].append((vec0,label))
-        else:
-            test0_bins[i].append((vec0,label))
+    if opts.train_model:
+        data0_bins[0].append((vec0,label))
+    else:
+        for i in xrange(n_bins):
+            if i!=bin_nr:
+                data0_bins[i].append((vec0,label))
+            else:
+                test0_bins[i].append((vec0,label))
 if opts.feat_sel==100:
     if opts.feat_size is not None:
         feat_sizes=[int(x) for x in opts.feat_size.split(',')]
@@ -177,6 +178,27 @@ for i,data_bin in enumerate(data_bins):
 #     basedir='/export2/local/yannick/konn-cls/fold-%d'%(i,)
 #     convert_onevsall(examples,labels,basedir,'test_')
 
+def classify(dat):
+    bin_nr,data,label=dat
+    best=classify_greedy_mlab(classifiers[bin_nr],fc(data),opts.max_labels, label_filters[bin_nr])
+    return best
+
+def munge_classifier(stuff,output_dict,level=1):
+    vecs,cont=stuff
+    if len(vecs)==1:
+        return None
+    else:
+        for label,vec in vecs:
+            output_dict['weights_%d_%s'%(level,label)]=vec.w
+            output_dict['bias_%d_%s'%(level,label)]=vec.bias
+        d={}
+        for k in cont:
+            d[k]=munge_classifier(cont[k],output_dir,level+1)
+        return d
+    #for label,vec in vecs:
+    #    lst.append(label)
+    
+
 if opts.weights_fname is not None:
     wmaps=[]
     for cl in classifiers:
@@ -185,19 +207,26 @@ if opts.weights_fname is not None:
         wmaps.append(wmap)
     print_weights_2(opts.weights_fname,wmaps)
 
-def classify(dat):
-    bin_nr,data,label=dat
-    best=classify_greedy_mlab(classifiers[bin_nr],fc(data),opts.max_labels, label_filters[bin_nr])
-    return best
-
-
-
-stats=make_stats_multi(all_data,
-                       make_mapper(True)(classify,all_data),
-                       opts)
-if left_out:
-    print >>sys.stderr, "Subsampling: left out %d/%d examples"%(left_out,len(all_data))
-print_stats(stats)
+if opts.train_model is not None:
+    if not os.path.isdir(opts.train_model):
+        os.makedirs(opts.train_model)
+    output_dict={}
+    json.dump({'type':'multi',
+                'opts':{'degree':opts.degree,
+                        'labelfilter':label_filters[0],
+                        'max_labels':opts.max_labels},
+               'labels':munge_classifier(classifiers[0], output_dict),
+                },file(os.path.join(opts.train_model,'model.json'),'w'))
+    fc.dict.tofile_utf8(file(os.path.join(opts.train_model,'ranker_alph.txt'),'w'))
+    numpy.savez(os.path.join(opts.train_model,'model_weights.npz'),
+                **output_dict)
+else:
+    stats=make_stats_multi(all_data,
+                           make_mapper(True)(classify,all_data),
+                           opts)
+    if left_out:
+        print >>sys.stderr, "Subsampling: left out %d/%d examples"%(left_out,len(all_data))
+    print_stats(stats)
 
 if opts.want_subdir:
     shutil.rmtree(subdir)

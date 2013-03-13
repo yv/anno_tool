@@ -1,7 +1,7 @@
 import sys
 from annodb.database import get_corpus
-import exml
-from exml import ExportCorpusReader, make_syntax_doc, EnumAttribute, TextAttribute, \
+from pytree import exml
+from pytree.exml import ExportCorpusReader, make_syntax_doc, EnumAttribute, TextAttribute, \
      Topic, EduRange, Edu, GenericMarkable
 from exml_implicit import DiscRelEdges, parse_relations
 

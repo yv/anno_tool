@@ -6,7 +6,8 @@ from dist_sim.fcomb import Multipart
 from alphabet import PythonAlphabet
 from itertools import izip
 
-__all__=['shrink_to','load_data','load_data_spans','load_aux','make_stats',
+__all__=['shrink_to','load_data','load_ranking_data',
+         'load_data_spans','load_aux','make_stats',
          'print_weights','print_weights_2','print_eval','n_bins',
          'add_options_common',
          'object_hook','PrettyFloat']
@@ -33,6 +34,7 @@ def add_options_common(oparse):
                       default=1)
     oparse.add_option('--degree',dest='degree', type='int',
                       default=2, help='feature expansion degree')
+    oparse.add_option('--train-model', dest='train_model', default=None)
 
 def shrink_to(lbl,d):
     parts=lbl.split('.')
@@ -76,6 +78,19 @@ def load_data(fname, opts):
         line_no+=1
     labelset.growing=False
     return all_data, labelset
+
+def load_ranking_data(fname, opts):
+    reassign_folds=getattr(opts,'reassign_folds',True)
+    max_depth=opts.max_depth
+    all_data=[]
+    line_no=0
+    for l in file(fname):
+        bin_nr,data,unused_span=json.loads(l, object_hook=object_hook)
+        if reassign_folds:
+            bin_nr=line_no%n_bins
+        all_data.append((bin_nr,data,None))
+        line_no+=1
+    return all_data
 
 def load_data_spans(fname, opts):
     reassign_folds=getattr(opts,'reassign_folds',True)

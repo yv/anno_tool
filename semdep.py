@@ -478,3 +478,9 @@ if __name__=='__main__':
         else:
             kind='NN'
         dep2paths_sat_all(sys.argv[2],kind)
+    elif cmd=='dump':
+        for sent in DependencyCorpus(Corpus(sys.argv[2])):
+            for line in sent:
+                print '\t'.join(line)
+            print
+

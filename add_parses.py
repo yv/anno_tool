@@ -2,7 +2,7 @@ import sys
 import pytree.export as export
 import annodb.database as annodb
 import getopt
-from exml import nodes_to_ne
+from pytree.exml import nodes_to_ne
 
 corpus_name=None
 parse_name='release'

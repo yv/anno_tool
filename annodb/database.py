@@ -5,7 +5,7 @@ import datetime
 import CWB.CL as cwb
 import pymongo
 import hashlib
-import fshp
+from passlib.hash import fshp
 from pytree import export
 from corpora import corpus_d_sattr, parse_order
 import bsp_index
@@ -23,7 +23,7 @@ def get_database():
     return srv['annoDB']
 
 def create_user(username,passwd):
-    hashed_pw=fshp.crypt(passwd)
+    hashed_pw=fshp.encrypt(passwd)
     users=get_database().users
     user=users.find_one({'_id':username})
     if not user:
@@ -37,7 +37,7 @@ def login_user(username,passwd):
     if not user:
         return None
     passwd=passwd.encode('ISO-8859-15')
-    if fshp.check(passwd,user['hashed_pw']):
+    if fshp.verify(passwd,user['hashed_pw']):
         return user
     return None
 

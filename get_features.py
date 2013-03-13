@@ -11,7 +11,7 @@ from pynlp.de import smor_pos, tueba_heads
 from pytree import deps
 import simplejson as json
 import optparse
-import exml2db
+from pytree import exml2db
 
 import sys
 from pynlp.de import pydeps

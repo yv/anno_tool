@@ -2,14 +2,14 @@
 # -*- coding: iso-8859-15 -*-
 import sys
 import simplejson as json
-import exml
-import exml_merged
+from pytree import exml
+from pytree import exml_merged
 import get_features
 import optparse
 from pytree.tree import Tree
 from dist_sim.fcomb import InfoNode, InfoTree
 from collections import defaultdict
-from exml import ExportCorpusReader, make_syntax_doc, EnumAttribute, TextAttribute, \
+from pytree.exml import ExportCorpusReader, make_syntax_doc, EnumAttribute, TextAttribute, \
      Topic, EduRange, Edu
 from sem_features import get_productions
 import sentiment
