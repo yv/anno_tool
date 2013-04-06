@@ -6,7 +6,6 @@ import CWB.CL as cwb
 import pymongo
 import hashlib
 from passlib.hash import fshp
-from pytree import export
 
 from corpora import corpus_d_sattr, parse_order
 
@@ -14,7 +13,7 @@ couch_ignore_attributes=set(['_id','_rev','type',
                              'span','corpus','annotator','level',
                              'word'])
 
-srv=pymongo.Connection('192.168.1.1',27017)
+srv=pymongo.Connection('localhost',27017)
 
 def get_database():
     return srv['annoDB']
@@ -209,12 +208,6 @@ class AnnoDB(object):
         ##if len(doc)==1:
         ##    print >>sys.stderr,"Not found: %s"%(repr(sent_no),)
         return doc
-    def get_best_parse(self, sent_no):
-        doc=self.get_parses(sent_no)
-        for pname in parse_order[self.corpus_name]:
-            if pname in doc:
-                return export.from_json(doc[pname])
-        return None
     def save_parses(self, doc):
         self.db.parses.save(doc)
     def get_alignments(self, sent_no):

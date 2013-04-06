@@ -1,13 +1,13 @@
 from annodb import schema
 from cStringIO import StringIO
-from web_stuff import render_template, render_template_nocache, \
-     redirect, Response, ADMINS
 from werkzeug.utils import escape
 from werkzeug.exceptions import NotFound, Forbidden, HTTPException
 import json
 import sys
 import re
 from collections import defaultdict
+from webapp_admin import render_template, render_template_nocache, \
+     redirect, Response, ADMINS
 from annodb.corpora import allowed_corpora_nologin, corpus_sattr, corpus_d_sattr, corpus_urls
 
 def escape_uni(s):
@@ -46,22 +46,9 @@ def render_sentence(request,sent_no):
                              next_sent='/pycwb/sentence/%d'%(sno+2,),
                              disc_id=t_id_d,
                              corpus_name=request.corpus.corpus_name,
-                             has_gold=(discourse is not None))
+                             has_gold=False)
     request.set_corpus_cookie(response)
     return response
-
-def archive_user(user):
-    from annodb.database import get_corpus
-    new_name=user+'*old'
-    for corpus_name in allowed_corpora_nologin:
-        db=get_corpus(corpus_name)
-        coll=db.db.discourse
-        for doc in coll.find({'_user':user}):
-            disc_id=doc['_docno']
-            old_id=doc['_id']
-            doc['_user']=new_name
-            doc['_id']='%s~%s'%(disc_id,new_name)
-            coll.update({'_id':old_id},doc)
 
 def render_search(request,word):
     db=request.corpus

@@ -1,18 +1,14 @@
 import re
 from itertools import izip
-from pynlp.mmax_tools import *
 import simplejson as json
 import yaml
-
 import os.path
 import sys
-
-BASEDIR=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASEDIR)
-from schema import schemas
-from annodb.database import *
-from web_stuff import *
 from cStringIO import StringIO
+
+from annodb.schema import schemas
+from annodb.database import *
+from webapp_admin import *
 
 from werkzeug.exceptions import NotFound, Forbidden
 

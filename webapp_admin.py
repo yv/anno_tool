@@ -1,30 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
-"""
+
+__doc__="""
 templates, authentication and stuff
 
+This package contains functions related
+to authentication, user administration etc.
 
-based on:
-    Cookie Based Auth
-    ~~~~~~~~~~~~~~~~~
-
-    This is a very simple application that uses a secure cookie to do the
-    user authentification.
-
-    :copyright: Copyright 2009 by the Werkzeug Team, see AUTHORS for more details.
-    :license: BSD, see LICENSE for more details.
+based on: Cookie Based Auth (from the Werkzeug package)
 """
 import os.path
 import re
 import sys
 import datetime
 from cStringIO import StringIO
+
 from werkzeug import Request, Response, cached_property, redirect, escape
 from werkzeug.exceptions import HTTPException, MethodNotAllowed, \
     NotImplemented, NotFound, Forbidden
 from werkzeug.contrib.securecookie import SecureCookie
 from jinja2 import Environment, FileSystemLoader
-import json
+import simplejson as json
+
+from app_configuration import get_config_var
 from annodb.database import login_user, get_corpus, \
      default_database, get_database, get_times, add_time
 from annodb.corpora import allowed_corpora_nologin, allowed_corpora, allowed_corpora_admin
@@ -32,7 +30,6 @@ from annodb.corpora import allowed_corpora_nologin, allowed_corpora, allowed_cor
 SENSIBLE_ENCODING='ISO-8859-15'
 
 TEMPLATE_PATH=os.path.join(os.path.dirname(__file__),'templates')
-#mylookup=TemplateLookup(directories=[TEMPLATE_PATH])
 mylookup=Environment(loader=FileSystemLoader(TEMPLATE_PATH,encoding=SENSIBLE_ENCODING),
                      extensions=['jinja2.ext.do'])
 
@@ -49,12 +46,12 @@ def render_template_nocache(template, **context):
 # don't use this key but a different one; you could just use
 # os.unrandom(20) to get something random.  Changing this key
 # invalidates all sessions at once.
-SECRET_KEY = 'H\xda}\xa3k0\x0c\xdc\x0bY\na\x08}\n\x1f\x13\xc5\x9f\xf1'
+SECRET_KEY = '}zJg\xc7\xc0\x98\xaf\x00\xcb\xae=WRa\x99\x7f(\xce\xb7'
 
 # the cookie name for the session
 COOKIE_NAME = 'session'
 
-ADMINS=['yannick','anna','nadine','janne', 'kathrin', 'heike', 'verena']
+ADMINS=get_config_var('pycwb.admins')
 
 class AppRequest(Request):
     """A request with a secure cookie session."""
@@ -265,6 +262,19 @@ def save_task(request,task_id):
     task.set_annotators(data)
     task.save()
     return Response('Ok')
+
+def archive_user(user):
+    from annodb.database import get_corpus
+    new_name=user+'*old'
+    for corpus_name in allowed_corpora_nologin:
+        db=get_corpus(corpus_name)
+        coll=db.db.discourse
+        for doc in coll.find({'_user':user}):
+            disc_id=doc['_docno']
+            old_id=doc['_id']
+            doc['_user']=new_name
+            doc['_id']='%s~%s'%(disc_id,new_name)
+            coll.update({'_id':old_id},doc)
 
 def get_users(request):
     q=request.args['q']

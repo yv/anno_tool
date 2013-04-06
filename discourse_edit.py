@@ -1,7 +1,12 @@
-from web_stuff import render_template, render_template_nocache, \
-     redirect, Response, ADMINS
+import re
+import simplejson as json
+
 from werkzeug.utils import escape
 from werkzeug.exceptions import NotFound, Forbidden, HTTPException
+
+from webapp_admin import render_template, render_template_nocache, \
+     redirect, Response, ADMINS
+from annodb.corpora import corpus_sattr, corpus_d_sattr, corpus_urls
 
 def render_sentence(request,sent_no):
     db=request.corpus
@@ -196,19 +201,6 @@ def list_discourse(request):
                            corpus_name=db.corpus_name,
                            user=request.user,
                            results=doc_lst)
-
-def archive_user(user):
-    from annodb.database import get_corpus
-    new_name=user+'*old'
-    for corpus_name in allowed_corpora_nologin:
-        db=get_corpus(corpus_name)
-        coll=db.db.discourse
-        for doc in coll.find({'_user':user}):
-            disc_id=doc['_docno']
-            old_id=doc['_id']
-            doc['_user']=new_name
-            doc['_id']='%s~%s'%(disc_id,new_name)
-            coll.update({'_id':old_id},doc)
 
 def isolate_relations(relations):
     different_relations=defaultdict(list)

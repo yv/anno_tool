@@ -4,8 +4,9 @@ import datetime
 from itertools import izip
 from collections import defaultdict
 from werkzeug import Response, redirect, escape
-from web_stuff import render_template, Forbidden, ADMINS
 import simplejson as json
+
+from webapp_admin import render_template, Forbidden, ADMINS
 from annodb.database import login_user, get_corpus, \
      default_database, get_database, get_times, add_time
 from annodb.corpora import allowed_corpora_nologin, allowed_corpora
