@@ -46,6 +46,6 @@ urls=[('/login',webapp_admin.login_form),
       ('/wsd_tasks/([a-zA-Z0-9_#]+)',sense_edit.sense_tasks)
       ]
 
-mymap=web_stuff.MyMap(urls)
+mymap=webapp_admin.MyMap(urls)
 
 application=mymap
