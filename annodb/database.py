@@ -7,17 +7,14 @@ import pymongo
 import hashlib
 from passlib.hash import fshp
 from pytree import export
+
 from corpora import corpus_d_sattr, parse_order
-import bsp_index
 
 couch_ignore_attributes=set(['_id','_rev','type',
                              'span','corpus','annotator','level',
                              'word'])
 
 srv=pymongo.Connection('192.168.1.1',27017)
-PARSES_ROOT='/export/local/yannick/parses'
-ALIGNMENT_ROOT='/export/local/yannick/align'
-#srv=pymongo.Connection('192.168.1.2')
 
 def get_database():
     return srv['annoDB']
@@ -192,16 +189,8 @@ class AnnoDB(object):
         self.words=self.corpus.attribute('word','p')
         self.corpus_name=corpus_name
         self.db=get_database()[corpus_name]
-        parses_dir=os.path.join(PARSES_ROOT,self.corpus_name)
-        align_dir=os.path.join(ALIGNMENT_ROOT,self.corpus_name)
-        if os.path.exists(parses_dir):
-            self.parses=bsp_index.load_directory(parses_dir)
-        else:
-            self.parses=None
-        if os.path.exists(align_dir):
-            self.alignments=bsp_index.load_directory(align_dir)
-        else:
-            self.alignments=None
+        self.parses=None
+        self.alignments=None
     def get_task(self,taskname):
         doc=self.db.tasks.find_one({'_id':taskname})
         if doc is not None:

@@ -13,88 +13,8 @@ from schema import schemas
 from annodb.database import *
 from web_stuff import *
 from cStringIO import StringIO
-# from querygrammar import FunctorOp, Accessor, TaxonAccessor, \
-#     Constant, parser, make_query
 
 from werkzeug.exceptions import NotFound, Forbidden
-            
-def run_query(q, which_set,db):
-    yield """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-"http://www.w3.org/TR/html4/strict.dtd">
-<html><head><title>Annotation diff</title>
-<style type="text/css">
-  .srctext { font-size: 12pt; line-height: 150%;
-     font-family:Helvetica,Arial,sans-serif;
-     font-style: italic;
-     border-top: solid thin black;
-     margin-top: 20pt;
-     margin-bottom: 12pt;  }
-  .difference { font-size: 11pt; }
-  .file_id { font-weight: bold; font-size: 14pt;
-  margin-top: 20pt; }
-  </style>
-</head>
-<body>"""
-    task=db.get_task(which_set)
-    ms=annotation_join(db,task)
-    names=task.annotators
-    out=StringIO()
-    for part in ms:
-        if q(part):
-            db.display_annotation(part,names,out)
-    yield out.getvalue()
-    yield "</body></html>"
-
-myglobals={'__builtins__':None,'None':None}
-#for k in 'ForAny ForAll Disagree contrastive temporal causal other_rel'.split():
-#    myglobals[k]=globals()[k]
-
-query_ok_re=re.compile(r"^(\'[a-z]+\'|==|\!=|[\(\)\&\| ]|ForAll|ForAny|contrastive|temporal|causal)+$")
-def display_annoquery(request):
-    db=request.corpus
-    if request.method=='POST':
-        form=request.form
-        qs=form['q'].strip().replace('\n','')
-        qset=form.get('wset','all1')
-        #m=query_ok_re.match(qs)
-        m=True
-        if m:
-            try:
-                q=make_query("ForAny(rel1 in Comparison)",symbols)    
-            except SyntaxError,e :
-                return render_template('annoquery.html',
-                                       errmsg='Syntax error:%s<br>%s'%(e,e.text),
-                                       query=form['q'],
-                                       tasks=anno_sets)
-            except TypeError,e :
-                return render_template('annoquery.html',
-                                       errmsg='Type error:%s'%(e,),
-                                       query=form['q'],
-                                       tasks=anno_sets)
-            else:
-                result=' '.join(run_query(q,qset,db)).decode('ISO-8859-15')
-                print >>sys.stderr, type(result)
-                return Response(result, mimetype='text/html')
-        else:
-            return render_template('annoquery.html',
-                                   errmsg='Your query is not valid',
-                                   query=form['q'],
-                                   tasks=anno_sets)
-    return render_template('annoquery.html',
-                           errmsg='',
-                           query='',
-                           tasks=anno_sets)
-
-
-konn_scheme=[('temporal',['temporal','non_temporal']),
-             ('causal',['causal','enable','non_causal']),
-             ('contrastive',['kontraer','kontradiktorisch',
-                             'parallel','no_contrast'])]
-
-mod_scheme=[('class',['tmp','loc','sit','freq','dur',
-                      'final','causal','concessive','cond','dir',
-                      'instr','focus','source','manner',
-                      'commentary','modalprt','intensifier'])]
 
 def is_ready(anno):
     if anno.get('level','konn')=='mod':
@@ -382,21 +302,6 @@ class Disagree(object):
 
 symbols={}
 konn2_mapping=schemas['konn2'].taxon_mapping
-# symbols['==']=FunctorOp(lambda x,y: x==y)
-# symbols['in']=FunctorOp(lambda x,y: x in y)
-# symbols['not in']=FunctorOp(lambda x,y: x not in y)
-# symbols['|']=FunctorOp(lambda x,y: x or y)
-# symbols['&']=FunctorOp(lambda x,y: x and y)
-# symbols['rel1']=TaxonAccessor('rel1',schemas['konn2'].taxon_mapping)
-# symbols['rel2']=TaxonAccessor('rel2',schemas['konn2'].taxon_mapping)
-# symbols['ForAll']=ForAll
-# symbols['ForAny']=ForAny
-# symbols['Disagree']=Disagree
-
-# #for k in ['temporal','causal','contrastive','other_rel']:
-# #    symbols[k]=Accessor(k)
-# for k,v in konn2_mapping.iteritems():
-#     symbols[k]=Constant(v)
 
 immutable_attributes=set(['_id','annotator','span','corpus','level'])
 def save_attributes(request):
@@ -429,8 +334,3 @@ def save_attributes(request):
             return Response('Ok')
     else:
         raise NotFound("only POST allowed")
-
-if __name__=='__main__':
-    q=make_query("ForAny(rel1 in Comparison)",symbols)    
-    for s in run_query(q,'task_aber1_new'):
-        sys.stdout.write(s)

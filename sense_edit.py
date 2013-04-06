@@ -6,12 +6,18 @@ from collections import defaultdict
 from werkzeug import Response, redirect, escape
 from web_stuff import render_template, Forbidden, ADMINS
 import simplejson as json
-from semdep import filters
 from annodb.database import login_user, get_corpus, \
      default_database, get_database, get_times, add_time
 from annodb.corpora import allowed_corpora_nologin, allowed_corpora
 
 default_annotator='verena'
+
+filters={
+    'N':set(['NN']),
+    'A':set(['ADJA','ADJD']),
+    'V':set(['VVFIN','VVINF','VVPP','VVIZU']),
+    'R':['ADV']
+}
 
 def senseEditor(request):
     db=request.corpus
