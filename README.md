@@ -19,14 +19,16 @@ Installing deb/ymp packages
 ---------------------------
 
 The following should be available as existing packages (Ubuntu/SuSE):
-- python
-- libapache2-mod-wsgi / apache2-mod_wsgi
-- cython / python-Cython
-- python-pip
-- python virtualenv
-- mongodb (SuSE: see below)
+
+ * python
+ * libapache2-mod-wsgi / apache2-mod_wsgi
+ * cython / python-Cython
+ * python-pip
+ * python virtualenv
+ * mongodb (SuSE: see below)
 
 mongodb on SuSE (unstable package)
+
     zypper addrepo http://download.opensuse.org/repositories/server:database/openSUSE_12.3/server:database.repo
     zypper refresh
     zypper install mongodb
