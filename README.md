@@ -42,3 +42,16 @@ In a suitable directory, do:
 
     pip install -r /path/to/anno_tool/requirements.txt
 
+You can test whether the installation works in general using
+
+   python rundebugging.py --EXOTIC OPTIONS
+
+This will run a test server on port EXOTIC PORT
+
+Setting up mod_wsgi
+-------------------
+
+add the following to your apache2.conf:
+
+    WSGIPythonHome /path/to/anno_tool_env
+    WSGIScriptAlias /pycwb /path/to/anno_tool/wsgi_app.py
