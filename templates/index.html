@@ -70,6 +70,7 @@ $("#corpus_chooser > option [val="+get_corpus()+"]").attr('selected','selected')
 	  <ul class="nav">
 	    <li class="active"><a href="/pycwb">Home</a></li>
 	    <li><a href="/pycwb/tasks">All Tasks</a></li>
+	    <li><a href="/pycwb/discourse_list">Discourse</a></li>
 	    <li><a href="/pycwb/senses">Sense editor</a></li>
 	    <li><a href="/pycwb/stunden">Stundentool</a></li>
 	  </ul>
@@ -110,6 +111,9 @@ Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>, <a href="/pycwb/st
 <a class="label" href="/pycwb/annotate/{{task._id}}">{{task._id}}</a>
 {% endfor %}
 {% endif %}
+</div>
+<div style="margin-top: 3px">
+<a href="/pycwb/discourse_rels">Relation counts</a>
 </div>
 {% endif %}
 </div>

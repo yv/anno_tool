@@ -1,0 +1,5 @@
+passlib
+pymongo
+werkzeug
+PyYAML
+jinja2
