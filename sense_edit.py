@@ -6,6 +6,7 @@ from collections import defaultdict
 from werkzeug import Response, redirect, escape
 import simplejson as json
 
+from app_configuration import get_config_var
 from webapp_admin import render_template, Forbidden, ADMINS
 from annodb.database import login_user, get_corpus, \
      default_database, get_database, get_times, add_time
