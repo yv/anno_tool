@@ -1,6 +1,7 @@
 import os
 from werkzeug import script, DispatcherMiddleware, redirect, \
     DebuggedApplication
+from werkzeug.exceptions import NotFound
 from annodb.database import create_user, add_annotator, get_corpus
 from webapp_admin import AppRequest, archive_user
 from wsgi_app import application
@@ -9,7 +10,10 @@ from app_configuration import get_config_var
 
 @AppRequest.application
 def redirect_to_pycwb(request):
-    return redirect('/pycwb/')
+    if request.path=='/':
+        return redirect('/pycwb/')
+    else:
+        raise NotFound(request.path)
 
 def make_app():
     return DispatcherMiddleware(redirect_to_pycwb, {

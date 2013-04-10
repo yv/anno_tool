@@ -55,3 +55,6 @@ add the following to your apache2.conf:
 
     WSGIPythonHome /path/to/anno_tool_env
     WSGIScriptAlias /pycwb /path/to/anno_tool/wsgi_app.py
+
+Configuration
+-------------

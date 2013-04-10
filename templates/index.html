@@ -10,6 +10,7 @@
 <script src="/static/jq/jquery.ui.position.min.js"></script>
 <script src="/static/jq/jquery.ui.autocomplete.min.js"></script>
 <script src="/static/jq/ui.selectmenu.js"></script>
+<script src="/static/bootstrap/js/bootstrap.min.js"></script>
 <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
 <style>
 body {
@@ -40,6 +41,10 @@ function set_corpus(c) {
 }
 
 $(function() {
+ $('#loginlink').click(function(ev) {
+ $('#loginform').modal();
+ return false;
+ });
 $('#input-word').autocomplete({
   source: "/pycwb/get_words",
   minLength: 2,
@@ -83,7 +88,7 @@ $("#corpus_chooser > option [val="+get_corpus()+"]").attr('selected','selected')
 {% if user %}
 Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>, <a href="/pycwb/stunden">stunden</a>)
 {% else %}
-<a href="/pycwb/login">Login</a>
+<a href="#/pycwb/login" id="loginlink">Login</a>
 {% endif %}
 <p>
 <form>
@@ -129,5 +134,19 @@ Eingeloggt als {{user}}. (<a href="/pycwb/logout">logout</a>, <a href="/pycwb/st
 </div>
 </div>
 </div>
+</div>
+<div id="loginform" class="modal hide">
+    <form action="/pycwb/login" method="post">
+  <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+<h3>Login</h3>
+    </div>
+<div class="modal-body">
+  <input type="text" name="username" class="input-large" placeholder="Username">
+  <input type="password" name="password" placeholder="Password">
+<div class="modal-footer">
+<button class="btn btn-primary" type="submit">Login</button>
+  </div>
+</form>
 </div>
 </body>
