@@ -1,0 +1,8 @@
+pycwb:
+  corpora:
+    nologin: [R9PRE1]
+    login: []
+    admin: []
+  urls:
+    tueba: http://tintoretto.sfb.uni-tuebingen.de/taz
+  admins: [yannick,verena,wsdgold]
