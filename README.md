@@ -58,3 +58,18 @@ add the following to your apache2.conf:
 
 Configuration
 -------------
+
+the file config.yml contains configuration directives for
+the annotation tool.
+
+ * pycwb.corpora.nologin: a list of corpora that are available for non-logged-in users
+ * pycwb.corpora.login: a list of corpora that are only available to authenticated users
+ * pycwb.corpora.admin: a list of corpora that only members of the admin group can see
+ * pycwb.admins: a list of users that can create tasks etc.
+
+Creating users
+--------------
+
+Adding users, and changing users' passwords, can be done using the add_user action:
+
+   python action.py add_user <username> <password>
