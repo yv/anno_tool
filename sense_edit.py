@@ -11,7 +11,11 @@ from annodb.database import login_user, get_corpus, \
      default_database, get_database, get_times, add_time
 from annodb.corpora import allowed_corpora_nologin, allowed_corpora
 
-default_annotator='verena'
+try:
+    default_annotator=get_config_var('pycwb.sense_edit.default_annotator')
+except KeyError:
+    default_annotator=None
+
 
 filters={
     'N':set(['NN']),
@@ -52,10 +56,13 @@ def sensesJson(request):
             raise Forbidden('not an admin')
         info=list(db_senses.find({'lemma':request.args['create']}))
         if len(info)==0:
-            from gwn_db import germanet
-            gwn=germanet.get_database('gwn6')
-            lemma_for_gwn=wanted_lemma.replace('#','')
-            synsets=gwn.synsets_for_word(lemma_for_gwn)
+            try:
+                from gwn_db import germanet
+                gwn=germanet.get_database('gwn6')
+                lemma_for_gwn=wanted_lemma.replace('#','')
+                synsets=gwn.synsets_for_word(lemma_for_gwn)
+            except ImportError:
+                synsets=[]
             objs=defaultdict(list)
             for synset in synsets:
                 pos_cat=str(synset.word_category)[0].upper()

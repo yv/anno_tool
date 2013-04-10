@@ -6,3 +6,6 @@ pycwb:
   urls:
     tueba: http://tintoretto.sfb.uni-tuebingen.de/taz
   admins: [yannick,verena,wsdgold]
+  cwb_registry: /export/local/yannick/anno_tool_env/cwb_registry
+  sense_edit:
+    default_annotator: verena

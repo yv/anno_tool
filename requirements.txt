@@ -1,5 +1,8 @@
 passlib
 pymongo
 werkzeug
+simplejson
 PyYAML
 jinja2
+cwb-python
+

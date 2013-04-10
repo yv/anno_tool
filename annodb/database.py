@@ -5,6 +5,7 @@ import datetime
 import CWB.CL as cwb
 import pymongo
 import hashlib
+from app_configuration import get_config_var
 from passlib.hash import fshp
 
 from corpora import corpus_d_sattr, parse_order
@@ -14,6 +15,11 @@ couch_ignore_attributes=set(['_id','_rev','type',
                              'word'])
 
 srv=pymongo.Connection('localhost',27017)
+
+try:
+    cwb_registry_dir=get_config_var('pycwb.cwb_registry')
+except KeyError:
+    cwb_registry_dir=None
 
 def get_database():
     return srv['annoDB']
@@ -183,7 +189,7 @@ def report_attributes_simple(part,names,out=sys.stdout,
 
 class AnnoDB(object):
     def __init__(self,corpus_name='TUEBA4'):
-        self.corpus=cwb.Corpus(corpus_name)
+        self.corpus=cwb.Corpus(corpus_name, registry_dir=cwb_registry_dir)
         self.sentences=self.corpus.attribute('s','s')
         self.words=self.corpus.attribute('word','p')
         self.corpus_name=corpus_name
