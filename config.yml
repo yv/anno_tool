@@ -9,3 +9,7 @@ pycwb:
   cwb_registry: /export/local/yannick/anno_tool_env/cwb_registry
   sense_edit:
     default_annotator: verena
+    db: gwn6
+germanet:
+  gwn6:
+    db_server: postgresql://germanet:gwngwn@192.168.1.1/germanet

@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
+# PyCWB annotation tool (c) 2009-2013 Yannick Versley / Univ. Tuebingen
+# released under the Apache license, version 2.0
+# portions: Copyright 2009 by the Werkzeug team, BSD license
+#
+# This file implements authentication and basic functionality
+# for the web application
 
 __doc__="""
 templates, authentication and stuff

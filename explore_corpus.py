@@ -1,3 +1,8 @@
+# PyCWB annotation tool (c) 2009-2013 Yannick Versley / Univ. Tuebingen
+# released under the Apache license, version 2.0
+#
+# This file implements function for simple viewing of a corpus
+#
 from annodb import schema
 from cStringIO import StringIO
 from werkzeug.utils import escape

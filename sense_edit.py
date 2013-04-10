@@ -1,3 +1,8 @@
+# PyCWB annotation tool (c) 2009-2013 Yannick Versley / Univ. Tuebingen
+# released under the Apache license, version 2.0
+#
+# This file implements the word sense database for WSD annotation
+#
 import re
 import sys
 import datetime
@@ -12,10 +17,17 @@ from annodb.database import login_user, get_corpus, \
      default_database, get_database, get_times, add_time
 from annodb.corpora import allowed_corpora_nologin, allowed_corpora
 
+
+
 try:
     default_annotator=get_config_var('pycwb.sense_edit.default_annotator')
 except KeyError:
     default_annotator=None
+
+try:
+    gwn_dbname=get_config_var('pycwb.sense_edit.db')
+except KeyError:
+    gwn_dbname=None
 
 
 filters={
@@ -57,12 +69,12 @@ def sensesJson(request):
             raise Forbidden('not an admin')
         info=list(db_senses.find({'lemma':request.args['create']}))
         if len(info)==0:
-            try:
+            if gwn_dbname is not None:
                 from gwn_db import germanet
-                gwn=germanet.get_database('gwn6')
+                gwn=germanet.get_database(gwn_dbname)
                 lemma_for_gwn=wanted_lemma.replace('#','')
                 synsets=gwn.synsets_for_word(lemma_for_gwn)
-            except ImportError:
+            else:
                 synsets=[]
             objs=defaultdict(list)
             for synset in synsets:

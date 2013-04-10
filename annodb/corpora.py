@@ -1,3 +1,11 @@
+# PyCWB annotation tool (c) 2009-2013 Yannick Versley / Univ. Tuebingen
+# released under the Apache license, version 2.0
+#
+# This file provides access to a list of installed corpora.
+# The corpus_urls dictionary in this module maps each corpus name
+# to a function that turns text_id attribute values into a URL where
+# the source text can be found.
+#
 from app_configuration import get_config_var
 
 allowed_corpora_nologin=get_config_var('pycwb.corpora.nologin')

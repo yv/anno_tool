@@ -1,3 +1,8 @@
+# PyCWB annotation tool (c) 2009-2013 Yannick Versley / Univ. Tuebingen
+# released under the Apache license, version 2.0
+#
+# Interface to the SQL version of GermaNet
+#
 import sys
 import numpy
 import cPickle

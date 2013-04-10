@@ -1,3 +1,8 @@
+# PyCWB annotation tool (c) 2009-2013 Yannick Versley / Univ. Tuebingen
+# released under the Apache license, version 2.0
+#
+# This file covers annotation schemes
+#
 import sys
 import re
 import simplejson as json
@@ -15,6 +20,9 @@ schema. It exposes the following methods:
   for creating appropriate editing widgets
 - get_state(anno):
   returns 0 (blank) 1 (partial) 2 (full w/comment) 3 (full, no comment)
+
+The "schemas" dictionary in this module is used by the annotation tool to determine
+how to display each annotation
 """
 
 schemas={}

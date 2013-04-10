@@ -1,3 +1,8 @@
+# PyCWB annotation tool (c) 2009-2013 Yannick Versley / Univ. Tuebingen
+# released under the Apache license, version 2.0
+#
+# This file implements discourse annotation functionality
+#
 import re
 import simplejson as json
 

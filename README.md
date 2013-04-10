@@ -74,6 +74,15 @@ the annotation tool.
  * pycwb.admins: a list of users that can create tasks etc.
  * pycwb.cwb_registry: the directory where the CWB registry files for corpora are searched (default: /usr/local/share/cwb/registry)
 
+Importing corpora
+-----------------
+
+Corpora have to be encoded in CWB's format, as specified in
+http://cwb.sourceforge.net/files/CWB_Encoding_Tutorial.pdf
+
+after this step, a corpus just has to be added to one of
+pycwb.corpora.{nologin,login,admin}.
+
 Creating users
 --------------
 
@@ -85,6 +94,7 @@ Backing up and restoring data
 =============================
 
 The annotation tool uses one global user/password collection (annoDB.users),
+one global collection for sense inventories (annoDB.senses)
 and per-corpus collections for tasks, annotations, and discourse data
 (annoDB.<CORPUS>.{tasks,annotation,discourse})
 
@@ -92,6 +102,7 @@ To make a backup from a database that has a corpus named R9PRE1, using
 MongoDB's commands, you can use the following:
 
     mongodump -o data_backup -d annoDB -c users
+    mongodump -o data_backup -d annoDB -c senses
     mongodump -o data_backup -d annoDB -c R9PRE1.tasks
     mongodump -o data_backup -d annoDB -c R9PRE1.annotation
     mongodump -o data_backup -d annoDB -c R9PRE1.discourse
@@ -102,3 +113,10 @@ You can restore all data by simply using
 
 If you use username/password authentication, you will need to add
 "-u username -p password" to each command.
+
+Colophon
+--------
+The development of the PyCWB annotation tool was made possible
+by the Deutsche Forschungsgemeinschaft as part of
+Sonderforschungsbereich (SFB) 833, project A3 "Desambiguierung
+von Diskurskonnektoren mit korpusinduzierten semantischen Relationen"

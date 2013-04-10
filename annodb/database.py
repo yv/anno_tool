@@ -1,3 +1,8 @@
+# PyCWB annotation tool (c) 2009-2013 Yannick Versley / Univ. Tuebingen
+# released under the Apache license, version 2.0
+#
+# A database of annotation tasks and annotations (using MongoDB as backend)
+#
 import sys
 import re
 import os.path
@@ -21,8 +26,18 @@ try:
 except KeyError:
     cwb_registry_dir=None
 
+try:
+    username=get_config_var('pycwb.mongodb.username')
+    password=get_config_var('pycwb.mongodb.password')
+except KeyError:
+    username=None
+    password=None
+
 def get_database():
-    return srv['annoDB']
+    db=srv['annoDB']
+    if username is not None:
+        db.authenticate(username,password)
+    return db
 
 def create_user(username,passwd):
     hashed_pw=fshp.encrypt(passwd)

@@ -1,3 +1,9 @@
+# PyCWB annotation tool (c) 2009-2013 Yannick Versley / Univ. Tuebingen
+# released under the Apache license, version 2.0
+#
+# Mapping of URL paths to responding Python functions and
+# entry point for the WSGI interface
+#
 import os
 import sys
 import os.path

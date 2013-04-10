@@ -1,3 +1,8 @@
+# PyCWB annotation tool (c) 2009-2013 Yannick Versley / Univ. Tuebingen
+# released under the Apache license, version 2.0
+#
+# displaying, retrieving and saving annotations via HTTP requests 
+#
 import re
 from itertools import izip
 import simplejson as json
@@ -178,6 +183,7 @@ def adjudicate(request,taskname):
                            corpus_name=db.corpus_name,
                            output=out.getvalue().decode('ISO-8859-15'))
 
+ignore_attributes_download=['span','type','corpus','annotator']
 def download_anno(request,taskname):
     db=request.corpus
     task=db.get_task(taskname)
@@ -199,13 +205,14 @@ def download_anno(request,taskname):
         part_repr={}
         span=part[0].span
         part_repr['_span']=span
+        part_repr['_corpus']=part[0].corpus
         part_repr['_sent_no']=db.sentences.cpos2struc(span[0])+1
         out=StringIO()
         db.display_span(span,1,0,out)
         part_repr['_html']=out.getvalue().decode('ISO-8859-15')
         part_repr['_annotators']=names
         for anno,name in zip(part,names):
-            part_repr[name]=dict(((k,anno[k]) for k in anno))
+            part_repr[name]=dict(((k,anno[k]) for k in anno if k not in ignore_attributes_download))
         json_parts.append(part_repr)
     if fmt=='yaml':
         return Response(yaml.safe_dump_all(json_parts, allow_unicode=True),mimetype='text/yaml')
