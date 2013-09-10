@@ -5,6 +5,12 @@ from pytree.exml import ExportCorpusReader, make_syntax_doc, EnumAttribute, Text
      Topic, EduRange, Edu, GenericMarkable
 from exml_implicit import DiscRelEdges, parse_relations
 
+__usage__='''
+anodb2exml.py release.export RELEASE_CQP
+
+merges connective, implicit DR and WSD annotation into an ExportXMLv2 file
+'''
+
 task_names=(['task_waehrend%s_new'%(k,) for k in xrange(1,11)]+
     ['task_nachdem%s_new'%(k,) for k in xrange(1,8)]+
     ['task_bevor_%s'%(k,) for k in xrange(1,3)]+
@@ -226,4 +232,7 @@ def main(export_fname, corpus_name):
     print '</exml-doc>'
 
 if __name__=='__main__':
-    main(sys.argv[1],sys.argv[2])
+    if len(sys.argv)!=3:
+        print >>sys.stderr, __usage__
+    else:
+        main(sys.argv[1],sys.argv[2])

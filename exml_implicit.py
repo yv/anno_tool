@@ -4,6 +4,7 @@ import re
 import sys
 from pytree import exml
 from pytree.exml import Text, Edu, EduRange, Topic, edu_re, topic_s
+from exml_discourse_schema import make_konn_doc, DiscRel
 from itertools import izip
 from collections import defaultdict
 from ordereddict import OrderedDict
@@ -23,57 +24,11 @@ __version__="2011-03-03"
 __author__="Yannick Versley / Univ. Tuebingen"
 
 
-class DiscRel(exml.GenericMarkable):
-    def __init__(self,label,target,marking=None):
-        self.label=label
-        self.marking=marking
-        self.target=target
-
-class DiscRelEdges(object):
-    def __init__(self,name):
-        self.name=name
-        self.attributes=[exml.EnumAttribute('relation'),
-                         exml.EnumAttribute('marking'),
-                         exml.RefAttribute('arg2')]
-    def get_edges(self,obj,doc):
-        edges=[]
-        if hasattr(obj,'rels') and obj.rels is not None:
-            for rel in obj.rels:
-                edges.append((rel.label,rel.marking,rel.target))
-        return edges
-    def get_updown(self,obj,doc,result):
-        pass
 
 comment_re=re.compile("//.*$");
 span_re="(?:"+edu_re+"(?:-"+edu_re+")?|"+topic_s+")"
 relation_re=re.compile("(\\w+(?:[- ]\\w+)*|\\?)\\s*\\(\\s*("+span_re+")\\s*,\\s*("+span_re+")\\s*\\)\\s*(%[^/]*)?\\s*")
 
-
-def make_implicit_doc():
-    text_schema=exml.MarkableSchema('text',Text)
-    text_schema.attributes=[exml.TextAttribute('origin')]
-    s_schema=exml.MarkableSchema('sentence',tree.Tree)
-    s_schema.locality='text'
-    discrel_edge=DiscRelEdges('discRel')
-    topic_schema=exml.MarkableSchema('topic',Topic)
-    topic_schema.attributes=[exml.TextAttribute('description')]
-    topic_schema.locality='text'
-    topic_schema.edges=[discrel_edge]
-    edu_range_schema=exml.MarkableSchema('edu-range',EduRange)
-    edu_range_schema.locality='text'
-    edu_range_schema.edges=[discrel_edge]
-    edu_schema=exml.MarkableSchema('edu',Edu)
-    edu_schema.locality='sentence'
-    edu_schema.edges=[discrel_edge]
-    t_schema=exml.TerminalSchema('word',tree.TerminalNode)
-    t_schema.attributes=[exml.TextAttribute('form',prop_name='word'),
-                         exml.EnumAttribute('pos',prop_name='cat'),
-                         exml.EnumAttribute('morph',prop_name='morph'),
-                         exml.EnumAttribute('lemma',prop_name='lemma'),
-                         exml.RefAttribute('dephead',prop_name='syn_parent'),
-                         exml.EnumAttribute('deprel',prop_name='syn_label')]
-    return exml.Document(t_schema,[text_schema,s_schema,
-                                   edu_schema,topic_schema,edu_range_schema])                
 
 def parse_relations(relations,text,ctx):
     relations_unparsed=text.unparsed_rels
