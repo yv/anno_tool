@@ -4,7 +4,7 @@ import re
 import sys
 from pytree import exml
 from pytree.exml import Text, Edu, EduRange, Topic, edu_re, topic_s
-from exml_discourse_schema import make_konn_doc, DiscRel
+from exml_discourse_schema import make_konn_doc, DiscRel, make_implicit_doc
 from itertools import izip
 from collections import defaultdict
 from ordereddict import OrderedDict

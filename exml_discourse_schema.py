@@ -1,6 +1,7 @@
-from pytree.exml import make_syntax_doc, \
+from pytree import tree
+from pytree.exml import make_syntax_doc, TerminalSchema, \
      EnumAttribute, TextAttribute, RefAttribute, \
-     Topic, EduRange, Edu, \
+     Topic, EduRange, Edu, Text, \
      Document, GenericMarkable, MarkableSchema
 
 __all__=['DiscRel', 'DiscRelEdges', 'ConnectiveEdges', 'make_konn_doc', 'make_implicit_doc']

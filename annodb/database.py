@@ -19,7 +19,11 @@ couch_ignore_attributes=set(['_id','_rev','type',
                              'span','corpus','annotator','level',
                              'word'])
 
-srv=pymongo.Connection('localhost',27017)
+try:
+    mongo_url=get_config_var('pycwb.mongodb.url')
+    srv=pymongo.MongoClient(mongo_url)
+except KeyError:
+    srv=pymongo.MongoClient('localhost',27017)
 
 try:
     cwb_registry_dir=get_config_var('pycwb.cwb_registry')
@@ -203,7 +207,7 @@ def report_attributes_simple(part,names,out=sys.stdout,
         print >>out, "</td></tr>"
 
 class AnnoDB(object):
-    def __init__(self,corpus_name='TUEBA4'):
+    def __init__(self,corpus_name='R9PRE1'):
         self.corpus=cwb.Corpus(corpus_name, registry_dir=cwb_registry_dir)
         self.sentences=self.corpus.attribute('s','s')
         self.words=self.corpus.attribute('word','p')
@@ -437,7 +441,7 @@ class AnnoDB(object):
         self.db.annotation.ensure_index('span')
         self.db.annotation.ensure_index([('annotator',1),('span',1)])
 
-default_database='TUEBA4'
+default_database='R9PRE1'
 databases={}
 def get_corpus(name=default_database):
     if name not in databases:

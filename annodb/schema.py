@@ -119,6 +119,7 @@ class SimpleSchema:
             return 1
     def get_slots(self):
         return [k for (k,unused_) in self.descr]
+schemas['mod']=SimpleSchema([])
 
 class SenseDict(dict):
     def __init__(self,coll):

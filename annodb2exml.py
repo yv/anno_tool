@@ -3,7 +3,8 @@ from annodb.database import get_corpus
 from pytree import exml
 from pytree.exml import ExportCorpusReader, make_syntax_doc, EnumAttribute, TextAttribute, \
      Topic, EduRange, Edu, GenericMarkable
-from exml_implicit import DiscRelEdges, parse_relations
+from exml_implicit import parse_relations
+from exml_discourse_schema import DiscRelEdges
 
 __usage__='''
 anodb2exml.py release.export RELEASE_CQP

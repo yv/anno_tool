@@ -1,15 +1,18 @@
 pycwb:
+  mongodb:
+    username: annodb
+    password: xanezafo
   corpora:
-    nologin: [R9PRE1]
-    login: []
+    nologin: []
+    login: [TUEBA4, R6PRE1, R9PRE1, R9PRE3]
     admin: []
   urls:
     tueba: http://tintoretto.sfb.uni-tuebingen.de/taz
   admins: [yannick,verena,wsdgold]
-  cwb_registry: /export/local/yannick/anno_tool_env/cwb_registry
+  cwb_registry: /var/lib/wwwrun/cwb/registry
   sense_edit:
     default_annotator: verena
     db: gwn6
 germanet:
   gwn6:
-    db_server: postgresql://germanet:gwngwn@192.168.1.1/germanet
+    db_server: postgresql://germanet
